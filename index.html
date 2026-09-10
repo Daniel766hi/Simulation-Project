@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mine Production &amp; Cost Simulator</title>
+<script src="vendor/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#f4f1ec;
+    --panel:#ffffff;
+    --ink:#241f1a;
+    --ink-soft:#5c554c;
+    --border:#e2ddd2;
+    --accent:#b5651d;
+    --accent-dark:#8a4b13;
+    --accent-soft:#f3e2cf;
+    --good:#1f7a4d;
+    --bad:#b33a3a;
+    --radius:10px;
+    --shadow:0 1px 3px rgba(36,31,26,0.08), 0 6px 20px rgba(36,31,26,0.05);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#171310;
+      --panel:#211c17;
+      --ink:#f1ebe2;
+      --ink-soft:#b7ac9c;
+      --border:#3a332a;
+      --accent:#e08a3c;
+      --accent-dark:#f0a460;
+      --accent-soft:#3a2c1c;
+      --good:#4fbd85;
+      --bad:#e26868;
+      --shadow:0 1px 3px rgba(0,0,0,0.35), 0 6px 20px rgba(0,0,0,0.25);
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'Segoe UI',Roboto,-apple-system,sans-serif;
+    padding-block:24px;
+  }
+  .wrap{max-width:1280px;margin:0 auto;padding-inline:20px;}
+  header{margin-bottom:20px;}
+  header h1{font-size:1.5rem;margin:0 0 4px;letter-spacing:-0.01em;}
+  header p{margin:0;color:var(--ink-soft);font-size:0.92rem;max-width:70ch;}
+  .layout{display:grid;grid-template-columns:340px 1fr;gap:20px;align-items:start;}
+  @media (max-width:900px){.layout{grid-template-columns:1fr;}}
+
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+  }
+  .form-panel{padding:18px 18px 20px;}
+  fieldset{border:none;padding:0;margin:0 0 16px;}
+  fieldset legend{
+    font-size:0.72rem;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    color:var(--accent-dark);
+    padding:0 0 8px;
+    width:100%;
+    border-bottom:1px solid var(--border);
+    margin-bottom:10px;
+  }
+  .field{margin-bottom:10px;}
+  .field label{
+    display:flex;justify-content:space-between;align-items:baseline;
+    font-size:0.8rem;color:var(--ink-soft);margin-bottom:3px;
+  }
+  .field label span.val{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums;}
+  .field input[type=number], .field input[type=range]{width:100%;}
+  .field input[type=number]{
+    padding:6px 8px;border:1px solid var(--border);border-radius:6px;
+    background:var(--bg);color:var(--ink);font-size:0.85rem;
+  }
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+
+  button{
+    font-family:inherit;font-size:0.85rem;font-weight:600;
+    border-radius:8px;border:1px solid transparent;cursor:pointer;
+    padding:10px 14px;
+  }
+  .btn-primary{background:var(--accent);color:#fff;width:100%;}
+  .btn-primary:hover{background:var(--accent-dark);}
+  .btn-secondary{background:transparent;border-color:var(--border);color:var(--ink);width:100%;}
+  .btn-secondary:hover{border-color:var(--accent);color:var(--accent-dark);}
+
+  .tabs{display:flex;gap:6px;margin-bottom:14px;}
+  .tab-btn{
+    background:var(--panel);border:1px solid var(--border);color:var(--ink-soft);
+    padding:8px 14px;border-radius:8px;font-size:0.82rem;font-weight:600;cursor:pointer;
+  }
+  .tab-btn.active{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-dark);}
+  .tab-panel{display:none;}
+  .tab-panel.active{display:block;}
+
+  .chart-panel{padding:18px;margin-bottom:16px;}
+  .chart-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap;}
+  .chart-head h2{font-size:1rem;margin:0;}
+  select{
+    padding:6px 10px;border:1px solid var(--border);border-radius:6px;
+    background:var(--bg);color:var(--ink);font-size:0.82rem;
+  }
+  .chart-box{position:relative;height:360px;}
+
+  .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+  @media (max-width:700px){.kpi-grid{grid-template-columns:repeat(2,1fr);}}
+  .kpi{
+    background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);
+    padding:12px 14px;box-shadow:var(--shadow);
+  }
+  .kpi .label{font-size:0.72rem;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.04em;}
+  .kpi .value{font-size:1.15rem;font-weight:700;margin-top:3px;font-variant-numeric:tabular-nums;}
+  .kpi .value.good{color:var(--good);}
+  .kpi .value.bad{color:var(--bad);}
+
+  .mc-controls{display:flex;gap:10px;align-items:flex-end;margin-bottom:14px;flex-wrap:wrap;}
+  .mc-controls .field{margin:0;min-width:140px;}
+  .mc-stats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:14px;}
+  @media (max-width:700px){.mc-stats{grid-template-columns:repeat(2,1fr);}}
+
+  .note{
+    font-size:0.78rem;color:var(--ink-soft);background:var(--accent-soft);
+    border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-top:14px;line-height:1.5;
+  }
+  footer{margin-top:24px;color:var(--ink-soft);font-size:0.78rem;text-align:center;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Mine Production &amp; Cost Simulator</h1>
+    <p>A discrete-time simulation of an open-pit style mine: reserve depletion, ramp-up, equipment availability,
+      grade and price variability, and price-shock events, run month by month over the chosen horizon. Adjust the
+      variables on the left and re-run.</p>
+  </header>
+
+  <div class="layout">
+    <form id="form" class="panel form-panel">
+      <fieldset>
+        <legend>Reserve &amp; grade</legend>
+        <div class="field">
+          <label>Initial ore reserve (t) <span class="val" data-out="initialReserve"></span></label>
+          <input type="range" id="initialReserve" min="500000" max="20000000" step="100000" value="5000000">
+        </div>
+        <div class="field">
+          <label>Average ore grade (%) <span class="val" data-out="oreGrade"></span></label>
+          <input type="range" id="oreGrade" min="0.1" max="5" step="0.05" value="1.2">
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label>Grade variability (± %) <span class="val" data-out="gradeVariability"></span></label>
+            <input type="range" id="gradeVariability" min="0" max="30" step="1" value="8">
+          </div>
+          <div class="field">
+            <label>Recovery rate (%) <span class="val" data-out="recoveryRate"></span></label>
+            <input type="range" id="recoveryRate" min="40" max="99" step="1" value="88">
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Operations</legend>
+        <div class="field">
+          <label>Planned mining rate (t/month) <span class="val" data-out="planRate"></span></label>
+          <input type="range" id="planRate" min="10000" max="600000" step="5000" value="150000">
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label>Ramp-up period (months) <span class="val" data-out="rampUp"></span></label>
+            <input type="range" id="rampUp" min="0" max="24" step="1" value="6">
+          </div>
+          <div class="field">
+            <label>Avg. availability (%) <span class="val" data-out="availability"></span></label>
+            <input type="range" id="availability" min="40" max="100" step="1" value="90">
+          </div>
+        </div>
+        <div class="field">
+          <label>Availability variability (± %) <span class="val" data-out="availVariability"></span></label>
+          <input type="range" id="availVariability" min="0" max="25" step="1" value="5">
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Market</legend>
+        <div class="field">
+          <label>Base metal price ($/t metal) <span class="val" data-out="basePrice"></span></label>
+          <input type="range" id="basePrice" min="500" max="15000" step="100" value="8000">
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label>Price volatility (± %/mo) <span class="val" data-out="priceVolatility"></span></label>
+            <input type="range" id="priceVolatility" min="0" max="25" step="1" value="6">
+          </div>
+          <div class="field">
+            <label>Shock probability (%/mo) <span class="val" data-out="shockProb"></span></label>
+            <input type="range" id="shockProb" min="0" max="30" step="1" value="5">
+          </div>
+        </div>
+        <div class="field">
+          <label>Shock magnitude (%) <span class="val" data-out="shockMag"></span></label>
+          <input type="range" id="shockMag" min="-60" max="60" step="5" value="-25">
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Costs &amp; horizon</legend>
+        <div class="row2">
+          <div class="field">
+            <label>Mining cost ($/t ore) <span class="val" data-out="miningCost"></span></label>
+            <input type="range" id="miningCost" min="1" max="80" step="1" value="22">
+          </div>
+          <div class="field">
+            <label>Processing cost ($/t ore) <span class="val" data-out="processCost"></span></label>
+            <input type="range" id="processCost" min="1" max="60" step="1" value="15">
+          </div>
+        </div>
+        <div class="field">
+          <label>Fixed cost ($/month) <span class="val" data-out="fixedCost"></span></label>
+          <input type="range" id="fixedCost" min="0" max="5000000" step="50000" value="1200000">
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label>Horizon (months) <span class="val" data-out="horizon"></span></label>
+            <input type="range" id="horizon" min="6" max="120" step="1" value="36">
+          </div>
+          <div class="field">
+            <label>Random seed <span class="val" data-out="seed"></span></label>
+            <input type="number" id="seed" min="1" max="999999" value="42">
+          </div>
+        </div>
+      </fieldset>
+
+      <button type="submit" class="btn-primary">Run simulation</button>
+      <div style="height:8px"></div>
+      <button type="button" id="randomizeSeed" class="btn-secondary">Randomize seed &amp; re-run</button>
+    </form>
+
+    <div>
+      <div class="tabs">
+        <button type="button" class="tab-btn active" data-tab="timeseries">Time series</button>
+        <button type="button" class="tab-btn" data-tab="montecarlo">Monte Carlo risk analysis</button>
+      </div>
+
+      <div id="tab-timeseries" class="tab-panel active">
+        <div class="panel chart-panel">
+          <div class="chart-head">
+            <h2>Simulation output over time</h2>
+            <select id="metricSelect">
+              <option value="cumProfit" selected>Cumulative profit ($)</option>
+              <option value="profit">Monthly profit ($)</option>
+              <option value="revenue">Monthly revenue ($)</option>
+              <option value="cost">Monthly cost ($)</option>
+              <option value="oreMined">Ore mined (t)</option>
+              <option value="metalProduced">Metal produced (t)</option>
+              <option value="grade">Effective grade (%)</option>
+              <option value="price">Metal price ($/t)</option>
+              <option value="reserve">Remaining reserve (t)</option>
+            </select>
+          </div>
+          <div class="chart-box"><canvas id="tsChart"></canvas></div>
+        </div>
+        <div class="kpi-grid" id="kpiGrid"></div>
+        <div class="note" id="tsNote"></div>
+      </div>
+
+      <div id="tab-montecarlo" class="tab-panel">
+        <div class="panel chart-panel">
+          <div class="mc-controls">
+            <div class="field">
+              <label>Trials <span class="val" data-out="mcTrials"></span></label>
+              <input type="range" id="mcTrials" min="20" max="500" step="10" value="150">
+            </div>
+            <button type="button" id="runMC" class="btn-primary" style="width:auto;">Run Monte Carlo</button>
+          </div>
+          <div class="chart-head">
+            <h2>Each dot = one simulated mine life (random grade, availability, price path &amp; shocks)</h2>
+          </div>
+          <div class="chart-box"><canvas id="mcChart"></canvas></div>
+          <div class="mc-stats" id="mcStats"></div>
+        </div>
+        <div class="note">
+          X-axis: total metal produced over the horizon. Y-axis: final cumulative profit. Each trial re-draws grade,
+          availability and price-path noise from the same distributions used in the time-series tab, so the spread of
+          dots shows how sensitive the project's profitability is to operational and market uncertainty &mdash; the
+          same idea as scenario/sensitivity analysis, just visualized as a scatter instead of a table.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>Client-side simulation &mdash; nothing is sent to a server. Model assumptions documented in README.md.</footer>
+</div>
+
+<script>
+// ---------- seeded RNG (mulberry32) + Box-Muller normal noise ----------
+function mulberry32(seed){
+  let a = seed >>> 0;
+  return function(){
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function normal(rng, stdDev){
+  let u = 0, v = 0;
+  while(u === 0) u = rng();
+  while(v === 0) v = rng();
+  return stdDev * Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+}
+function clamp(x, lo, hi){ return Math.max(lo, Math.min(hi, x)); }
+
+// ---------- read inputs ----------
+function readInputs(){
+  const g = id => parseFloat(document.getElementById(id).value);
+  return {
+    initialReserve: g('initialReserve'),
+    oreGrade: g('oreGrade'),
+    gradeVariability: g('gradeVariability'),
+    recoveryRate: g('recoveryRate'),
+    planRate: g('planRate'),
+    rampUp: g('rampUp'),
+    availability: g('availability'),
+    availVariability: g('availVariability'),
+    basePrice: g('basePrice'),
+    priceVolatility: g('priceVolatility'),
+    shockProb: g('shockProb'),
+    shockMag: g('shockMag'),
+    miningCost: g('miningCost'),
+    processCost: g('processCost'),
+    fixedCost: g('fixedCost'),
+    horizon: Math.round(g('horizon')),
+    seed: Math.round(g('seed'))
+  };
+}
+
+// ---------- core simulation: returns array of monthly records ----------
+function simulate(p, seedOverride){
+  const rng = mulberry32(seedOverride !== undefined ? seedOverride : p.seed);
+  let reserve = p.initialReserve;
+  let priceState = p.basePrice;
+  let cumProfit = 0;
+  const months = [];
+
+  for(let m = 1; m <= p.horizon; m++){
+    const rampFactor = p.rampUp > 0 ? clamp(m / p.rampUp, 0, 1) : 1;
+
+    const availNoise = normal(rng, p.availVariability / 100);
+    const effAvailability = clamp(p.availability / 100 + availNoise, 0, 1);
+
+    const plannedThisMonth = p.planRate * rampFactor * effAvailability;
+    const oreMined = Math.max(0, Math.min(reserve, plannedThisMonth));
+    reserve -= oreMined;
+
+    const gradeNoise = normal(rng, p.gradeVariability / 100);
+    const effGrade = Math.max(0, (p.oreGrade / 100) * (1 + gradeNoise));
+    const metalProduced = oreMined * effGrade * (p.recoveryRate / 100);
+
+    priceState *= (1 + normal(rng, p.priceVolatility / 100));
+    if(rng() < p.shockProb / 100){
+      priceState *= (1 + p.shockMag / 100);
+    }
+    priceState = Math.max(0, priceState);
+
+    const revenue = metalProduced * priceState;
+    const cost = oreMined * p.miningCost + oreMined * p.processCost + p.fixedCost;
+    const profit = revenue - cost;
+    cumProfit += profit;
+
+    months.push({
+      month: m, reserve, oreMined, grade: effGrade * 100, metalProduced,
+      price: priceState, revenue, cost, profit, cumProfit
+    });
+  }
+  return months;
+}
+
+// ---------- formatting ----------
+const fmt = n => Math.abs(n) >= 1e6 ? (n/1e6).toFixed(2)+'M'
+  : Math.abs(n) >= 1e3 ? (n/1e3).toFixed(1)+'k'
+  : n.toFixed(1);
+const fmtMoney = n => (n < 0 ? '-$' : '$') + fmt(Math.abs(n));
+const fmtInt = n => Math.round(n).toLocaleString();
+
+// ---------- slider label sync ----------
+const sliderMeta = {
+  initialReserve: v => fmtInt(v) + ' t',
+  oreGrade: v => v.toFixed(2) + '%',
+  gradeVariability: v => '±' + v + '%',
+  recoveryRate: v => v + '%',
+  planRate: v => fmtInt(v) + ' t/mo',
+  rampUp: v => v + ' mo',
+  availability: v => v + '%',
+  availVariability: v => '±' + v + '%',
+  basePrice: v => '$' + fmtInt(v),
+  priceVolatility: v => '±' + v + '%',
+  shockProb: v => v + '%',
+  shockMag: v => (v > 0 ? '+' : '') + v + '%',
+  miningCost: v => '$' + v,
+  processCost: v => '$' + v,
+  fixedCost: v => '$' + fmtInt(v),
+  horizon: v => v + ' mo',
+  seed: v => v,
+  mcTrials: v => v
+};
+function syncLabels(){
+  Object.keys(sliderMeta).forEach(id => {
+    const el = document.getElementById(id);
+    const out = document.querySelector('[data-out="'+id+'"]');
+    if(el && out) out.textContent = sliderMeta[id](parseFloat(el.value));
+  });
+}
+document.querySelectorAll('input[type=range], #seed').forEach(el => {
+  el.addEventListener('input', syncLabels);
+});
+syncLabels();
+
+// ---------- tabs ----------
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+// ---------- time series chart ----------
+const metricMeta = {
+  cumProfit: { label: 'Cumulative profit ($)', key: 'cumProfit', money: true },
+  profit: { label: 'Monthly profit ($)', key: 'profit', money: true },
+  revenue: { label: 'Monthly revenue ($)', key: 'revenue', money: true },
+  cost: { label: 'Monthly cost ($)', key: 'cost', money: true },
+  oreMined: { label: 'Ore mined (t)', key: 'oreMined', money: false },
+  metalProduced: { label: 'Metal produced (t)', key: 'metalProduced', money: false },
+  grade: { label: 'Effective grade (%)', key: 'grade', money: false },
+  price: { label: 'Metal price ($/t)', key: 'price', money: true },
+  reserve: { label: 'Remaining reserve (t)', key: 'reserve', money: false }
+};
+
+let tsChart, mcChart, lastRun = [];
+
+function renderTimeSeries(){
+  const metric = metricMeta[document.getElementById('metricSelect').value];
+  const data = lastRun.map(r => ({ x: r.month, y: r[metric.key] }));
+  const ctx = document.getElementById('tsChart');
+
+  if(tsChart) tsChart.destroy();
+  tsChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      datasets: [{
+        label: metric.label,
+        data,
+        borderColor: '#b5651d',
+        backgroundColor: '#b5651d',
+        pointRadius: 3,
+        pointHoverRadius: 5,
+        borderWidth: 2,
+        tension: 0.15
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        x: { type: 'linear', title: { display: true, text: 'Month' }, ticks: { precision: 0 } },
+        y: { title: { display: true, text: metric.label } }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: c => metric.money ? fmtMoney(c.parsed.y) : fmtInt(c.parsed.y)
+          }
+        }
+      }
+    }
+  });
+}
+
+function renderKPIs(){
+  const last = lastRun[lastRun.length - 1];
+  const totalOre = lastRun.reduce((s,r) => s + r.oreMined, 0);
+  const totalMetal = lastRun.reduce((s,r) => s + r.metalProduced, 0);
+  const totalRevenue = lastRun.reduce((s,r) => s + r.revenue, 0);
+  const totalCost = lastRun.reduce((s,r) => s + r.cost, 0);
+  const netProfit = last.cumProfit;
+  const paybackMonth = lastRun.find(r => r.cumProfit > 0);
+  const depletedAt = lastRun.find(r => r.reserve <= 0);
+  const avgPrice = totalMetal > 0 ? totalRevenue / totalMetal : 0;
+
+  const kpis = [
+    ['Total ore mined', fmtInt(totalOre) + ' t', null],
+    ['Total metal produced', fmtInt(totalMetal) + ' t', null],
+    ['Total revenue', fmtMoney(totalRevenue), null],
+    ['Total cost', fmtMoney(totalCost), null],
+    ['Net profit (horizon)', fmtMoney(netProfit), netProfit >= 0 ? 'good' : 'bad'],
+    ['Payback month', paybackMonth ? 'Month ' + paybackMonth.month : 'Not reached', paybackMonth ? 'good' : 'bad'],
+    ['Reserve exhausted at', depletedAt ? 'Month ' + depletedAt.month : 'Not within horizon', null],
+    ['Avg. realized price', '$' + avgPrice.toFixed(0) + '/t', null]
+  ];
+  document.getElementById('kpiGrid').innerHTML = kpis.map(([label, value, cls]) =>
+    `<div class="kpi"><div class="label">${label}</div><div class="value ${cls || ''}">${value}</div></div>`
+  ).join('');
+
+  document.getElementById('tsNote').textContent =
+    `Seed ${document.getElementById('seed').value} · ${lastRun.length} months simulated. ` +
+    `Change the metric dropdown to inspect production, cost, price or grade dynamics instead of profit.`;
+}
+
+function runSimulation(){
+  const p = readInputs();
+  lastRun = simulate(p);
+  renderTimeSeries();
+  renderKPIs();
+}
+
+document.getElementById('form').addEventListener('submit', e => {
+  e.preventDefault();
+  runSimulation();
+});
+document.getElementById('metricSelect').addEventListener('change', renderTimeSeries);
+document.getElementById('randomizeSeed').addEventListener('click', () => {
+  document.getElementById('seed').value = Math.floor(Math.random() * 999999) + 1;
+  syncLabels();
+  runSimulation();
+});
+
+// ---------- monte carlo ----------
+function runMonteCarlo(){
+  const p = readInputs();
+  const trials = Math.round(parseFloat(document.getElementById('mcTrials').value));
+  const points = [];
+  const profits = [];
+
+  for(let i = 0; i < trials; i++){
+    const run = simulate(p, p.seed + i * 7919 + 1);
+    const last = run[run.length - 1];
+    const totalMetal = run.reduce((s,r) => s + r.metalProduced, 0);
+    points.push({ x: totalMetal, y: last.cumProfit });
+    profits.push(last.cumProfit);
+  }
+
+  const ctx = document.getElementById('mcChart');
+  if(mcChart) mcChart.destroy();
+  mcChart = new Chart(ctx, {
+    type: 'scatter',
+    data: {
+      datasets: [{
+        label: 'Simulated trial',
+        data: points,
+        backgroundColor: points.map(pt => pt.y >= 0 ? 'rgba(31,122,77,0.65)' : 'rgba(179,58,58,0.65)'),
+        pointRadius: 4,
+        pointHoverRadius: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        x: { title: { display: true, text: 'Total metal produced (t)' } },
+        y: { title: { display: true, text: 'Final cumulative profit ($)' } }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: c => `Metal: ${fmtInt(c.parsed.x)} t · Profit: ${fmtMoney(c.parsed.y)}`
+          }
+        }
+      }
+    }
+  });
+
+  profits.sort((a,b) => a-b);
+  const mean = profits.reduce((s,v) => s+v, 0) / profits.length;
+  const variance = profits.reduce((s,v) => s + (v-mean)**2, 0) / profits.length;
+  const stdDev = Math.sqrt(variance);
+  const pct = q => profits[clamp(Math.floor(q * profits.length), 0, profits.length-1)];
+  const profitableShare = profits.filter(v => v >= 0).length / profits.length * 100;
+
+  const stats = [
+    ['Mean profit', fmtMoney(mean)],
+    ['Std. deviation', fmtMoney(stdDev)],
+    ['P10 (downside)', fmtMoney(pct(0.10))],
+    ['Median (P50)', fmtMoney(pct(0.50))],
+    ['P90 (upside)', fmtMoney(pct(0.90))]
+  ];
+  document.getElementById('mcStats').innerHTML = stats.map(([label, value]) =>
+    `<div class="kpi"><div class="label">${label}</div><div class="value">${value}</div></div>`
+  ).join('') + `<div class="kpi" style="grid-column:1/-1;"><div class="label">Trials profitable</div>` +
+    `<div class="value ${profitableShare >= 50 ? 'good' : 'bad'}">${profitableShare.toFixed(0)}% of ${trials}</div></div>`;
+}
+document.getElementById('runMC').addEventListener('click', runMonteCarlo);
+
+// ---------- initial run ----------
+runSimulation();
+</script>
+</body>
+</html>
