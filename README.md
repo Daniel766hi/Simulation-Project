@@ -7,6 +7,7 @@ no build step, no network access required.
 |---|---|---|
 | `index.html` | Mine production, cost and project economics | Discrete-time deterministic + Monte Carlo |
 | `abm.html` | Supply chain bullwhip effect | Agent-based |
+| `bass.html` | Product adoption / Bass diffusion | Agent-based |
 
 ---
 
@@ -246,3 +247,71 @@ forecast is already inflated — an easy mistake that makes the control look lik
 - **Backlogs never cancel** — unfilled orders wait indefinitely rather than being lost sales.
 - **All agents share one rule and one parameter set** — real chains have heterogeneous policies.
 - **Deterministic given a seed**, like the mine model, so scenarios are compared like for like.
+
+
+---
+
+# 3. Bass Diffusion (`bass.html`)
+
+An agent-based version of the Bass diffusion model, in the style of the classic AnyLogic example.
+Every square in the field is one person, in one of two states: **potential adopter** or **adopter**.
+Each month, a potential adopter can flip in two ways:
+
+- **Advertising (innovation)** — an independent chance `p` per month of adopting with no social
+  contact at all. This is what gets the curve off zero when nobody has adopted yet.
+- **Word of mouth (imitation)** — the person has some number of conversations per month; if the
+  other party has already adopted, they convert with the persuasion probability.
+
+No adoption curve is programmed anywhere. The S-curve, and the bell-shaped uptake peak beneath it,
+are what those two rules produce.
+
+## Validation against the closed-form solution
+
+The continuous Bass model has a closed-form solution:
+
+```
+F(t) = (1 − e^−(p+q)t) / (1 + (q/p)·e^−(p+q)t)
+```
+
+where `q = contacts per month × persuasion rate`. The page draws it dashed over the agent output,
+so the model checks itself. Averaged over 8 seeds with 1,200 agents mixing at random:
+
+| Month | Agent model | Closed form | Difference |
+|---|---|---|---|
+| 6 | 148 | 147 | +0.1% of population |
+| 12 | 510 | 520 | −0.8% |
+| 18 | 930 | 937 | −0.6% |
+| 24 | 1128 | 1130 | −0.2% |
+| 36 | 1195 | 1196 | −0.1% |
+
+Agreement inside 1% of population is the evidence that the agent rules really do reproduce the
+aggregate equation.
+
+## Where the agent model stops agreeing — and why that is the point
+
+Switch on **"talk to neighbours only"** and people can contact only those within a radius of them,
+instead of anyone in the population. The closed form assumes perfect mixing, so it no longer
+applies, and adoption slows and clusters. Same parameters, 300 agents, 48 months:
+
+| Contact rule | Half the market by | 95% by | Deviation from closed form at month 18 |
+|---|---|---|---|
+| Random mixing | month 14 | month 24 | +1% |
+| Neighbourhood 25% of field | month 12 | month 25 | +4% |
+| Neighbourhood 14% | month 13 | month 27 | −4% |
+| Neighbourhood 9% (default) | month 13 | month 34 | −9% |
+| Neighbourhood 6% | month 16 | never | −21% |
+
+At a 6% neighbourhood the product never reaches 95% of the market inside the horizon at all. This
+is the practical argument for building an agent model rather than solving an equation: the moment
+the population stops being perfectly mixed, the aggregate formula overstates how fast and how far
+something spreads.
+
+## Known simplifications
+
+- **The field is decorative for random mixing** — positions only matter in neighbourhood mode.
+- **Nobody ever un-adopts**, there is no repeat purchase, no competing product, and no price.
+- **The social network is geometric**, not a real network — no hubs, no clustering coefficient, no
+  weak ties. Real diffusion depends heavily on network topology.
+- **Everyone is identical** apart from position: same contact rate, same persuasion probability.
+- **Contacts are sampled with replacement** each month rather than drawn from a fixed set of
+  friends.

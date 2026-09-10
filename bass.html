@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Supply Chain Agent Model — bullwhip effect</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>&#128230;</text></svg>">
+<title>Bass Diffusion — agent-based adoption model</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>&#128225;</text></svg>">
 <script src="vendor/chart.umd.min.js"></script>
 <style>
 
@@ -372,6 +372,29 @@
 
   .chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
   @media(max-width:1000px){.chart-grid{grid-template-columns:1fr}}
+  /* ---- Agent field ---- */
+  .field-wrap{position:relative;width:100%;aspect-ratio:1/1;max-height:440px;margin:0 auto;
+    background:var(--inset);border:1px solid var(--line);border-radius:var(--r-md);overflow:hidden}
+  #field{display:block;width:100%;height:100%}
+  .field-col{display:grid;grid-template-columns:minmax(0,440px) 1fr;gap:18px;align-items:start}
+  @media(max-width:900px){.field-col{grid-template-columns:1fr}}
+
+  .counter{
+    display:flex;align-items:baseline;gap:8px;font-variant-numeric:tabular-nums;
+    padding:11px 14px;background:var(--inset);border:1px solid var(--line);
+    border-radius:var(--r-md);margin-bottom:10px;
+  }
+  .counter .big{font-size:1.5rem;font-weight:650;letter-spacing:-.02em;color:var(--accent)}
+  .counter .of{font-size:.8rem;color:var(--tx3)}
+  .counter .pct{margin-left:auto;font-size:.85rem;font-weight:600;color:var(--tx2)}
+
+  .bar-track{height:8px;background:var(--track);border-radius:99px;overflow:hidden;margin-bottom:14px}
+  .bar-fill{height:100%;background:var(--accent);border-radius:99px;width:0;
+    transform-origin:left center;transition:width var(--dur-fast) linear}
+
+  .state-key{display:flex;gap:16px;flex-wrap:wrap;font-size:.78rem;color:var(--tx2);margin-top:12px}
+  .state-key span{display:inline-flex;align-items:center;gap:7px}
+  .state-key i{width:11px;height:11px;border-radius:2px;display:inline-block;flex-shrink:0}
 </style>
 </head>
 <body>
@@ -380,20 +403,20 @@
     <div class="brand">
       <span class="mark" aria-hidden="true">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/>
-          <path d="M7 12h3M14 12h3"/>
+          <circle cx="6" cy="7" r="2"/><circle cx="18" cy="7" r="2"/><circle cx="12" cy="17" r="2"/>
+          <path d="M8 8.5 10.5 15M16 8.5 13.5 15M8 7h8"/>
         </svg>
       </span>
       <div>
-        <h1>Supply Chain Agent Model</h1>
-        <p>Where the bullwhip effect comes from</p>
+        <h1>Bass Diffusion</h1>
+        <p>How a product spreads through a population</p>
       </div>
     </div>
     <div class="spacer"></div>
     <nav class="nav">
       <a href="index.html">Mine economics</a>
-      <a href="abm.html" class="active" aria-current="page">Supply chain ABM</a>
-      <a href="bass.html">Bass diffusion</a>
+      <a href="abm.html">Supply chain ABM</a>
+      <a href="bass.html" class="active" aria-current="page">Bass diffusion</a>
     </nav>
     <button type="button" class="icon-btn" id="themeToggle" aria-label="Switch between dark and light theme">
       <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
@@ -403,12 +426,11 @@
 </header>
 
 <div class="wrap">
-  <p class="intro">Four independent agents — retailer, wholesaler, distributor and factory — each order stock using
-  only what they can see: their own inventory and the orders from the customer directly downstream. Nobody is told to
-  overreact. <strong>The bullwhip effect emerges anyway</strong>, and you can watch it happen, then switch on the
-  mitigations and measure how much of it goes away.</p>
+  <p class="intro">Every square is one person. They start as <strong>potential adopters</strong> and turn
+  <strong>adopter</strong> either on their own, after seeing advertising, or because someone who already adopted
+  talked to them. Nobody is given an adoption curve — the S-curve below is what those two rules produce.</p>
 
-  <div class="whip-grid" id="whipGrid"></div>
+  <div class="hero kpi-grid" id="heroGrid"></div>
 
   <div class="layout">
     <form id="form" class="panel form-panel">
@@ -417,97 +439,59 @@
 
         <div class="group">
           <h2 class="group-title">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M17 7h4v4"/></svg>
-            Consumer demand
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 20a4 4 0 0 0-8 0"/><circle cx="12" cy="9" r="3"/><path d="M20 20a4 4 0 0 0-3-3.9M4 20a4 4 0 0 1 3-3.9"/></svg>
+            Population
           </h2>
           <div class="field">
-            <label for="baseDemand">Base weekly demand <span class="val" data-out="baseDemand"></span></label>
-            <input type="range" id="baseDemand" min="20" max="400" step="10" value="100">
+            <label for="popN">People <span class="val" data-out="popN"></span></label>
+            <input type="range" id="popN" min="50" max="1200" step="25" value="300">
           </div>
           <div class="field">
-            <label for="demandNoise">Random variation <span class="val" data-out="demandNoise"></span></label>
-            <input type="range" id="demandNoise" min="0" max="40" step="1" value="10">
-          </div>
-          <div class="row2">
-            <div class="field">
-              <label for="promoLift">Promotion lift <span class="val" data-out="promoLift"></span></label>
-              <input type="range" id="promoLift" min="0" max="300" step="10" value="120">
-            </div>
-            <div class="field">
-              <label for="promoEvery">Promo every <span class="val" data-out="promoEvery"></span></label>
-              <input type="range" id="promoEvery" min="0" max="40" step="1" value="13">
-            </div>
-          </div>
-          <div class="field">
-            <label for="promoLen">Promotion length <span class="val" data-out="promoLen"></span></label>
-            <input type="range" id="promoLen" min="1" max="8" step="1" value="2">
+            <label for="seedAdopters">Start already adopted <span class="val" data-out="seedAdopters"></span></label>
+            <input type="range" id="seedAdopters" min="0" max="20" step="1" value="0">
           </div>
         </div>
 
         <div class="group">
           <h2 class="group-title">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
-            Lead times
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11v3a1 1 0 0 0 1 1h3l5 4V6L7 10H4a1 1 0 0 0-1 1z"/><path d="M16 9a4 4 0 0 1 0 6"/></svg>
+            Advertising (innovation)
           </h2>
-          <div class="row2">
-            <div class="field">
-              <label for="orderLead">Order delay <span class="val" data-out="orderLead"></span></label>
-              <input type="range" id="orderLead" min="1" max="4" step="1" value="1">
-            </div>
-            <div class="field">
-              <label for="shipLead">Shipping delay <span class="val" data-out="shipLead"></span></label>
-              <input type="range" id="shipLead" min="1" max="6" step="1" value="2">
-            </div>
+          <div class="field">
+            <label for="pAd">Ad effectiveness <span class="val" data-out="pAd"></span></label>
+            <input type="range" id="pAd" min="0" max="0.06" step="0.002" value="0.01">
           </div>
+          <p class="empty-hint" style="font-size:.72rem">Chance per month that an untouched person adopts with no
+          social contact at all. This is what starts the curve.</p>
         </div>
 
         <div class="group">
           <h2 class="group-title">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>
-            Ordering behaviour
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.9 8.9 0 0 1-3.8-.9L3 20.5l1.6-4.9A8.4 8.4 0 0 1 12 3.1a8.4 8.4 0 0 1 9 8.4z"/></svg>
+            Word of mouth (imitation)
           </h2>
           <div class="field">
-            <label for="alpha">Forecast responsiveness <span class="val" data-out="alpha"></span></label>
-            <input type="range" id="alpha" min="0.05" max="1" step="0.05" value="0.25">
+            <label for="contactRate">Contacts per month <span class="val" data-out="contactRate"></span></label>
+            <input type="range" id="contactRate" min="0" max="30" step="1" value="8">
           </div>
           <div class="field">
-            <label for="smoothing">Order adjustment <span class="val" data-out="smoothing"></span></label>
-            <input type="range" id="smoothing" min="0.1" max="1" step="0.05" value="0.25">
-          </div>
-          <div class="field">
-            <label for="beta">Supply-line awareness <span class="val" data-out="beta"></span></label>
-            <input type="range" id="beta" min="0" max="1" step="0.05" value="0.7">
-          </div>
-          <div class="field">
-            <label for="safety">Safety stock <span class="val" data-out="safety"></span></label>
-            <input type="range" id="safety" min="0" max="4" step="0.25" value="1">
-          </div>
-        </div>
-
-        <div class="group">
-          <h2 class="group-title">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M5 8l7-5 7 5"/><circle cx="12" cy="17" r="3"/></svg>
-            Mitigation
-          </h2>
-          <div class="switch-row">
-            <label class="switch">
-              <input type="checkbox" id="infoShare">
-              <span class="slot"></span><span class="knob"></span>
-            </label>
-            <label for="infoShare" class="switch-label">
-              <b>Share real consumer demand</b>
-              <span>Every echelon forecasts from actual point-of-sale data instead of the orders it receives.</span>
-            </label>
+            <label for="adoptFrac">Persuasion rate <span class="val" data-out="adoptFrac"></span></label>
+            <input type="range" id="adoptFrac" min="0" max="0.3" step="0.005" value="0.03">
           </div>
           <div class="switch-row">
             <label class="switch">
-              <input type="checkbox" id="capOrders">
+              <input type="checkbox" id="localMix">
               <span class="slot"></span><span class="knob"></span>
             </label>
-            <label for="capOrders" class="switch-label">
-              <b>Cap orders at 2× forecast</b>
-              <span>No agent may order more than twice its normal weekly volume, measured over the long run rather than from its own spiking forecast.</span>
+            <label for="localMix" class="switch-label">
+              <b>Talk to neighbours only</b>
+              <span>People contact whoever is nearby instead of anyone at random. Diffusion spreads as a visible
+              wave and no longer matches the textbook curve.</span>
             </label>
+          </div>
+          <div class="field" id="radiusField">
+            <label for="radius">Neighbourhood size <span class="val" data-out="radius"></span></label>
+            <input type="range" id="radius" min="5" max="40" step="1" value="9">
           </div>
         </div>
 
@@ -518,13 +502,24 @@
           </h2>
           <div class="row2">
             <div class="field">
-              <label for="weeks">Weeks <span class="val" data-out="weeks"></span></label>
-              <input type="range" id="weeks" min="40" max="260" step="10" value="120">
+              <label for="months">Months <span class="val" data-out="months"></span></label>
+              <input type="range" id="months" min="12" max="120" step="6" value="48">
             </div>
             <div class="field">
               <label for="seed">Random seed <span class="val" data-out="seed"></span></label>
-              <input type="number" id="seed" min="1" max="999999" value="7">
+              <input type="number" id="seed" min="1" max="999999" value="12">
             </div>
+          </div>
+          <div class="switch-row">
+            <label class="switch">
+              <input type="checkbox" id="showAnalytic" checked>
+              <span class="slot"></span><span class="knob"></span>
+            </label>
+            <label for="showAnalytic" class="switch-label">
+              <b>Overlay the textbook Bass curve</b>
+              <span>The closed-form solution, drawn dashed. If the agents are mixing randomly the two should sit on
+              top of each other — that is how you check the model is right.</span>
+            </label>
           </div>
         </div>
       </fieldset>
@@ -542,8 +537,8 @@
       <div class="panel stage-panel">
         <div class="chart-head">
           <div>
-            <h2>The chain, live</h2>
-            <p class="sub">Dots are shipments moving downstream and orders travelling upstream. Bars show inventory; red means backlog.</p>
+            <h2>The population, live</h2>
+            <p class="sub">One square per person. A ring marks someone who adopted this month.</p>
           </div>
         </div>
         <div class="transport">
@@ -551,36 +546,30 @@
             <svg id="playIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3.5v17l14-8.5z"/></svg>
             <span id="playLabel">Play</span>
           </button>
-          <button type="button" class="btn-secondary" id="stepBtn">Step 1 week</button>
+          <button type="button" class="btn-secondary" id="stepBtn">Step 1 month</button>
           <button type="button" class="btn-secondary" id="resetBtn">Reset</button>
           <div class="field speed-field">
             <label for="speed">Speed <span class="val" data-out="speed"></span></label>
-            <input type="range" id="speed" min="1" max="20" step="1" value="6">
+            <input type="range" id="speed" min="1" max="12" step="1" value="4">
           </div>
-          <div class="week-read">week <b id="weekRead">0</b> / <span id="weekTotal">120</span></div>
+          <div class="week-read">month <b id="monthRead">0</b> / <span id="monthTotal">48</span></div>
         </div>
-        <div class="stage-wrap"><canvas id="stage"></canvas></div>
-        <div class="legend" id="legend"></div>
-      </div>
 
-      <div class="chart-grid">
-        <div class="panel chart-panel">
-          <div class="chart-head">
-            <div>
-              <h2>Orders placed each week</h2>
-              <p class="sub">Consumer demand is the flat grey line. Watch the swings grow upstream.</p>
+        <div class="field-col">
+          <div>
+            <div class="counter">
+              <span class="big" id="adopterCount">0</span>
+              <span class="of">of <span id="popRead">300</span> adopted</span>
+              <span class="pct" id="adoptPct">0%</span>
             </div>
+            <div class="bar-track"><div class="bar-fill" id="adoptBar"></div></div>
+            <div class="field-wrap"><canvas id="field"></canvas></div>
+            <div class="state-key" id="stateKey"></div>
           </div>
-          <div class="chart-box"><canvas id="ordersChart"></canvas></div>
-        </div>
-        <div class="panel chart-panel">
-          <div class="chart-head">
-            <div>
-              <h2>Inventory position</h2>
-              <p class="sub">Below zero is backlog — unfilled orders owed downstream.</p>
-            </div>
+          <div>
+            <div class="chart-box" style="height:300px"><canvas id="popChart"></canvas></div>
+            <div class="chart-box" style="height:190px;margin-top:14px"><canvas id="rateChart"></canvas></div>
           </div>
-          <div class="chart-box"><canvas id="invChart"></canvas></div>
         </div>
       </div>
 
@@ -588,7 +577,7 @@
 
       <div class="panel scenario-panel">
         <div class="scenario-head">
-          <h3>Compare mitigation strategies</h3>
+          <h3>Compare runs</h3>
           <div class="scenario-actions">
             <input type="text" id="scenarioName" placeholder="Scenario name" aria-label="Scenario name">
             <button type="button" id="saveScenario" class="btn-small">Save this run</button>
@@ -617,21 +606,8 @@ function mulberry32(seed){
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
-function normal(rng, sd){
-  let u = 0, v = 0;
-  while(u === 0) u = rng();
-  while(v === 0) v = rng();
-  return sd * Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
-}
-
-// Index 0 is closest to the consumer. Each agent only ever sees the orders from index-1.
-const ECHELONS = [
-  { name:'Retailer',    color:'#2DD4BF' },
-  { name:'Wholesaler',  color:'#38BDF8' },
-  { name:'Distributor', color:'#A78BFA' },
-  { name:'Factory',     color:'#FBBF24' }
-];
-const WARMUP = 10;
+const DT = 0.2;              // months advanced per internal tick
+const POTENTIAL = 0, ADOPTER = 1;
 
 // ---------- theme ----------
 const THEME_KEY = 'mpe-theme';
@@ -645,7 +621,6 @@ document.getElementById('themeToggle').addEventListener('click', () => {
   applyTheme(document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light');
   drawCharts(); draw();
 });
-
 const token = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -653,23 +628,18 @@ const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)'
 function readParams(){
   const g = id => parseFloat(document.getElementById(id).value);
   return {
-    baseDemand:g('baseDemand'), demandNoise:g('demandNoise'),
-    promoLift:g('promoLift'), promoEvery:g('promoEvery'), promoLen:g('promoLen'),
-    orderLead:g('orderLead'), shipLead:g('shipLead'),
-    alpha:g('alpha'), smoothing:g('smoothing'), beta:g('beta'), safety:g('safety'),
-    infoShare:document.getElementById('infoShare').checked,
-    capOrders:document.getElementById('capOrders').checked,
-    weeks:Math.round(g('weeks')), seed:Math.round(g('seed'))
+    popN:Math.round(g('popN')), seedAdopters:Math.round(g('seedAdopters')),
+    pAd:g('pAd'), contactRate:g('contactRate'), adoptFrac:g('adoptFrac'),
+    localMix:document.getElementById('localMix').checked, radius:g('radius'),
+    months:Math.round(g('months')), seed:Math.round(g('seed')),
+    showAnalytic:document.getElementById('showAnalytic').checked
   };
 }
-
 const sliderMeta = {
-  baseDemand:v=>v+' units', demandNoise:v=>'±'+v, promoLift:v=>'+'+v+' units',
-  promoEvery:v=> v===0 ? 'never' : v+' wks', promoLen:v=>v+(v===1?' wk':' wks'),
-  orderLead:v=>v+(v===1?' wk':' wks'), shipLead:v=>v+(v===1?' wk':' wks'),
-  alpha:v=>v.toFixed(2), smoothing:v=>v.toFixed(2),
-  beta:v=> v>=0.99 ? 'full' : (v*100).toFixed(0)+'%', safety:v=>v.toFixed(2)+'× wk',
-  weeks:v=>v, seed:v=>v, speed:v=>v+' wk/s'
+  popN:v=>v+' people', seedAdopters:v=> v===0 ? 'none' : v+' people',
+  pAd:v=>(v*100).toFixed(1)+'%/mo', contactRate:v=>v+'/mo',
+  adoptFrac:v=>(v*100).toFixed(1)+'%', radius:v=>v+'% of field',
+  months:v=>v, seed:v=>v, speed:v=>v+' mo/s'
 };
 function syncLabels(){
   Object.keys(sliderMeta).forEach(id => {
@@ -681,358 +651,268 @@ document.querySelectorAll('input[type=range],#seed').forEach(el => el.addEventLi
 syncLabels();
 
 // ---------- model ----------
-let model, playing = false, lastFrame = 0, weekProgress = 0, scenarios = [];
+let model, playing = false, lastFrame = 0, scenarios = [], timeBudget = 0;
 
 function createModel(p){
-  // Start the chain in equilibrium: on-hand covers one week of demand plus the safety factor,
-  // and both pipelines are pre-filled at the base rate. Without this the run opens with a step
-  // disturbance and you measure the startup, not the demand variability.
-  const inv0 = p.baseDemand * (1 + p.safety);
+  const rng = mulberry32(p.seed);
+  const agents = [];
+  for(let i = 0; i < p.popN; i++){
+    agents.push({
+      x: 0.04 + rng() * 0.92, y: 0.04 + rng() * 0.92,
+      state: POTENTIAL, adoptedAt: -1, flash: 0, via: null
+    });
+  }
+  // seeded early adopters
+  for(let i = 0; i < Math.min(p.seedAdopters, p.popN); i++){
+    agents[Math.floor(rng() * p.popN)].state = ADOPTER;
+  }
+
   const m = {
-    p, week:0, rng:mulberry32(p.seed), promoLeft:0,
-    demandHist:[], flows:[],
-    ech: ECHELONS.map(() => ({
-      inv:inv0, backlog:0, forecast:p.baseDemand, slowAvg:p.baseDemand, outstanding:0,
-      pendingOrders:[], inbound:[],
-      orderHist:[], invHist:[], demandSeen:[],
-      shipped:0, demanded:0, holdWeeks:0, backlogWeeks:0
-    }))
+    p, rng, agents, t:0, tick:0,
+    hist:[{ t:0, adopters:agents.filter(a => a.state === ADOPTER).length,
+            potential:agents.filter(a => a.state === POTENTIAL).length, newAdopters:0 }],
+    pendingNew:0, links:[], neighbors:null
   };
-  m.ech.forEach((e, i) => {
-    for(let k = 0; k < p.shipLead; k++) e.inbound.push({ qty:p.baseDemand, arrive:k });
-    e.outstanding = p.baseDemand * (p.shipLead + p.orderLead);
-    if(i < 3){
-      for(let k = 0; k < p.orderLead; k++) m.ech[i+1].pendingOrders.push({ qty:p.baseDemand, arrive:k });
-    }
-  });
+
+  if(p.localMix){
+    const r2 = (p.radius / 100) ** 2;
+    m.neighbors = agents.map((a, i) => {
+      const list = [];
+      agents.forEach((b, j) => {
+        if(i === j) return;
+        const dx = a.x - b.x, dy = a.y - b.y;
+        if(dx*dx + dy*dy <= r2) list.push(j);
+      });
+      return list;
+    });
+  }
   return m;
 }
 
-function consumerDemand(m){
-  const p = m.p;
-  if(p.promoEvery > 0 && m.promoLeft === 0 && m.week > 0 && m.week % p.promoEvery === 0){
-    m.promoLeft = p.promoLen;
+// Advance DT months. Each potential adopter may adopt from advertising, or from a conversation
+// with someone who has already adopted.
+function tickModel(m){
+  const p = m.p, rng = m.rng, n = m.agents.length;
+  const pAdStep = 1 - Math.exp(-p.pAd * DT);
+  const contacts = p.contactRate * DT;
+
+  const adoptedNow = [];
+  for(let i = 0; i < n; i++){
+    const a = m.agents[i];
+    if(a.state !== POTENTIAL) continue;
+
+    if(rng() < pAdStep){ adoptedNow.push([i, null]); continue; }
+
+    let k = Math.floor(contacts);
+    if(rng() < contacts - k) k++;
+    for(let c = 0; c < k; c++){
+      let j;
+      if(p.localMix){
+        const list = m.neighbors[i];
+        if(!list.length) break;
+        j = list[Math.floor(rng() * list.length)];
+      }else{
+        j = Math.floor(rng() * n);
+        if(j === i) continue;
+      }
+      if(m.agents[j].state === ADOPTER && rng() < p.adoptFrac){
+        adoptedNow.push([i, j]);
+        break;
+      }
+    }
   }
-  let d = p.baseDemand + normal(m.rng, p.demandNoise);
-  if(m.promoLeft > 0){ d += p.promoLift; m.promoLeft--; m.promoActive = true; }
-  else m.promoActive = false;
-  return Math.max(0, Math.round(d));
+
+  adoptedNow.forEach(([i, from]) => {
+    const a = m.agents[i];
+    a.state = ADOPTER; a.adoptedAt = m.t; a.flash = 1; a.via = from;
+    if(from !== null) m.links.push({ a:i, b:from, life:1 });
+  });
+  m.pendingNew += adoptedNow.length;
+
+  m.t += DT;
+  m.tick++;
+
+  // record one point per whole month
+  if(m.tick % Math.round(1 / DT) === 0){
+    const adopters = m.agents.reduce((s,a) => s + (a.state === ADOPTER ? 1 : 0), 0);
+    m.hist.push({ t:Math.round(m.t), adopters, potential:n - adopters, newAdopters:m.pendingNew });
+    m.pendingNew = 0;
+  }
+
+  m.agents.forEach(a => { if(a.flash > 0) a.flash = Math.max(0, a.flash - DT * 1.6); });
+  m.links.forEach(l => l.life -= DT * 1.8);
+  m.links = m.links.filter(l => l.life > 0);
 }
 
-// One week. Order of operations follows the standard beer-game sequence.
-function step(m){
-  const p = m.p, w = m.week;
-
-  // 1. goods arriving this week land in inventory
-  m.ech.forEach(e => {
-    for(let i = e.inbound.length - 1; i >= 0; i--){
-      if(e.inbound[i].arrive <= w){
-        e.inv += e.inbound[i].qty;
-        e.outstanding = Math.max(0, e.outstanding - e.inbound[i].qty);
-        e.inbound.splice(i,1);
-      }
-    }
-  });
-
-  // 2. demand reaches the retailer; each upstream agent sees only its own customer's orders
-  const demand = consumerDemand(m);
-  m.demandHist.push(demand);
-
-  const incoming = m.ech.map((e, i) => {
-    if(i === 0) return demand;
-    let q = 0;
-    for(let k = e.pendingOrders.length - 1; k >= 0; k--){
-      if(e.pendingOrders[k].arrive <= w){ q += e.pendingOrders[k].qty; e.pendingOrders.splice(k,1); }
-    }
-    return q;
-  });
-
-  // 3. ship what you can, backlog the rest
-  m.ech.forEach((e, i) => {
-    e.backlog += incoming[i];
-    e.demanded += incoming[i];
-    e.demandSeen.push(incoming[i]);
-    const ship = Math.min(e.inv, e.backlog);
-    e.inv -= ship; e.backlog -= ship; e.shipped += ship;
-    if(ship > 0){
-      if(i === 0){
-        m.flows.push({ kind:'goods', from:0, to:-1, qty:ship, t0:w, t1:w + 0.6 });
-      }else{
-        const dest = m.ech[i-1];
-        dest.inbound.push({ qty:ship, arrive:w + p.shipLead });
-        m.flows.push({ kind:'goods', from:i, to:i-1, qty:ship, t0:w, t1:w + p.shipLead });
-      }
-    }
-    e.holdWeeks += e.inv; e.backlogWeeks += e.backlog;
-  });
-
-  // 4. forecast, then order. Info sharing swaps the signal, not the policy.
-  m.ech.forEach((e, i) => {
-    const signal = p.infoShare ? demand : incoming[i];
-    e.forecast = p.alpha * signal + (1 - p.alpha) * e.forecast;
-    // A deliberately sluggish view of normal volume, used only by the order cap. Capping against
-    // the fast forecast is useless: the forecast is itself already inflated by the spike.
-    e.slowAvg = 0.05 * signal + 0.95 * e.slowAvg;
-
-    const cover = p.shipLead + p.orderLead + 1;
-    const target = e.forecast * cover + p.safety * e.forecast;
-    // Everything ordered but not yet received. Omitting this is the classic phantom-ordering
-    // bug: the agent re-orders the same shortfall every week and the chain explodes.
-    // beta < 1 is the classic beer-game finding: people under-weight what they have already
-    // ordered but not yet received, so they order it again. This is the behavioural engine of
-    // the bullwhip, distinct from the information delay.
-    const position = e.inv - e.backlog + p.beta * e.outstanding;
-
-    // Order-up-to, with partial adjustment. Blending (not adding) forecast and the stock gap
-    // keeps the chain at rest when position already equals the target: at equilibrium the gap
-    // equals one week of demand, so every smoothing value returns exactly the forecast.
-    let order = p.smoothing * (target - position) + (1 - p.smoothing) * e.forecast;
-    if(p.capOrders) order = Math.min(order, e.slowAvg * 2);
-    order = Math.max(0, Math.round(order));
-
-    e.orderHist.push(order);
-    e.invHist.push(e.inv - e.backlog);
-
-    if(order > 0){
-      e.outstanding += order;
-      if(i < 3){
-        m.ech[i+1].pendingOrders.push({ qty:order, arrive:w + p.orderLead });
-        m.flows.push({ kind:'order', from:i, to:i+1, qty:order, t0:w, t1:w + Math.max(p.orderLead, 0.6) });
-      }else{
-        // factory production: no upstream supplier, goods appear after the production lead time
-        e.inbound.push({ qty:order, arrive:w + p.shipLead });
-        m.flows.push({ kind:'make', from:3, to:3, qty:order, t0:w, t1:w + p.shipLead });
-      }
-    }
-  });
-
-  m.flows = m.flows.filter(f => f.t1 >= w - 1);
-  m.week++;
+// Closed-form Bass: F(t) = (1 - e^-(p+q)t) / (1 + (q/p) e^-(p+q)t)
+function analyticSeries(p, months){
+  const q = p.contactRate * p.adoptFrac;
+  const pp = Math.max(p.pAd, 1e-9);
+  const out = [];
+  for(let t = 0; t <= months; t++){
+    const e = Math.exp(-(pp + q) * t);
+    const F = (1 - e) / (1 + (q / pp) * e);
+    out.push({ x:t, y:F * p.popN });
+  }
+  return out;
 }
 
-function variance(a){
-  if(a.length < 2) return 0;
-  const mu = a.reduce((s,v) => s+v, 0) / a.length;
-  return a.reduce((s,v) => s + (v-mu)**2, 0) / a.length;
-}
-function stats(m){
-  const d = m.demandHist.slice(WARMUP);
-  const vd = variance(d);
-  const whip = m.ech.map(e => {
-    const o = e.orderHist.slice(WARMUP);
-    return vd > 0 ? variance(o) / vd : 0;
-  });
-  const totalDemanded = m.ech[0].demanded, totalShipped = m.ech[0].shipped;
-  return {
-    whip,
-    fillRate: totalDemanded > 0 ? totalShipped / totalDemanded * 100 : 100,
-    avgInv: m.ech.reduce((s,e) => s + e.holdWeeks, 0) / Math.max(m.week,1),
-    avgBacklog: m.ech.reduce((s,e) => s + e.backlogWeeks, 0) / Math.max(m.week,1),
-    peakOrder: Math.max(...m.ech.map(e => Math.max(0, ...e.orderHist))),
-    weeks: m.week
+function summarize(m){
+  const n = m.agents.length;
+  const adopters = m.hist[m.hist.length - 1].adopters;
+  const find = frac => {
+    const hit = m.hist.find(h => h.adopters >= n * frac);
+    return hit ? hit.t : null;
   };
+  let peak = 0, peakT = null;
+  m.hist.forEach(h => { if(h.newAdopters > peak){ peak = h.newAdopters; peakT = h.t; } });
+  const q = m.p.contactRate * m.p.adoptFrac;
+  return { adopters, pct:adopters / n * 100, t50:find(0.5), t95:find(0.95),
+           peak, peakT, q, ratio: q / Math.max(m.p.pAd, 1e-9) };
 }
 
-// ---------- canvas stage ----------
-const stage = document.getElementById('stage');
-const g2 = stage.getContext('2d');
-function fitCanvas(){
-  const r = stage.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
-  stage.width = Math.round(r.width * dpr); stage.height = Math.round(r.height * dpr);
-  g2.setTransform(dpr, 0, 0, dpr, 0, 0);
+// ---------- field ----------
+const field = document.getElementById('field');
+const fx = field.getContext('2d');
+function fitField(){
+  const r = field.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+  field.width = Math.round(r.width * dpr); field.height = Math.round(r.height * dpr);
+  fx.setTransform(dpr, 0, 0, dpr, 0, 0);
   return r;
 }
-function nodeX(i, W){
-  // factory (3) on the left, retailer (0) on the right, consumers beyond
-  const left = 58, right = W - 92;
-  return left + (right - left) * ((3 - i) / 3);
-}
-function roundRect(c, x, y, w, h, r){
-  c.beginPath();
-  c.moveTo(x+r, y); c.arcTo(x+w, y, x+w, y+h, r); c.arcTo(x+w, y+h, x, y+h, r);
-  c.arcTo(x, y+h, x, y, r); c.arcTo(x, y, x+w, y, r); c.closePath();
-}
-
 function draw(){
-  const r = fitCanvas(), W = r.width, H = r.height;
-  const t = model.week + (reducedMotion() ? 0 : weekProgress);
-  g2.clearRect(0,0,W,H);
+  const r = fitField(), W = r.width, H = r.height;
+  fx.clearRect(0, 0, W, H);
+  const n = model.agents.length;
+  const size = Math.max(4, Math.min(13, Math.sqrt((W * H) / n) * 0.42));
+  const potCol = token('--tx3'), adCol = token('--accent'), panel = token('--panel');
 
-  const midY = H * 0.52, orderY = H * 0.235, goodsY = H * 0.80;
-  const boxW = Math.min(96, (W - 150) / 4.4), boxH = 74;
-
-  // lanes
-  g2.strokeStyle = token('--line'); g2.lineWidth = 1;
-  [orderY, goodsY].forEach(y => {
-    g2.beginPath(); g2.moveTo(46, y); g2.lineTo(W - 60, y); g2.stroke();
-  });
-  g2.fillStyle = token('--tx3'); g2.font = '500 10px ' + token('--mono');
-  g2.textAlign = 'left';
-  g2.fillText('ORDERS  ←', 46, orderY - 9);
-  g2.fillText('GOODS  →', 46, goodsY + 18);
-
-  // nodes
-  model.ech.forEach((e, i) => {
-    const x = nodeX(i, W), col = ECHELONS[i].color;
-    const bx = x - boxW/2, by = midY - boxH/2;
-
-    g2.fillStyle = token('--panel');
-    g2.strokeStyle = token('--line-strong'); g2.lineWidth = 1;
-    roundRect(g2, bx, by, boxW, boxH, 9); g2.fill(); g2.stroke();
-
-    g2.fillStyle = col;
-    roundRect(g2, bx, by, boxW, 3, 1.5); g2.fill();
-
-    g2.textAlign = 'center';
-    g2.fillStyle = token('--tx');
-    g2.font = '600 11px ' + token('--sans');
-    g2.fillText(ECHELONS[i].name, x, by + 20);
-
-    // inventory / backlog bar
-    const barW = boxW - 20, barX = bx + 10, barY = by + 30;
-    const scale = Math.max(model.p.baseDemand * 6, 200);
-    g2.fillStyle = token('--track');
-    roundRect(g2, barX, barY, barW, 7, 3.5); g2.fill();
-    if(e.backlog > 0){
-      const w = Math.min(1, e.backlog / scale) * barW;
-      g2.fillStyle = token('--neg');
-      roundRect(g2, barX, barY, w, 7, 3.5); g2.fill();
-    }else{
-      const w = Math.min(1, e.inv / scale) * barW;
-      g2.fillStyle = col;
-      roundRect(g2, barX, barY, Math.max(w, 2), 7, 3.5); g2.fill();
-    }
-
-    g2.font = '600 11px ' + token('--mono');
-    g2.fillStyle = e.backlog > 0 ? token('--neg') : token('--tx2');
-    g2.fillText(e.backlog > 0 ? '−' + Math.round(e.backlog) : Math.round(e.inv), x, by + 58);
-  });
-
-  // consumers
-  const cx = W - 44;
-  g2.textAlign = 'center';
-  g2.fillStyle = token('--tx3'); g2.font = '600 10px ' + token('--sans');
-  g2.fillText('CONSUMERS', cx, midY + 52);
-  const lit = model.promoActive;
-  for(let k = 0; k < 12; k++){
-    const a = (k / 12) * Math.PI * 2;
-    const px = cx + Math.cos(a) * 19, py = midY + Math.sin(a) * 19;
-    g2.beginPath(); g2.arc(px, py, lit ? 3.4 : 2.4, 0, Math.PI*2);
-    g2.fillStyle = lit ? token('--accent') : token('--tx3');
-    g2.fill();
-  }
-  if(lit){
-    g2.fillStyle = token('--accent'); g2.font = '600 9px ' + token('--sans');
-    g2.fillText('PROMO', cx, midY - 30);
+  // word-of-mouth links, drawn under the agents
+  if(!reducedMotion()){
+    model.links.forEach(l => {
+      const a = model.agents[l.a], b = model.agents[l.b];
+      fx.globalAlpha = Math.max(0, l.life) * .5;
+      fx.strokeStyle = adCol; fx.lineWidth = 1;
+      fx.beginPath(); fx.moveTo(a.x * W, a.y * H); fx.lineTo(b.x * W, b.y * H); fx.stroke();
+    });
+    fx.globalAlpha = 1;
   }
 
-  // flows
-  model.flows.forEach(f => {
-    if(t < f.t0 || t > f.t1 + .25) return;
-    const prog = Math.max(0, Math.min(1, (t - f.t0) / Math.max(f.t1 - f.t0, .001)));
-    const size = Math.max(2.2, Math.min(7, Math.sqrt(f.qty) * .42));
-    let x, y, col;
-    if(f.kind === 'order'){
-      x = nodeX(f.from, W) + (nodeX(f.to, W) - nodeX(f.from, W)) * prog;
-      y = orderY; col = ECHELONS[f.from].color;
-    }else if(f.kind === 'make'){
-      x = nodeX(3, W) - 30; y = midY - 46 - prog * 6; col = ECHELONS[3].color;
-    }else{
-      const fromX = nodeX(f.from, W);
-      const toX = f.to < 0 ? cx : nodeX(f.to, W);
-      x = fromX + (toX - fromX) * prog; y = goodsY; col = ECHELONS[f.from].color;
+  model.agents.forEach(a => {
+    const x = a.x * W - size/2, y = a.y * H - size/2;
+    const adopted = a.state === ADOPTER;
+    fx.fillStyle = adopted ? adCol : panel;
+    fx.strokeStyle = adopted ? adCol : potCol;
+    fx.lineWidth = 1;
+    fx.beginPath();
+    const rad = Math.max(1, size * 0.22);
+    fx.moveTo(x + rad, y);
+    fx.arcTo(x + size, y, x + size, y + size, rad);
+    fx.arcTo(x + size, y + size, x, y + size, rad);
+    fx.arcTo(x, y + size, x, y, rad);
+    fx.arcTo(x, y, x + size, y, rad);
+    fx.closePath();
+    fx.fill(); fx.stroke();
+
+    if(a.flash > 0 && !reducedMotion()){
+      fx.globalAlpha = a.flash;
+      fx.strokeStyle = adCol; fx.lineWidth = 1.5;
+      fx.beginPath();
+      fx.arc(a.x * W, a.y * H, size * (1.1 + (1 - a.flash) * 1.1), 0, Math.PI * 2);
+      fx.stroke();
+      fx.globalAlpha = 1;
     }
-    g2.beginPath(); g2.arc(x, y, size, 0, Math.PI*2);
-    g2.fillStyle = col; g2.globalAlpha = f.kind === 'make' ? .55 : .9;
-    g2.fill(); g2.globalAlpha = 1;
   });
 }
 
 // ---------- charts ----------
-let ordersChart, invChart;
-function chartBase(titleY){
+let popChart, rateChart;
+function chartOpts(yLabel, extra){
   const grid = token('--grid'), tx3 = token('--tx3'), line = token('--line');
-  return {
+  return Object.assign({
     responsive:true, maintainAspectRatio:false, animation:false,
     interaction:{ mode:'index', intersect:false },
     scales:{
-      x:{ type:'linear', title:{display:true,text:'Week',color:tx3,font:{size:11}},
+      x:{ type:'linear', title:{display:true,text:'Month',color:tx3,font:{size:11}},
           ticks:{precision:0,color:tx3,font:{size:11}}, grid:{color:grid,drawTicks:false},
-          border:{color:line} },
-      y:{ title:{display:true,text:titleY,color:tx3,font:{size:11}},
-          ticks:{color:tx3,font:{size:11}}, grid:{color:grid,drawTicks:false},
-          border:{color:line} }
+          border:{color:line}, min:0, max:model.p.months },
+      y:{ beginAtZero:true, title:{display:true,text:yLabel,color:tx3,font:{size:11}},
+          ticks:{color:tx3,font:{size:11}}, grid:{color:grid,drawTicks:false}, border:{color:line} }
     },
     plugins:{
       legend:{ position:'bottom', labels:{boxWidth:9,boxHeight:9,usePointStyle:true,
                pointStyle:'circle',color:token('--tx2'),font:{size:11},padding:12} },
       tooltip:{ backgroundColor:token('--panel'), borderColor:line, borderWidth:1,
                 titleColor:token('--tx2'), bodyColor:token('--tx'), padding:9,
-                usePointStyle:true, boxWidth:8, boxHeight:8 }
+                usePointStyle:true, boxWidth:8, boxHeight:8,
+                callbacks:{ title:i => 'Month ' + i[0].parsed.x } }
     }
-  };
+  }, extra || {});
 }
-function series(arr){ return arr.map((v,i) => ({x:i+1, y:v})); }
 
 function drawCharts(){
-  const oCtx = document.getElementById('ordersChart'), iCtx = document.getElementById('invChart');
-  const orderSets = [{
-    label:'Consumer demand', data:series(model.demandHist),
-    borderColor:token('--tx3'), backgroundColor:token('--tx3'),
-    borderWidth:1.5, borderDash:[4,3], pointRadius:0, tension:.15
-  }].concat(model.ech.map((e,i) => ({
-    label:ECHELONS[i].name, data:series(e.orderHist),
-    borderColor:ECHELONS[i].color, backgroundColor:ECHELONS[i].color,
-    borderWidth:1.8, pointRadius:0, tension:.15
-  })));
-  const invSets = model.ech.map((e,i) => ({
-    label:ECHELONS[i].name, data:series(e.invHist),
-    borderColor:ECHELONS[i].color, backgroundColor:ECHELONS[i].color,
-    borderWidth:1.8, pointRadius:0, tension:.15
-  }));
+  const adCol = token('--accent'), potCol = token('--tx3'), warn = '#FBBF24';
+  const sets = [
+    { label:'Adopters', data:model.hist.map(h => ({x:h.t, y:h.adopters})),
+      borderColor:adCol, backgroundColor:adCol, borderWidth:2, pointRadius:0, tension:.2, fill:false },
+    { label:'Potential adopters', data:model.hist.map(h => ({x:h.t, y:h.potential})),
+      borderColor:warn, backgroundColor:warn, borderWidth:2, pointRadius:0, tension:.2, fill:false }
+  ];
+  if(model.p.showAnalytic){
+    sets.push({ label:'Textbook Bass curve', data:analyticSeries(model.p, model.p.months),
+      borderColor:potCol, backgroundColor:potCol, borderWidth:1.5, borderDash:[5,4],
+      pointRadius:0, tension:.2, fill:false });
+  }
+  if(popChart) popChart.destroy();
+  popChart = new Chart(document.getElementById('popChart'), {
+    type:'line', data:{datasets:sets}, options:chartOpts('People')
+  });
 
-  if(ordersChart) ordersChart.destroy();
-  if(invChart) invChart.destroy();
-  ordersChart = new Chart(oCtx, { type:'line', data:{datasets:orderSets}, options:chartBase('Units ordered') });
-  invChart = new Chart(iCtx, { type:'line', data:{datasets:invSets}, options:chartBase('Inventory − backlog') });
+  if(rateChart) rateChart.destroy();
+  rateChart = new Chart(document.getElementById('rateChart'), {
+    type:'bar',
+    data:{ datasets:[{ label:'New adopters this month',
+      data:model.hist.filter(h => h.t > 0).map(h => ({x:h.t, y:h.newAdopters})),
+      backgroundColor:adCol, borderColor:adCol, borderWidth:0, barPercentage:1, categoryPercentage:1 }] },
+    options:chartOpts('New adopters')
+  });
 }
 
 // ---------- readouts ----------
 function renderStats(){
-  const s = stats(model);
-  document.getElementById('whipGrid').innerHTML = model.ech.map((e,i) => {
-    const v = s.whip[i];
-    const cls = v > 2 ? 'bad' : v > 1.3 ? '' : 'good';
-    return '<div class="whip" style="--ech:' + ECHELONS[i].color + '">' +
-      '<div class="label"><i></i>' + ECHELONS[i].name + '</div>' +
-      '<div class="value ' + cls + '">' + (model.week > WARMUP ? v.toFixed(2) + '×' : '—') + '</div>' +
-      '<div class="foot">order variance vs demand</div></div>';
-  }).join('');
+  const s = summarize(model), n = model.agents.length;
+  document.getElementById('adopterCount').textContent = s.adopters;
+  document.getElementById('popRead').textContent = n;
+  document.getElementById('adoptPct').textContent = s.pct.toFixed(0) + '%';
+  document.getElementById('adoptBar').style.width = s.pct + '%';
+  document.getElementById('monthRead').textContent = Math.round(model.t);
+  document.getElementById('monthTotal').textContent = model.p.months;
 
-  const cards = [
-    ['Weeks simulated', model.week + ' / ' + model.p.weeks, ''],
-    ['Retailer fill rate', s.fillRate.toFixed(1) + '%', s.fillRate >= 95 ? 'good' : 'bad'],
-    ['Avg inventory held', Math.round(s.avgInv) + ' units', ''],
-    ['Avg backlog', Math.round(s.avgBacklog) + ' units', s.avgBacklog > 0 ? 'bad' : 'good'],
-    ['Largest single order', Math.round(s.peakOrder) + ' units', ''],
-    ['Amplification, end to end', model.week > WARMUP ? s.whip[3].toFixed(2) + '×' : '—',
-      s.whip[3] > 2 ? 'bad' : 'good']
-  ];
-  document.getElementById('kpiGrid').innerHTML = cards.map(([l,v,c]) =>
-    '<div class="kpi"><div class="label">' + l + '</div><div class="value ' + c + '">' + v + '</div></div>'
-  ).join('');
+  document.getElementById('heroGrid').innerHTML = [
+    ['Adopted', s.adopters + ' / ' + n, s.pct >= 50 ? 'good' : ''],
+    ['Share of market', s.pct.toFixed(1) + '%', s.pct >= 50 ? 'good' : ''],
+    ['Half the market by', s.t50 ? 'Month ' + s.t50 : 'not yet', s.t50 ? 'good' : ''],
+    ['Peak uptake', s.peak + (s.peakT !== null ? ' in month ' + s.peakT : ''), '']
+  ].map(([l,v,c]) => '<div class="kpi"><div class="label">' + l + '</div>' +
+     '<div class="value ' + c + '">' + v + '</div></div>').join('');
 
-  document.getElementById('weekRead').textContent = model.week;
-  document.getElementById('weekTotal').textContent = model.p.weeks;
+  document.getElementById('kpiGrid').innerHTML = [
+    ['Still potential', (n - s.adopters) + ' people', ''],
+    ['95% of market by', s.t95 ? 'Month ' + s.t95 : 'not reached', ''],
+    ['Imitation coefficient q', s.q.toFixed(3) + '/mo', ''],
+    ['Innovation coefficient p', model.p.pAd.toFixed(3) + '/mo', ''],
+    ['q / p ratio', s.ratio.toFixed(1) + '×', ''],
+    ['Mixing', model.p.localMix ? 'Neighbours only' : 'Random', '']
+  ].map(([l,v,c]) => '<div class="kpi"><div class="label">' + l + '</div>' +
+     '<div class="value ' + c + '">' + v + '</div></div>').join('');
 
   const p = model.p;
-  const mit = [p.infoShare ? 'demand sharing' : null, p.capOrders ? 'order caps' : null]
-    .filter(Boolean).join(' + ');
   document.getElementById('runNote').innerHTML =
-    '<b>Seed ' + p.seed + '</b> · ' + (mit ? 'Mitigation active: ' + mit + '.' : 'No mitigation active.') +
-    ' Bullwhip is measured as the variance of each agent\'s orders divided by the variance of real consumer ' +
-    'demand, ignoring the first ' + WARMUP + ' weeks while inventories settle. Above 1.0× means that agent is ' +
-    'amplifying the signal it received.';
+    '<b>Seed ' + p.seed + '</b> · ' + n + ' agents, ' +
+    (p.localMix ? 'contacting neighbours within ' + p.radius + '% of the field.' : 'mixing at random.') +
+    ' The dashed line is the closed-form Bass solution for p=' + p.pAd.toFixed(3) + ', q=' + s.q.toFixed(3) +
+    '. Under random mixing the agents should track it closely; switch on neighbour-only contact and they ' +
+    'will not, because the textbook curve assumes everyone can reach everyone.';
 }
 
 // ---------- scenarios ----------
@@ -1041,48 +921,42 @@ function escapeHtml(s){
 }
 function renderScenarioTable(){
   const wrap = document.getElementById('scenarioTableWrap');
-  if(scenarios.length === 0){
-    wrap.innerHTML = '<p class="empty-hint">Run the model to the end, save it, then turn on a mitigation and ' +
-      'run it again. The table will show exactly how much amplification each strategy removes — the same ' +
-      'compare-the-policies approach used in scenario analysis.</p>';
+  if(!scenarios.length){
+    wrap.innerHTML = '<p class="empty-hint">Run to the end and save it, then change advertising, word of mouth ' +
+      'or the mixing rule and run again. The table lines the runs up so you can see which lever actually moves ' +
+      'the adoption curve.</p>';
     return;
   }
   wrap.innerHTML = '<div class="table-scroll"><table class="cmp"><thead><tr>' +
-    '<th>Scenario</th><th>Retailer</th><th>Wholesaler</th><th>Distributor</th><th>Factory</th>' +
-    '<th>Fill rate</th><th>Avg inventory</th><th>Mitigation</th><th></th></tr></thead><tbody>' +
+    '<th>Scenario</th><th>Adopted</th><th>Share</th><th>Half by</th><th>95% by</th>' +
+    '<th>Peak/mo</th><th>q/p</th><th>Mixing</th><th></th></tr></thead><tbody>' +
     scenarios.map((s,i) =>
-      '<tr><td>' + escapeHtml(s.name) + '</td>' +
-      s.whip.map(v => '<td>' + v.toFixed(2) + '×</td>').join('') +
-      '<td>' + s.fillRate.toFixed(1) + '%</td>' +
-      '<td>' + Math.round(s.avgInv) + '</td>' +
-      '<td>' + (s.mit || 'none') + '</td>' +
+      '<tr><td>' + escapeHtml(s.name) + '</td><td>' + s.adopters + '</td>' +
+      '<td>' + s.pct.toFixed(1) + '%</td>' +
+      '<td>' + (s.t50 ? 'M' + s.t50 : '—') + '</td>' +
+      '<td>' + (s.t95 ? 'M' + s.t95 : '—') + '</td>' +
+      '<td>' + s.peak + '</td><td>' + s.ratio.toFixed(1) + '×</td><td>' + s.mixing + '</td>' +
       '<td><button type="button" class="row-remove" data-remove="' + i + '">Remove</button></td></tr>'
     ).join('') + '</tbody></table></div>';
   wrap.querySelectorAll('[data-remove]').forEach(b =>
     b.addEventListener('click', () => { scenarios.splice(parseInt(b.dataset.remove,10),1); renderScenarioTable(); }));
 }
 document.getElementById('saveScenario').addEventListener('click', () => {
-  const input = document.getElementById('scenarioName');
-  const s = stats(model), p = model.p;
-  scenarios.push({
-    name: input.value.trim() || 'Run ' + (scenarios.length + 1),
-    whip: s.whip, fillRate: s.fillRate, avgInv: s.avgInv,
-    mit: [p.infoShare ? 'sharing' : null, p.capOrders ? 'cap' : null].filter(Boolean).join(' + ')
-  });
+  const input = document.getElementById('scenarioName'), s = summarize(model);
+  scenarios.push({ name:input.value.trim() || 'Run ' + (scenarios.length + 1),
+    adopters:s.adopters, pct:s.pct, t50:s.t50, t95:s.t95, peak:s.peak, ratio:s.ratio,
+    mixing: model.p.localMix ? 'neighbours' : 'random' });
   input.value = '';
   renderScenarioTable();
 });
 document.getElementById('clearScenarios').addEventListener('click', () => { scenarios = []; renderScenarioTable(); });
 document.getElementById('exportCsv').addEventListener('click', () => {
-  const head = ['week','consumer_demand'].concat(
-    ECHELONS.map(e => e.name.toLowerCase()+'_orders'),
-    ECHELONS.map(e => e.name.toLowerCase()+'_inventory'));
-  const rows = model.demandHist.map((d,i) => [i+1, d]
-    .concat(model.ech.map(e => e.orderHist[i] ?? ''), model.ech.map(e => e.invHist[i] ?? '')).join(','));
-  const blob = new Blob([[head.join(',')].concat(rows).join('\n')], {type:'text/csv'});
+  const rows = [['month','adopters','potential','new_adopters']].concat(
+    model.hist.map(h => [h.t, h.adopters, h.potential, h.newAdopters]));
+  const blob = new Blob([rows.map(r => r.join(',')).join('\n')], {type:'text/csv'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url; a.download = 'supply-chain-abm-seed-' + model.p.seed + '.csv'; a.click();
+  a.href = url; a.download = 'bass-diffusion-seed-' + model.p.seed + '.csv'; a.click();
   URL.revokeObjectURL(url);
 });
 
@@ -1090,68 +964,58 @@ document.getElementById('exportCsv').addEventListener('click', () => {
 function setPlaying(on){
   playing = on;
   document.getElementById('playLabel').textContent = on ? 'Pause' : 'Play';
-  document.getElementById('playIcon').innerHTML = on
-    ? '<path d="M7 4v16M17 4v16"/>'
-    : '<path d="M5 3.5v17l14-8.5z"/>';
-  if(on){ lastFrame = performance.now(); requestAnimationFrame(tick); }
+  document.getElementById('playIcon').innerHTML = on ? '<path d="M7 4v16M17 4v16"/>' : '<path d="M5 3.5v17l14-8.5z"/>';
+  if(on){ lastFrame = performance.now(); timeBudget = 0; requestAnimationFrame(loop); }
 }
-function tick(now){
+function loop(now){
   if(!playing) return;
   const dt = Math.min((now - lastFrame) / 1000, .25);
   lastFrame = now;
   const speed = parseFloat(document.getElementById('speed').value);
-  weekProgress += dt * speed;
-  while(weekProgress >= 1){
-    weekProgress -= 1;
-    if(model.week >= model.p.weeks){ weekProgress = 0; setPlaying(false); break; }
-    step(model);
+  // Carry the remainder across frames: a frame is far shorter than one tick, so discarding it
+  // would leave most frames advancing nothing at all.
+  timeBudget += dt * speed;
+  while(timeBudget >= DT && model.t < model.p.months){
+    tickModel(model); timeBudget -= DT;
   }
-  if(model.week >= model.p.weeks){ setPlaying(false); weekProgress = 0; }
-  draw();
-  drawCharts();
-  renderStats();
-  if(playing) requestAnimationFrame(tick);
+  if(model.t >= model.p.months) setPlaying(false);
+  draw(); drawCharts(); renderStats();
+  if(playing) requestAnimationFrame(loop);
 }
-function stepOnce(){
-  if(model.week >= model.p.weeks) return;
-  step(model); weekProgress = 0;
+function stepMonth(){
+  if(model.t >= model.p.months) return;
+  const target = model.t + 1;
+  while(model.t < target - 1e-9 && model.t < model.p.months) tickModel(model);
   draw(); drawCharts(); renderStats();
 }
 function reset(){
   setPlaying(false);
   model = createModel(readParams());
-  weekProgress = 0;
   draw(); drawCharts(); renderStats(); renderScenarioTable();
+  document.getElementById('radiusField').hidden = !model.p.localMix;
 }
 
 document.getElementById('playBtn').addEventListener('click', () => {
-  if(model.week >= model.p.weeks) reset();
+  if(model.t >= model.p.months) reset();
   setPlaying(!playing);
 });
-document.getElementById('stepBtn').addEventListener('click', () => { setPlaying(false); stepOnce(); });
+document.getElementById('stepBtn').addEventListener('click', () => { setPlaying(false); stepMonth(); });
 document.getElementById('resetBtn').addEventListener('click', reset);
 document.getElementById('form').addEventListener('submit', e => { e.preventDefault(); reset(); });
 document.getElementById('randomizeSeed').addEventListener('click', () => {
   document.getElementById('seed').value = Math.floor(Math.random() * 999999) + 1;
   syncLabels(); reset();
 });
-['infoShare','capOrders'].forEach(id =>
+['localMix','showAnalytic'].forEach(id =>
   document.getElementById(id).addEventListener('change', reset));
-window.addEventListener('resize', () => { draw(); });
+window.addEventListener('resize', draw);
 
-// ---------- legend + boot ----------
-document.getElementById('legend').innerHTML =
-  ECHELONS.map(e => '<span><i style="background:' + e.color + '"></i>' + e.name + '</span>').join('') +
-  '<span><i style="background:' + token('--neg') + '"></i>backlog</span>' +
-  '<span><i style="background:' + token('--accent') + '"></i>promotion week</span>';
+document.getElementById('stateKey').innerHTML =
+  '<span><i style="background:' + token('--panel') + ';border:1px solid ' + token('--tx3') + '"></i>potential adopter</span>' +
+  '<span><i style="background:' + token('--accent') + '"></i>adopter</span>' +
+  '<span><i style="background:transparent;border:1px solid ' + token('--accent') + ';border-radius:50%"></i>adopted just now</span>';
 
 reset();
-// Run the model straight through once so the charts are populated on arrival.
-(function preroll(){
-  const target = Math.min(40, model.p.weeks);
-  while(model.week < target) step(model);
-  draw(); drawCharts(); renderStats();
-})();
 </script>
 </body>
 </html>
