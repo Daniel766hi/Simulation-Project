@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Mine Production &amp; Cost Simulator</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>&#9935;</text></svg>">
 <script src="vendor/chart.umd.min.js"></script>
 <style>
   :root{
@@ -110,7 +111,7 @@
   }
   .chart-box{position:relative;height:360px;}
 
-  .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+  .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;}
   @media (max-width:700px){.kpi-grid{grid-template-columns:repeat(2,1fr);}}
   .kpi{
     background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);
@@ -126,6 +127,33 @@
   .mc-stats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:14px;}
   @media (max-width:700px){.mc-stats{grid-template-columns:repeat(2,1fr);}}
 
+  .scenario-panel{padding:16px 18px;margin-top:16px;}
+  .scenario-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;}
+  .scenario-head h3{font-size:0.95rem;margin:0;}
+  .scenario-actions{display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
+  .scenario-actions input[type=text]{
+    padding:7px 9px;border:1px solid var(--border);border-radius:6px;
+    background:var(--bg);color:var(--ink);font-size:0.8rem;width:150px;
+  }
+  .btn-small{background:var(--accent);color:#fff;padding:7px 12px;font-size:0.78rem;}
+  .btn-small:hover{background:var(--accent-dark);}
+  .btn-small.ghost{background:transparent;border-color:var(--border);color:var(--ink-soft);}
+  .btn-small.ghost:hover{border-color:var(--accent);color:var(--accent-dark);}
+  .table-scroll{overflow-x:auto;}
+  table.cmp{width:100%;border-collapse:collapse;font-size:0.8rem;}
+  table.cmp th, table.cmp td{
+    text-align:right;padding:7px 9px;border-bottom:1px solid var(--border);
+    white-space:nowrap;font-variant-numeric:tabular-nums;
+  }
+  table.cmp th:first-child, table.cmp td:first-child{text-align:left;}
+  table.cmp th{color:var(--ink-soft);font-size:0.72rem;text-transform:uppercase;letter-spacing:0.04em;font-weight:700;}
+  table.cmp tr.current td{font-weight:600;}
+  .swatch{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:middle;}
+  .row-remove{
+    background:transparent;border:none;color:var(--bad);cursor:pointer;
+    font-size:0.75rem;padding:2px 4px;font-weight:600;
+  }
+  .empty-hint{color:var(--ink-soft);font-size:0.8rem;margin:0;}
   .note{
     font-size:0.78rem;color:var(--ink-soft);background:var(--accent-soft);
     border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-top:14px;line-height:1.5;
@@ -226,6 +254,10 @@
           <label>Fixed cost ($/month) <span class="val" data-out="fixedCost"></span></label>
           <input type="range" id="fixedCost" min="0" max="5000000" step="50000" value="1200000">
         </div>
+        <div class="field">
+          <label>Discount rate (%/year) <span class="val" data-out="discountRate"></span></label>
+          <input type="range" id="discountRate" min="0" max="25" step="0.5" value="8">
+        </div>
         <div class="row2">
           <div class="field">
             <label>Horizon (months) <span class="val" data-out="horizon"></span></label>
@@ -255,6 +287,7 @@
             <h2>Simulation output over time</h2>
             <select id="metricSelect">
               <option value="cumProfit" selected>Cumulative profit ($)</option>
+              <option value="cumDiscProfit">Cumulative discounted profit / NPV ($)</option>
               <option value="profit">Monthly profit ($)</option>
               <option value="revenue">Monthly revenue ($)</option>
               <option value="cost">Monthly cost ($)</option>
@@ -268,6 +301,20 @@
           <div class="chart-box"><canvas id="tsChart"></canvas></div>
         </div>
         <div class="kpi-grid" id="kpiGrid"></div>
+
+        <div class="panel scenario-panel">
+          <div class="scenario-head">
+            <h3>Scenario comparison</h3>
+            <div class="scenario-actions">
+              <input type="text" id="scenarioName" placeholder="Scenario name">
+              <button type="button" id="saveScenario" class="btn-small">Save current run</button>
+              <button type="button" id="clearScenarios" class="btn-small ghost">Clear all</button>
+              <button type="button" id="exportCsv" class="btn-small ghost">Export CSV</button>
+            </div>
+          </div>
+          <div id="scenarioTableWrap"></div>
+        </div>
+
         <div class="note" id="tsNote"></div>
       </div>
 
@@ -337,6 +384,7 @@ function readInputs(){
     miningCost: g('miningCost'),
     processCost: g('processCost'),
     fixedCost: g('fixedCost'),
+    discountRate: g('discountRate'),
     horizon: Math.round(g('horizon')),
     seed: Math.round(g('seed'))
   };
@@ -348,6 +396,8 @@ function simulate(p, seedOverride){
   let reserve = p.initialReserve;
   let priceState = p.basePrice;
   let cumProfit = 0;
+  let cumDiscProfit = 0;
+  const monthlyDiscount = Math.pow(1 + p.discountRate / 100, 1 / 12) - 1;
   const months = [];
 
   for(let m = 1; m <= p.horizon; m++){
@@ -374,10 +424,13 @@ function simulate(p, seedOverride){
     const cost = oreMined * p.miningCost + oreMined * p.processCost + p.fixedCost;
     const profit = revenue - cost;
     cumProfit += profit;
+    const discountedProfit = profit / Math.pow(1 + monthlyDiscount, m);
+    cumDiscProfit += discountedProfit;
 
     months.push({
       month: m, reserve, oreMined, grade: effGrade * 100, metalProduced,
-      price: priceState, revenue, cost, profit, cumProfit
+      price: priceState, revenue, cost, profit, cumProfit,
+      discountedProfit, cumDiscProfit
     });
   }
   return months;
@@ -407,6 +460,7 @@ const sliderMeta = {
   miningCost: v => '$' + v,
   processCost: v => '$' + v,
   fixedCost: v => '$' + fmtInt(v),
+  discountRate: v => v.toFixed(1) + '%/yr',
   horizon: v => v + ' mo',
   seed: v => v,
   mcTrials: v => v
@@ -436,6 +490,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 // ---------- time series chart ----------
 const metricMeta = {
   cumProfit: { label: 'Cumulative profit ($)', key: 'cumProfit', money: true },
+  cumDiscProfit: { label: 'Cumulative discounted profit / NPV ($)', key: 'cumDiscProfit', money: true },
   profit: { label: 'Monthly profit ($)', key: 'profit', money: true },
   revenue: { label: 'Monthly revenue ($)', key: 'revenue', money: true },
   cost: { label: 'Monthly cost ($)', key: 'cost', money: true },
@@ -446,40 +501,87 @@ const metricMeta = {
   reserve: { label: 'Remaining reserve (t)', key: 'reserve', money: false }
 };
 
-let tsChart, mcChart, lastRun = [];
+const SCENARIO_COLORS = ['#1f7a4d','#2b6cb0','#7c3aed','#0d9488','#b33a3a','#a16207'];
+const CURRENT_COLOR = '#b5651d';
+let tsChart, mcChart, lastRun = [], scenarios = [];
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, ch =>
+    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[ch]);
+}
+
+function summarize(run){
+  const last = run[run.length - 1];
+  const totalOre = run.reduce((s,r) => s + r.oreMined, 0);
+  const totalMetal = run.reduce((s,r) => s + r.metalProduced, 0);
+  const totalRevenue = run.reduce((s,r) => s + r.revenue, 0);
+  const totalCost = run.reduce((s,r) => s + r.cost, 0);
+  // Payback = first month after which cumulative profit stays positive for the rest of the run,
+  // so a project that breaks even then falls back into loss is not reported as paid back.
+  let lastNegative = -1;
+  for(let i = run.length - 1; i >= 0; i--){
+    if(run[i].cumProfit <= 0){ lastNegative = i; break; }
+  }
+  const payback = lastNegative === run.length - 1 ? null : run[lastNegative + 1];
+  const depleted = run.find(r => r.reserve <= 0);
+  return {
+    totalOre, totalMetal, totalRevenue, totalCost,
+    netProfit: last.cumProfit,
+    npv: last.cumDiscProfit,
+    paybackMonth: payback ? payback.month : null,
+    depletedMonth: depleted ? depleted.month : null,
+    months: run.length,
+    avgPrice: totalMetal > 0 ? totalRevenue / totalMetal : 0,
+    cashCost: totalOre > 0 ? totalCost / totalOre : 0
+  };
+}
 
 function renderTimeSeries(){
   const metric = metricMeta[document.getElementById('metricSelect').value];
-  const data = lastRun.map(r => ({ x: r.month, y: r[metric.key] }));
   const ctx = document.getElementById('tsChart');
+
+  const datasets = [{
+    label: 'Current run',
+    data: lastRun.map(r => ({ x: r.month, y: r[metric.key] })),
+    borderColor: CURRENT_COLOR,
+    backgroundColor: CURRENT_COLOR,
+    pointRadius: 3,
+    pointHoverRadius: 5,
+    borderWidth: 2,
+    tension: 0.15
+  }];
+  scenarios.forEach((s, i) => {
+    const color = SCENARIO_COLORS[i % SCENARIO_COLORS.length];
+    datasets.push({
+      label: s.name,
+      data: s.run.map(r => ({ x: r.month, y: r[metric.key] })),
+      borderColor: color,
+      backgroundColor: color,
+      pointRadius: 2.5,
+      pointHoverRadius: 5,
+      borderWidth: 1.5,
+      borderDash: [5, 3],
+      tension: 0.15
+    });
+  });
 
   if(tsChart) tsChart.destroy();
   tsChart = new Chart(ctx, {
     type: 'line',
-    data: {
-      datasets: [{
-        label: metric.label,
-        data,
-        borderColor: '#b5651d',
-        backgroundColor: '#b5651d',
-        pointRadius: 3,
-        pointHoverRadius: 5,
-        borderWidth: 2,
-        tension: 0.15
-      }]
-    },
+    data: { datasets },
     options: {
       responsive: true,
       maintainAspectRatio: false,
+      interaction: { mode: 'nearest', intersect: false },
       scales: {
         x: { type: 'linear', title: { display: true, text: 'Month' }, ticks: { precision: 0 } },
         y: { title: { display: true, text: metric.label } }
       },
       plugins: {
-        legend: { display: false },
+        legend: { display: scenarios.length > 0, position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
         tooltip: {
           callbacks: {
-            label: c => metric.money ? fmtMoney(c.parsed.y) : fmtInt(c.parsed.y)
+            label: c => c.dataset.label + ': ' + (metric.money ? fmtMoney(c.parsed.y) : fmtInt(c.parsed.y))
           }
         }
       }
@@ -487,26 +589,59 @@ function renderTimeSeries(){
   });
 }
 
+function renderScenarioTable(){
+  const wrap = document.getElementById('scenarioTableWrap');
+  if(scenarios.length === 0){
+    wrap.innerHTML = '<p class="empty-hint">Run a simulation, then save it as a scenario to compare ' +
+      'alternative parameter sets side by side. Saved scenarios stay overlaid on the chart above as ' +
+      'dashed lines, so you can change the inputs and see how the new run compares.</p>';
+    return;
+  }
+  const rows = [{ name: 'Current run', color: CURRENT_COLOR, sum: summarize(lastRun), current: true }]
+    .concat(scenarios.map((s, i) => ({
+      name: s.name, color: SCENARIO_COLORS[i % SCENARIO_COLORS.length], sum: summarize(s.run), index: i
+    })));
+
+  wrap.innerHTML = '<div class="table-scroll"><table class="cmp"><thead><tr>' +
+    '<th>Scenario</th><th>Net profit</th><th>NPV</th><th>Metal (t)</th><th>Ore (t)</th>' +
+    '<th>Cash cost ($/t)</th><th>Payback</th><th></th></tr></thead><tbody>' +
+    rows.map(r =>
+      '<tr class="' + (r.current ? 'current' : '') + '">' +
+      '<td><span class="swatch" style="background:' + r.color + '"></span>' + escapeHtml(r.name) + '</td>' +
+      '<td>' + fmtMoney(r.sum.netProfit) + '</td>' +
+      '<td>' + fmtMoney(r.sum.npv) + '</td>' +
+      '<td>' + fmtInt(r.sum.totalMetal) + '</td>' +
+      '<td>' + fmtInt(r.sum.totalOre) + '</td>' +
+      '<td>$' + r.sum.cashCost.toFixed(2) + '</td>' +
+      '<td>' + (r.sum.paybackMonth ? 'Month ' + r.sum.paybackMonth : '—') + '</td>' +
+      '<td>' + (r.current ? '' : '<button type="button" class="row-remove" data-remove="' + r.index + '">Remove</button>') + '</td>' +
+      '</tr>'
+    ).join('') + '</tbody></table></div>';
+
+  wrap.querySelectorAll('[data-remove]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      scenarios.splice(parseInt(btn.dataset.remove, 10), 1);
+      renderTimeSeries();
+      renderScenarioTable();
+    });
+  });
+}
+
 function renderKPIs(){
-  const last = lastRun[lastRun.length - 1];
-  const totalOre = lastRun.reduce((s,r) => s + r.oreMined, 0);
-  const totalMetal = lastRun.reduce((s,r) => s + r.metalProduced, 0);
-  const totalRevenue = lastRun.reduce((s,r) => s + r.revenue, 0);
-  const totalCost = lastRun.reduce((s,r) => s + r.cost, 0);
-  const netProfit = last.cumProfit;
-  const paybackMonth = lastRun.find(r => r.cumProfit > 0);
-  const depletedAt = lastRun.find(r => r.reserve <= 0);
-  const avgPrice = totalMetal > 0 ? totalRevenue / totalMetal : 0;
+  const s = summarize(lastRun);
+  const discountRate = readInputs().discountRate;
 
   const kpis = [
-    ['Total ore mined', fmtInt(totalOre) + ' t', null],
-    ['Total metal produced', fmtInt(totalMetal) + ' t', null],
-    ['Total revenue', fmtMoney(totalRevenue), null],
-    ['Total cost', fmtMoney(totalCost), null],
-    ['Net profit (horizon)', fmtMoney(netProfit), netProfit >= 0 ? 'good' : 'bad'],
-    ['Payback month', paybackMonth ? 'Month ' + paybackMonth.month : 'Not reached', paybackMonth ? 'good' : 'bad'],
-    ['Reserve exhausted at', depletedAt ? 'Month ' + depletedAt.month : 'Not within horizon', null],
-    ['Avg. realized price', '$' + avgPrice.toFixed(0) + '/t', null]
+    ['Total ore mined', fmtInt(s.totalOre) + ' t', null],
+    ['Total metal produced', fmtInt(s.totalMetal) + ' t', null],
+    ['Total revenue', fmtMoney(s.totalRevenue), null],
+    ['Total cost', fmtMoney(s.totalCost), null],
+    ['Net profit (undiscounted)', fmtMoney(s.netProfit), s.netProfit >= 0 ? 'good' : 'bad'],
+    ['NPV @ ' + discountRate.toFixed(1) + '%/yr', fmtMoney(s.npv), s.npv >= 0 ? 'good' : 'bad'],
+    ['Payback month', s.paybackMonth ? 'Month ' + s.paybackMonth : 'Not reached', s.paybackMonth ? 'good' : 'bad'],
+    ['Reserve exhausted at', s.depletedMonth ? 'Month ' + s.depletedMonth : 'Not within horizon', null],
+    ['Avg. realized price', '$' + s.avgPrice.toFixed(0) + '/t', null],
+    ['Cash cost per tonne ore', '$' + s.cashCost.toFixed(2) + '/t', null]
   ];
   document.getElementById('kpiGrid').innerHTML = kpis.map(([label, value, cls]) =>
     `<div class="kpi"><div class="label">${label}</div><div class="value ${cls || ''}">${value}</div></div>`
@@ -522,7 +657,38 @@ function runSimulation(){
   lastRun = simulate(p);
   renderTimeSeries();
   renderKPIs();
+  renderScenarioTable();
 }
+
+document.getElementById('saveScenario').addEventListener('click', () => {
+  const input = document.getElementById('scenarioName');
+  const name = input.value.trim() || 'Scenario ' + (scenarios.length + 1);
+  scenarios.push({ name, params: readInputs(), run: lastRun });
+  input.value = '';
+  renderTimeSeries();
+  renderScenarioTable();
+});
+
+document.getElementById('clearScenarios').addEventListener('click', () => {
+  scenarios = [];
+  renderTimeSeries();
+  renderScenarioTable();
+});
+
+document.getElementById('exportCsv').addEventListener('click', () => {
+  const cols = ['month','oreMined','grade','metalProduced','price','revenue','cost',
+                'profit','cumProfit','discountedProfit','cumDiscProfit','reserve'];
+  const lines = [cols.join(',')].concat(
+    lastRun.map(r => cols.map(c => r[c].toFixed(2)).join(','))
+  );
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'mine-simulation-seed-' + readInputs().seed + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+});
 
 document.getElementById('form').addEventListener('submit', e => {
   e.preventDefault();

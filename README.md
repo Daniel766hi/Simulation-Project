@@ -13,12 +13,20 @@ python3 -m http.server 8000
 
 ## What it does
 
-You set ~16 operating and market variables across four groups (reserve & grade, operations,
+You set 17 operating and market variables across four groups (reserve & grade, operations,
 market, costs & horizon). The app then runs a month-by-month simulation and plots the result as
-a line-with-dot-marker chart (X = month, Y = a metric you choose — cumulative profit, monthly
-profit/revenue/cost, ore mined, metal produced, grade, price, or remaining reserve), alongside a
-KPI summary (total production, revenue, cost, net profit, payback month, mine life, average
-realized price).
+a line-with-dot-marker chart (X = month, Y = a metric you choose — cumulative profit, cumulative
+discounted profit/NPV, monthly profit/revenue/cost, ore mined, metal produced, grade, price, or
+remaining reserve), alongside a 10-card KPI summary (total production, revenue, cost, net profit,
+NPV, payback month, mine life, average realized price, cash cost per tonne).
+
+**Scenario comparison** — save any run as a named scenario and it stays overlaid on the chart as
+a dashed line, with a comparison table of net profit, NPV, metal produced, ore mined, cash cost
+and payback across all saved runs. This is the intended workflow: set a base case, save it, then
+change one variable at a time and see what it does to the economics.
+
+**Export CSV** — downloads the full month-by-month output of the current run for further analysis
+in Excel or pandas.
 
 A second tab runs a **Monte Carlo risk analysis**: it re-runs the same model N times (default
 150), each time drawing new random noise for grade, equipment availability and the price path,
@@ -45,6 +53,13 @@ Each simulated month:
 7. **Revenue** — metal produced × price.
 8. **Cost** — (mining cost/t + processing cost/t) × ore mined + fixed monthly cost.
 9. **Profit** — revenue − cost, accumulated into a running cumulative profit.
+10. **Discounting** — each month's profit is discounted at the monthly equivalent of the annual
+    discount rate, `profit / (1 + r_monthly)^month` where `r_monthly = (1 + r_annual)^(1/12) − 1`,
+    and accumulated into a running NPV of operating cash flow.
+
+**Payback month** is defined as the first month after which cumulative profit stays positive for
+the remainder of the run — so a project that briefly breaks even and then falls back into loss is
+reported as "not reached" rather than showing a misleadingly early payback.
 
 Randomness is generated from a seeded PRNG (mulberry32) with Box-Muller normal sampling, so a
 given seed always reproduces the same run — useful for comparing scenarios apples-to-apples, and
@@ -60,10 +75,12 @@ simplifications:
   aggregate stream, not split by pit phase or material type.
 - **Price and grade noise are independent month to month** (no autocorrelation/mean reversion
   beyond the random-walk drift already built into price).
-- **No discounting** — profit is nominal, undiscounted cash flow, not NPV. There's no time value
-  of money, so "payback month" is a simple cumulative break-even, not a discounted payback.
-- **No taxes, royalties, or capital expenditure** — only operating cost and fixed cost are
-  modeled; there's no upfront capex to recover.
+- **NPV is of operating cash flow only** — there is no capital expenditure, so this is not a
+  project NPV in the investment-decision sense; it does not tell you whether the mine is worth
+  building, only what the modeled operating cash flows are worth today. Payback is likewise an
+  operating-cash break-even, not a discounted payback on invested capital.
+- **No taxes, royalties, depreciation, or working capital** — only operating cost and fixed cost
+  are modeled.
 - **Units are commodity-agnostic** — "%” grade and "$/t metal" price are meant to be filled in
   consistently for whatever commodity you're modeling (e.g., copper grade/price, gold needs
   price converted to $/t rather than $/oz, iron ore grade is usually %Fe not a trace-metal %,
@@ -71,9 +88,9 @@ simplifications:
 - **Single ore type / single price series** — no polymetallic byproduct credits.
 
 If you want to extend it toward a more realistic feasibility model, the natural next additions
-are: discounted cash flow / NPV, capex and financing, stripping ratio and cut-off grade
-optimization, correlated multi-factor Monte Carlo (e.g., price and cost correlated with a macro
-factor), and scenario comparison (save/overlay multiple named runs).
+are: capex and financing (so NPV becomes a real investment decision), taxes and royalties,
+stripping ratio and cut-off grade optimization, and correlated multi-factor Monte Carlo (e.g.,
+price and cost both driven by a shared macro factor rather than drawn independently).
 
 ## Tech
 
