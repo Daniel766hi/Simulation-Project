@@ -1,4 +1,16 @@
-# Mine Production & Cost Simulator
+# Simulation Project
+
+Two browser-based simulation models sharing one design system. Both are self-contained: no backend,
+no build step, no network access required.
+
+| Page | Model | Paradigm |
+|---|---|---|
+| `index.html` | Mine production, cost and project economics | Discrete-time deterministic + Monte Carlo |
+| `abm.html` | Supply chain bullwhip effect | Agent-based |
+
+---
+
+# 1. Mine Production & Cost Simulator
 
 A client-side, browser-based simulation of an open-pit style mine: production and operating cost
 month by month, carried through a full cash-flow waterfall (revenue → operating cost → royalties
@@ -150,3 +162,87 @@ drawn independently).
 Single `index.html` (structure, styling, and simulation logic) plus a vendored copy of
 [Chart.js](https://www.chartjs.org/) in `vendor/` (so the app works fully offline — no CDN
 dependency). No build tooling, no package manager needed to run it.
+
+
+---
+
+# 2. Supply Chain Agent Model (`abm.html`)
+
+An agent-based model of a four-echelon supply chain — retailer, wholesaler, distributor, factory.
+Each agent is autonomous: it sees only its own inventory and the orders arriving from the customer
+directly downstream, and it applies the same ordering rule every week. Nothing in the code tells any
+agent to overreact. **The bullwhip effect emerges from the interaction of local rules and delays.**
+
+The page animates the chain live — dots are shipments moving downstream and orders travelling
+upstream — alongside charts of orders and inventory per echelon, so you can watch amplification
+build rather than just read it off a table.
+
+## Agent rule
+
+Every week, each agent in turn:
+
+1. Receives goods that have finished their shipping delay, decrementing its outstanding-order count.
+2. Receives orders from its customer (after the order delay), adding them to its backlog.
+3. Ships whatever inventory can cover; the rest stays backlogged.
+4. Updates a demand forecast by exponential smoothing: `forecast = α·signal + (1−α)·forecast`.
+5. Orders up to a target level:
+
+```
+target   = forecast × (shipping delay + order delay + 1) + safety × forecast
+position = on-hand − backlog + β × outstanding orders
+order    = smoothing × (target − position) + (1 − smoothing) × forecast
+```
+
+The factory has no supplier: its "orders" are production, arriving after the same lead time.
+
+The chain **starts in equilibrium** — on-hand covers one week of demand plus the safety factor, and
+both pipelines are pre-filled at the base rate — so what you measure is the response to demand
+variability, not a startup transient.
+
+## The three behavioural levers
+
+- **β, supply-line awareness** — how much of what you have already ordered but not yet received you
+  count. β = 1 is fully rational. Below that you re-order the same shortfall repeatedly, which is
+  the classic beer-game finding and the main behavioural engine of the bullwhip.
+- **α, forecast responsiveness** — how hard you chase the last observation. High α turns noise into
+  a trend.
+- **Order adjustment** — how much of the stock gap you try to close in a single week. Low values
+  damp heavily.
+
+## Bullwhip measurement
+
+`bullwhip(i) = Var(orders placed by agent i) / Var(real consumer demand)`, computed after a 10-week
+warm-up. Above 1.0× means that agent amplifies the signal it received. Note the ratio is sensitive
+to a small denominator: with promotions switched off, consumer variance is tiny and the ratio rises
+even though the absolute swings are smaller.
+
+## What the mitigations actually do
+
+Measured at the factory, seed 7, 150 weeks, defaults otherwise:
+
+| Configuration | Retailer | Wholesaler | Distributor | Factory |
+|---|---|---|---|---|
+| No mitigation | 1.38× | 3.26× | 6.98× | **9.61×** |
+| Share real consumer demand | 1.38× | 1.05× | 0.66× | **0.51×** |
+| Cap orders at 2× normal volume | 1.33× | 3.00× | 5.30× | **6.20×** |
+| Full supply-line awareness (β = 1) | 1.13× | 1.91× | 3.87× | **6.32×** |
+| Shorter lead times (ship 1, order 1) | 0.89× | 1.32× | 2.22× | **3.17×** |
+| Heavy order damping (adjustment 0.12) | 0.55× | 0.55× | 0.65× | **0.80×** |
+
+Sharing point-of-sale data is by far the strongest single lever, which is the standard result: the
+amplification is driven by each agent forecasting from a signal that has already been distorted
+upstream of it.
+
+The order cap is capped against a **slow trailing average of normal volume**, not against the
+agent's own forecast. Capping against your own forecast does nothing, because during a spike the
+forecast is already inflated — an easy mistake that makes the control look like it works.
+
+## Known simplifications
+
+- **Single product, single supplier per echelon** — no sourcing choice, no substitution, no capacity
+  limits at the factory (it can produce any quantity).
+- **No prices, margins or costs** — the model measures amplification, service and inventory, not
+  profit. Ordering is not economically optimised.
+- **Backlogs never cancel** — unfilled orders wait indefinitely rather than being lost sales.
+- **All agents share one rule and one parameter set** — real chains have heterogeneous policies.
+- **Deterministic given a seed**, like the mine model, so scenarios are compared like for like.
