@@ -1,8 +1,9 @@
 # Mine Production & Cost Simulator
 
-A client-side, browser-based simulation of an open-pit style mine's production, cost and
-profitability over time. Built as a self-contained web app: no backend, no build step, nothing
-leaves the browser.
+A client-side, browser-based simulation of an open-pit style mine: production and operating cost
+month by month, carried through a full cash-flow waterfall (revenue → operating cost → royalties
+→ tax → sustaining capex) to NPV, IRR and payback on invested capital. Built as a self-contained
+web app: no backend, no build step, nothing leaves the browser.
 
 Open `index.html` directly, or serve the folder locally:
 
@@ -13,27 +14,32 @@ python3 -m http.server 8000
 
 ## What it does
 
-You set 17 operating and market variables across four groups (reserve & grade, operations,
-market, costs & horizon). The app then runs a month-by-month simulation and plots the result as
-a line-with-dot-marker chart (X = month, Y = a metric you choose — cumulative profit, cumulative
-discounted profit/NPV, monthly profit/revenue/cost, ore mined, metal produced, grade, price, or
-remaining reserve), alongside a 10-card KPI summary (total production, revenue, cost, net profit,
-NPV, payback month, mine life, average realized price, cash cost per tonne).
+You set 22 operating, market, capital and fiscal variables across five groups. The app runs a
+month-by-month simulation and plots the result as a line-with-dot-marker chart (X = month, Y = a
+metric you choose — cumulative net cash flow, NPV profile, monthly free cash flow, EBITDA,
+revenue, operating cost, royalties & tax, ore mined, metal produced, grade, price, or remaining
+reserve), alongside a KPI panel covering production, revenue, operating cost, EBITDA, royalties
+& tax, capex, net cash flow, NPV, IRR, payback, discounted payback and cash cost per tonne.
+
+The default view is the cumulative net cash flow curve, which produces the classic project
+J-curve: it starts at minus the initial capex, climbs as production ramps up, crosses zero at
+payback, and ends at the project's total net cash generation.
 
 **Scenario comparison** — save any run as a named scenario and it stays overlaid on the chart as
-a dashed line, with a comparison table of net profit, NPV, metal produced, ore mined, cash cost
-and payback across all saved runs. This is the intended workflow: set a base case, save it, then
-change one variable at a time and see what it does to the economics.
+a dashed line, with a comparison table of NPV, IRR, net cash flow, EBITDA, metal produced, cash
+cost and payback across all saved runs. This is the intended workflow: set a base case, save it,
+then change one variable at a time and see what it does to the investment case.
 
-**Export CSV** — downloads the full month-by-month output of the current run for further analysis
-in Excel or pandas.
+**Export CSV** — downloads the full month-by-month output of the current run (including the whole
+cash-flow waterfall) for further analysis in Excel or pandas.
 
 A second tab runs a **Monte Carlo risk analysis**: it re-runs the same model N times (default
 150), each time drawing new random noise for grade, equipment availability and the price path,
-and plots one dot per trial (X = total metal produced, Y = final cumulative profit), colored
-green/red for profit/loss. This turns the single-run chart into a spread that shows how sensitive
-the project's economics are to operational and market uncertainty, with summary statistics
-(mean, standard deviation, P10/P50/P90, % of trials profitable).
+and plots one dot per trial (X = total metal produced, Y = project NPV), colored green for
+value-accretive and red for value-destroying. Summary statistics report mean NPV, standard
+deviation, P10/P50/P90 and the probability of a positive NPV — which is the number that actually
+matters: a project with a healthy expected NPV but only a 55% chance of clearing zero is a very
+different proposition from one at 95%.
 
 ## Model logic
 
@@ -47,17 +53,25 @@ Each simulated month:
    reserve is depleted accordingly, so production stops once it runs out.
 4. **Grade** — the average ore grade plus normally-distributed monthly noise, floored at 0.
 5. **Metal produced** — ore mined × effective grade × recovery rate.
-6. **Price** — follows a random walk (monthly normal noise as % volatility around the previous
-   month's price) with an independent chance each month of a price "shock" (a step change of a
-   set magnitude), representing demand or supply shocks.
+6. **Price** — a random walk (monthly normal noise as % volatility around the previous month's
+   price), plus an independent chance each month of a price shock (a step change of a set
+   magnitude), then pulled back toward the long-run base price by the mean-reversion rate.
 7. **Revenue** — metal produced × price.
-8. **Cost** — (mining cost/t + processing cost/t) × ore mined + fixed monthly cost.
-9. **Profit** — revenue − cost, accumulated into a running cumulative profit.
-10. **Discounting** — each month's profit is discounted at the monthly equivalent of the annual
-    discount rate, `profit / (1 + r_monthly)^month` where `r_monthly = (1 + r_annual)^(1/12) − 1`,
-    and accumulated into a running NPV of operating cash flow.
+8. **Operating cost** — (mining cost/t + processing cost/t) × ore mined + fixed monthly cost.
+9. **Royalty** — a percentage of revenue, charged before tax.
+10. **EBITDA** — revenue − operating cost − royalty.
+11. **Tax** — charged on positive EBITDA at the tax rate, with losses carried forward to shelter
+    later profits.
+12. **Free cash flow** — EBITDA − tax − sustaining capex (charged per tonne of ore mined).
+13. **Discounting** — each month's free cash flow is discounted at the monthly equivalent of the
+    annual rate, `fcf / (1 + r_monthly)^month` where `r_monthly = (1 + r_annual)^(1/12) − 1`.
 
-**Payback month** is defined as the first month after which cumulative profit stays positive for
+Cumulative cash flow starts at −(initial capex), so both the cash curve and the NPV profile are
+project-level figures including the upfront investment.
+
+**NPV** is the final cumulative discounted cash flow. **IRR** is the discount rate at which NPV
+crosses zero, found by bracketing outward from zero and bisecting, then annualized from the
+monthly rate. **Payback** is the first month after which cumulative cash flow stays positive for
 the remainder of the run — so a project that briefly breaks even and then falls back into loss is
 reported as "not reached" rather than showing a misleadingly early payback.
 
@@ -66,31 +80,70 @@ given seed always reproduces the same run — useful for comparing scenarios app
 for the Monte Carlo tab (each trial uses `seed + trial index × 7919 + 1` so trials are
 independent but the whole batch is reproducible from the same base seed).
 
+## About the default values
+
+The defaults describe an illustrative mid-size operation: a 20 Mt reserve at 1.2% grade, mined at
+150 kt/month over a 10-year horizon, with $110M initial capex. They are **calibrated to produce a
+plausible project profile** (≈19% IRR, payback around month 66, positive but not risk-free NPV),
+not drawn from a real deposit. Recalibrate them for whatever commodity and jurisdiction you are
+actually modeling before drawing any conclusion from the output.
+
+The default random seed (303) was chosen because its single deterministic run lands close to the
+median Monte Carlo outcome, so the first thing you see is a representative path rather than a
+lucky or unlucky one. Press "Randomize seed & re-run" to see how much the outcome moves.
+
+## The single most important assumption: mean reversion
+
+The mean-reversion rate has more influence on the investment conclusion than any other input.
+Holding everything else at default and varying only mean reversion:
+
+| Mean reversion | Price half-life | Mean NPV | P(NPV > 0) |
+|---|---|---|---|
+| 0%/mo (pure random walk) | never reverts | −$176M | 17% |
+| 2%/mo | ~34 months | −$34M | 33% |
+| 3%/mo (default) | ~23 months | ~$0M | 48% |
+| 5%/mo | ~14 months | +$40M | 71% |
+| 10%/mo | ~7 months | +$84M | 100% |
+
+The reason is that price shocks are one-directional by default (−25%), so with weak mean
+reversion they compound into a permanent price collapse over a 10-year horizon rather than
+representing temporary dislocations. The model's implicit assumption is that shocks are temporary
+and prices revert to a long-run level; if you believe a shock is permanent, set mean reversion
+to 0 and the economics change completely.
+
+This is worth knowing before quoting any number this tool produces: the headline NPV is a
+statement about your price assumptions at least as much as about the mine.
+
 ## Known simplifications (read before treating this as a real feasibility model)
 
 This is a teaching/portfolio-grade model, not a bankable feasibility study. Notable
 simplifications:
 
-- **No stripping ratio, pit geometry, or blending constraints** — "ore mined" is a single
-  aggregate stream, not split by pit phase or material type.
-- **Price and grade noise are independent month to month** (no autocorrelation/mean reversion
-  beyond the random-walk drift already built into price).
-- **NPV is of operating cash flow only** — there is no capital expenditure, so this is not a
-  project NPV in the investment-decision sense; it does not tell you whether the mine is worth
-  building, only what the modeled operating cash flows are worth today. Payback is likewise an
-  operating-cash break-even, not a discounted payback on invested capital.
-- **No taxes, royalties, depreciation, or working capital** — only operating cost and fixed cost
-  are modeled.
-- **Units are commodity-agnostic** — "%” grade and "$/t metal" price are meant to be filled in
-  consistently for whatever commodity you're modeling (e.g., copper grade/price, gold needs
-  price converted to $/t rather than $/oz, iron ore grade is usually %Fe not a trace-metal %,
-  etc.). The defaults loosely resemble a mid-size copper operation but are illustrative only.
+- **No stripping ratio, pit geometry, cut-off grade, or blending constraints** — "ore mined" is a
+  single aggregate stream, not split by pit phase or material type, and there is no decision about
+  what is ore versus waste.
+- **Noise is independent month to month** — real mines have persistent grade domains and
+  correlated downtime, whereas here each month's grade and availability are drawn independently.
+  Over a long horizon this averages out by the law of large numbers, so the model understates
+  production risk; the Monte Carlo spread is driven almost entirely by price, not operations.
+- **Tax is charged on EBITDA, not taxable income** — there is no depreciation or capital
+  allowance shield, so tax is overstated in early years relative to a real fiscal model. Loss
+  carry-forward is modeled, but with no expiry limit.
+- **No financing, working capital, closure or rehabilitation costs** — capex is all-equity and
+  entirely upfront at month 0, and there is no salvage value or closure liability at the end.
+- **IRR assumes a conventional cash-flow profile** — where cash flows change sign more than once,
+  IRR is not unique and the solver returns one root; it reports "n/a" when no sign change exists.
+  NPV is the more reliable metric.
+- **Units are commodity-agnostic** — "%" grade and "$/t metal" price must be filled in
+  consistently for whatever commodity you're modeling (e.g., gold needs price converted to $/t
+  rather than $/oz; iron ore grade is usually %Fe, not a trace-metal %).
 - **Single ore type / single price series** — no polymetallic byproduct credits.
 
 If you want to extend it toward a more realistic feasibility model, the natural next additions
-are: capex and financing (so NPV becomes a real investment decision), taxes and royalties,
-stripping ratio and cut-off grade optimization, and correlated multi-factor Monte Carlo (e.g.,
-price and cost both driven by a shared macro factor rather than drawn independently).
+are: a depreciation schedule so tax is charged on taxable income, capex phasing and debt
+financing, stripping ratio and cut-off grade optimization, autocorrelated operational noise, and
+correlated multi-factor Monte Carlo (price and cost driven by a shared macro factor rather than
+drawn independently).
 
 ## Tech
 

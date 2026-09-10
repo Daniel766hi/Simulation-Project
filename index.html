@@ -166,8 +166,9 @@
   <header>
     <h1>Mine Production &amp; Cost Simulator</h1>
     <p>A discrete-time simulation of an open-pit style mine: reserve depletion, ramp-up, equipment availability,
-      grade and price variability, and price-shock events, run month by month over the chosen horizon. Adjust the
-      variables on the left and re-run.</p>
+      grade and price variability, and price-shock events, run month by month and carried through a full cash-flow
+      waterfall &mdash; revenue, operating cost, royalties, tax, sustaining capex &mdash; to NPV, IRR and payback on
+      invested capital. Adjust the variables on the left and re-run.</p>
   </header>
 
   <div class="layout">
@@ -176,7 +177,7 @@
         <legend>Reserve &amp; grade</legend>
         <div class="field">
           <label>Initial ore reserve (t) <span class="val" data-out="initialReserve"></span></label>
-          <input type="range" id="initialReserve" min="500000" max="20000000" step="100000" value="5000000">
+          <input type="range" id="initialReserve" min="1000000" max="60000000" step="500000" value="20000000">
         </div>
         <div class="field">
           <label>Average ore grade (%) <span class="val" data-out="oreGrade"></span></label>
@@ -229,17 +230,23 @@
           </div>
           <div class="field">
             <label>Shock probability (%/mo) <span class="val" data-out="shockProb"></span></label>
-            <input type="range" id="shockProb" min="0" max="30" step="1" value="5">
+            <input type="range" id="shockProb" min="0" max="30" step="1" value="2">
           </div>
         </div>
-        <div class="field">
-          <label>Shock magnitude (%) <span class="val" data-out="shockMag"></span></label>
-          <input type="range" id="shockMag" min="-60" max="60" step="5" value="-25">
+        <div class="row2">
+          <div class="field">
+            <label>Shock magnitude (%) <span class="val" data-out="shockMag"></span></label>
+            <input type="range" id="shockMag" min="-60" max="60" step="5" value="-25">
+          </div>
+          <div class="field">
+            <label>Mean reversion (%/mo) <span class="val" data-out="meanReversion"></span></label>
+            <input type="range" id="meanReversion" min="0" max="50" step="1" value="3">
+          </div>
         </div>
       </fieldset>
 
       <fieldset>
-        <legend>Costs &amp; horizon</legend>
+        <legend>Operating costs</legend>
         <div class="row2">
           <div class="field">
             <label>Mining cost ($/t ore) <span class="val" data-out="miningCost"></span></label>
@@ -254,18 +261,44 @@
           <label>Fixed cost ($/month) <span class="val" data-out="fixedCost"></span></label>
           <input type="range" id="fixedCost" min="0" max="5000000" step="50000" value="1200000">
         </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Capital &amp; fiscal</legend>
+        <div class="field">
+          <label>Initial capex ($) <span class="val" data-out="initialCapex"></span></label>
+          <input type="range" id="initialCapex" min="0" max="800000000" step="5000000" value="110000000">
+        </div>
+        <div class="field">
+          <label>Sustaining capex ($/t ore) <span class="val" data-out="sustainingCapex"></span></label>
+          <input type="range" id="sustainingCapex" min="0" max="20" step="0.5" value="3">
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label>Royalty (% revenue) <span class="val" data-out="royaltyRate"></span></label>
+            <input type="range" id="royaltyRate" min="0" max="15" step="0.5" value="4">
+          </div>
+          <div class="field">
+            <label>Tax rate (%) <span class="val" data-out="taxRate"></span></label>
+            <input type="range" id="taxRate" min="0" max="60" step="1" value="25">
+          </div>
+        </div>
         <div class="field">
           <label>Discount rate (%/year) <span class="val" data-out="discountRate"></span></label>
           <input type="range" id="discountRate" min="0" max="25" step="0.5" value="8">
         </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Simulation</legend>
         <div class="row2">
           <div class="field">
             <label>Horizon (months) <span class="val" data-out="horizon"></span></label>
-            <input type="range" id="horizon" min="6" max="120" step="1" value="36">
+            <input type="range" id="horizon" min="6" max="180" step="1" value="120">
           </div>
           <div class="field">
             <label>Random seed <span class="val" data-out="seed"></span></label>
-            <input type="number" id="seed" min="1" max="999999" value="42">
+            <input type="number" id="seed" min="1" max="999999" value="303">
           </div>
         </div>
       </fieldset>
@@ -286,11 +319,13 @@
           <div class="chart-head">
             <h2>Simulation output over time</h2>
             <select id="metricSelect">
-              <option value="cumProfit" selected>Cumulative profit ($)</option>
-              <option value="cumDiscProfit">Cumulative discounted profit / NPV ($)</option>
-              <option value="profit">Monthly profit ($)</option>
+              <option value="cumFcf" selected>Cumulative net cash flow ($)</option>
+              <option value="cumDiscFcf">NPV profile — cumulative discounted cash flow ($)</option>
+              <option value="fcf">Monthly free cash flow ($)</option>
+              <option value="ebitda">Monthly EBITDA ($)</option>
               <option value="revenue">Monthly revenue ($)</option>
-              <option value="cost">Monthly cost ($)</option>
+              <option value="cost">Monthly operating cost ($)</option>
+              <option value="govTake">Monthly royalties &amp; tax ($)</option>
               <option value="oreMined">Ore mined (t)</option>
               <option value="metalProduced">Metal produced (t)</option>
               <option value="grade">Effective grade (%)</option>
@@ -328,16 +363,18 @@
             <button type="button" id="runMC" class="btn-primary" style="width:auto;">Run Monte Carlo</button>
           </div>
           <div class="chart-head">
-            <h2>Each dot = one simulated mine life (random grade, availability, price path &amp; shocks)</h2>
+            <h2>Each dot = one simulated mine life. Green = value-accretive (NPV &gt; 0), red = value-destroying.</h2>
           </div>
           <div class="chart-box"><canvas id="mcChart"></canvas></div>
           <div class="mc-stats" id="mcStats"></div>
         </div>
         <div class="note">
-          X-axis: total metal produced over the horizon. Y-axis: final cumulative profit. Each trial re-draws grade,
-          availability and price-path noise from the same distributions used in the time-series tab, so the spread of
-          dots shows how sensitive the project's profitability is to operational and market uncertainty &mdash; the
-          same idea as scenario/sensitivity analysis, just visualized as a scatter instead of a table.
+          X-axis: total metal produced over the horizon. Y-axis: project NPV after initial capex, royalties and tax.
+          Each trial re-draws grade, availability and price-path noise from the same distributions used in the
+          time-series tab, so the spread of dots shows how sensitive the investment case is to operational and market
+          uncertainty &mdash; the same idea as scenario/sensitivity analysis, just visualized as a scatter instead of
+          a table. The headline number is the probability of a positive NPV: a project with a healthy expected NPV but
+          only a 55% chance of clearing zero is a very different proposition from one at 95%.
         </div>
       </div>
     </div>
@@ -381,9 +418,14 @@ function readInputs(){
     priceVolatility: g('priceVolatility'),
     shockProb: g('shockProb'),
     shockMag: g('shockMag'),
+    meanReversion: g('meanReversion'),
     miningCost: g('miningCost'),
     processCost: g('processCost'),
     fixedCost: g('fixedCost'),
+    initialCapex: g('initialCapex'),
+    sustainingCapex: g('sustainingCapex'),
+    royaltyRate: g('royaltyRate'),
+    taxRate: g('taxRate'),
     discountRate: g('discountRate'),
     horizon: Math.round(g('horizon')),
     seed: Math.round(g('seed'))
@@ -395,8 +437,9 @@ function simulate(p, seedOverride){
   const rng = mulberry32(seedOverride !== undefined ? seedOverride : p.seed);
   let reserve = p.initialReserve;
   let priceState = p.basePrice;
-  let cumProfit = 0;
-  let cumDiscProfit = 0;
+  let cumFcf = -p.initialCapex;
+  let cumDiscFcf = -p.initialCapex;
+  let lossCarryForward = 0;
   const monthlyDiscount = Math.pow(1 + p.discountRate / 100, 1 / 12) - 1;
   const months = [];
 
@@ -418,19 +461,39 @@ function simulate(p, seedOverride){
     if(rng() < p.shockProb / 100){
       priceState *= (1 + p.shockMag / 100);
     }
+    // Commodity prices are not a pure random walk: pull back toward the long-run base price so
+    // long horizons don't drift to implausible levels.
+    priceState += (p.basePrice - priceState) * (p.meanReversion / 100);
     priceState = Math.max(0, priceState);
 
     const revenue = metalProduced * priceState;
     const cost = oreMined * p.miningCost + oreMined * p.processCost + p.fixedCost;
-    const profit = revenue - cost;
-    cumProfit += profit;
-    const discountedProfit = profit / Math.pow(1 + monthlyDiscount, m);
-    cumDiscProfit += discountedProfit;
+    const royalty = revenue * (p.royaltyRate / 100);
+    const ebitda = revenue - cost - royalty;
+
+    // Losses shelter later profits before tax is charged.
+    let taxable = ebitda;
+    if(taxable > 0 && lossCarryForward > 0){
+      const used = Math.min(lossCarryForward, taxable);
+      taxable -= used;
+      lossCarryForward -= used;
+    }
+    if(taxable < 0){
+      lossCarryForward += -taxable;
+      taxable = 0;
+    }
+    const tax = taxable * (p.taxRate / 100);
+
+    const sustainingCapex = oreMined * p.sustainingCapex;
+    const fcf = ebitda - tax - sustainingCapex;
+    cumFcf += fcf;
+    const discFcf = fcf / Math.pow(1 + monthlyDiscount, m);
+    cumDiscFcf += discFcf;
 
     months.push({
       month: m, reserve, oreMined, grade: effGrade * 100, metalProduced,
-      price: priceState, revenue, cost, profit, cumProfit,
-      discountedProfit, cumDiscProfit
+      price: priceState, revenue, cost, royalty, ebitda, tax,
+      govTake: royalty + tax, sustainingCapex, fcf, cumFcf, discFcf, cumDiscFcf
     });
   }
   return months;
@@ -457,9 +520,14 @@ const sliderMeta = {
   priceVolatility: v => '±' + v + '%',
   shockProb: v => v + '%',
   shockMag: v => (v > 0 ? '+' : '') + v + '%',
+  meanReversion: v => v + '%/mo',
   miningCost: v => '$' + v,
   processCost: v => '$' + v,
   fixedCost: v => '$' + fmtInt(v),
+  initialCapex: v => '$' + fmt(v),
+  sustainingCapex: v => '$' + v.toFixed(1),
+  royaltyRate: v => v.toFixed(1) + '%',
+  taxRate: v => v + '%',
   discountRate: v => v.toFixed(1) + '%/yr',
   horizon: v => v + ' mo',
   seed: v => v,
@@ -489,11 +557,13 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 
 // ---------- time series chart ----------
 const metricMeta = {
-  cumProfit: { label: 'Cumulative profit ($)', key: 'cumProfit', money: true },
-  cumDiscProfit: { label: 'Cumulative discounted profit / NPV ($)', key: 'cumDiscProfit', money: true },
-  profit: { label: 'Monthly profit ($)', key: 'profit', money: true },
+  cumFcf: { label: 'Cumulative net cash flow ($)', key: 'cumFcf', money: true },
+  cumDiscFcf: { label: 'NPV profile — cumulative discounted cash flow ($)', key: 'cumDiscFcf', money: true },
+  fcf: { label: 'Monthly free cash flow ($)', key: 'fcf', money: true },
+  ebitda: { label: 'Monthly EBITDA ($)', key: 'ebitda', money: true },
   revenue: { label: 'Monthly revenue ($)', key: 'revenue', money: true },
-  cost: { label: 'Monthly cost ($)', key: 'cost', money: true },
+  cost: { label: 'Monthly operating cost ($)', key: 'cost', money: true },
+  govTake: { label: 'Monthly royalties & tax ($)', key: 'govTake', money: true },
   oreMined: { label: 'Ore mined (t)', key: 'oreMined', money: false },
   metalProduced: { label: 'Metal produced (t)', key: 'metalProduced', money: false },
   grade: { label: 'Effective grade (%)', key: 'grade', money: false },
@@ -510,25 +580,70 @@ function escapeHtml(s){
     ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[ch]);
 }
 
-function summarize(run){
+// Monthly IRR: the discount rate at which NPV crosses zero, found by bracketing outward from 0
+// and bisecting. Returns null when no crossing exists (e.g. cash flows that never turn positive).
+function irr(cashflows){
+  const npvAt = r => cashflows.reduce((s, cf, i) => s + cf / Math.pow(1 + r, i), 0);
+  const atZero = npvAt(0);
+  if(!isFinite(atZero)) return null;
+  if(atZero === 0) return 0;
+
+  let lo, hi;
+  if(atZero > 0){
+    lo = 0;
+    hi = null;
+    for(let r = 0.05; r < 1e6; r *= 2){
+      if(npvAt(r) <= 0){ hi = r; break; }
+    }
+  } else {
+    hi = 0;
+    lo = null;
+    for(let r = -0.05; r > -0.999999; r = (r - 1) / 2){
+      if(npvAt(r) >= 0){ lo = r; break; }
+    }
+  }
+  if(lo === null || hi === null) return null;
+
+  for(let i = 0; i < 300; i++){
+    const mid = (lo + hi) / 2;
+    if(npvAt(mid) > 0){ lo = mid; } else { hi = mid; }
+  }
+  return (lo + hi) / 2;
+}
+
+// First month after which the series stays positive for the rest of the run, so a project that
+// briefly breaks even and then falls back into loss is not reported as paid back.
+function sustainedCrossing(run, key){
+  let lastNegative = -1;
+  for(let i = run.length - 1; i >= 0; i--){
+    if(run[i][key] <= 0){ lastNegative = i; break; }
+  }
+  return lastNegative === run.length - 1 ? null : run[lastNegative + 1].month;
+}
+
+function summarize(run, params){
   const last = run[run.length - 1];
   const totalOre = run.reduce((s,r) => s + r.oreMined, 0);
   const totalMetal = run.reduce((s,r) => s + r.metalProduced, 0);
   const totalRevenue = run.reduce((s,r) => s + r.revenue, 0);
   const totalCost = run.reduce((s,r) => s + r.cost, 0);
-  // Payback = first month after which cumulative profit stays positive for the rest of the run,
-  // so a project that breaks even then falls back into loss is not reported as paid back.
-  let lastNegative = -1;
-  for(let i = run.length - 1; i >= 0; i--){
-    if(run[i].cumProfit <= 0){ lastNegative = i; break; }
-  }
-  const payback = lastNegative === run.length - 1 ? null : run[lastNegative + 1];
+  const totalEbitda = run.reduce((s,r) => s + r.ebitda, 0);
+  const totalGovTake = run.reduce((s,r) => s + r.govTake, 0);
+  const totalSustaining = run.reduce((s,r) => s + r.sustainingCapex, 0);
+  const capex = params ? params.initialCapex : 0;
   const depleted = run.find(r => r.reserve <= 0);
+
+  const monthlyIrr = irr([-capex].concat(run.map(r => r.fcf)));
+  const annualIrr = monthlyIrr === null ? null : Math.pow(1 + monthlyIrr, 12) - 1;
+
   return {
-    totalOre, totalMetal, totalRevenue, totalCost,
-    netProfit: last.cumProfit,
-    npv: last.cumDiscProfit,
-    paybackMonth: payback ? payback.month : null,
+    totalOre, totalMetal, totalRevenue, totalCost, totalEbitda, totalGovTake, totalSustaining,
+    capex,
+    netCashFlow: last.cumFcf,
+    npv: last.cumDiscFcf,
+    annualIrr,
+    paybackMonth: sustainedCrossing(run, 'cumFcf'),
+    discPaybackMonth: sustainedCrossing(run, 'cumDiscFcf'),
     depletedMonth: depleted ? depleted.month : null,
     months: run.length,
     avgPrice: totalMetal > 0 ? totalRevenue / totalMetal : 0,
@@ -597,21 +712,22 @@ function renderScenarioTable(){
       'dashed lines, so you can change the inputs and see how the new run compares.</p>';
     return;
   }
-  const rows = [{ name: 'Current run', color: CURRENT_COLOR, sum: summarize(lastRun), current: true }]
+  const rows = [{ name: 'Current run', color: CURRENT_COLOR, sum: summarize(lastRun, readInputs()), current: true }]
     .concat(scenarios.map((s, i) => ({
-      name: s.name, color: SCENARIO_COLORS[i % SCENARIO_COLORS.length], sum: summarize(s.run), index: i
+      name: s.name, color: SCENARIO_COLORS[i % SCENARIO_COLORS.length], sum: summarize(s.run, s.params), index: i
     })));
 
   wrap.innerHTML = '<div class="table-scroll"><table class="cmp"><thead><tr>' +
-    '<th>Scenario</th><th>Net profit</th><th>NPV</th><th>Metal (t)</th><th>Ore (t)</th>' +
-    '<th>Cash cost ($/t)</th><th>Payback</th><th></th></tr></thead><tbody>' +
+    '<th>Scenario</th><th>NPV</th><th>IRR</th><th>Net cash flow</th><th>EBITDA</th>' +
+    '<th>Metal (t)</th><th>Cash cost ($/t)</th><th>Payback</th><th></th></tr></thead><tbody>' +
     rows.map(r =>
       '<tr class="' + (r.current ? 'current' : '') + '">' +
       '<td><span class="swatch" style="background:' + r.color + '"></span>' + escapeHtml(r.name) + '</td>' +
-      '<td>' + fmtMoney(r.sum.netProfit) + '</td>' +
       '<td>' + fmtMoney(r.sum.npv) + '</td>' +
+      '<td>' + (r.sum.annualIrr === null ? 'n/a' : (r.sum.annualIrr * 100).toFixed(1) + '%') + '</td>' +
+      '<td>' + fmtMoney(r.sum.netCashFlow) + '</td>' +
+      '<td>' + fmtMoney(r.sum.totalEbitda) + '</td>' +
       '<td>' + fmtInt(r.sum.totalMetal) + '</td>' +
-      '<td>' + fmtInt(r.sum.totalOre) + '</td>' +
       '<td>$' + r.sum.cashCost.toFixed(2) + '</td>' +
       '<td>' + (r.sum.paybackMonth ? 'Month ' + r.sum.paybackMonth : '—') + '</td>' +
       '<td>' + (r.current ? '' : '<button type="button" class="row-remove" data-remove="' + r.index + '">Remove</button>') + '</td>' +
@@ -628,20 +744,25 @@ function renderScenarioTable(){
 }
 
 function renderKPIs(){
-  const s = summarize(lastRun);
-  const discountRate = readInputs().discountRate;
+  const params = readInputs();
+  const s = summarize(lastRun, params);
 
   const kpis = [
     ['Total ore mined', fmtInt(s.totalOre) + ' t', null],
     ['Total metal produced', fmtInt(s.totalMetal) + ' t', null],
     ['Total revenue', fmtMoney(s.totalRevenue), null],
-    ['Total cost', fmtMoney(s.totalCost), null],
-    ['Net profit (undiscounted)', fmtMoney(s.netProfit), s.netProfit >= 0 ? 'good' : 'bad'],
-    ['NPV @ ' + discountRate.toFixed(1) + '%/yr', fmtMoney(s.npv), s.npv >= 0 ? 'good' : 'bad'],
-    ['Payback month', s.paybackMonth ? 'Month ' + s.paybackMonth : 'Not reached', s.paybackMonth ? 'good' : 'bad'],
-    ['Reserve exhausted at', s.depletedMonth ? 'Month ' + s.depletedMonth : 'Not within horizon', null],
-    ['Avg. realized price', '$' + s.avgPrice.toFixed(0) + '/t', null],
-    ['Cash cost per tonne ore', '$' + s.cashCost.toFixed(2) + '/t', null]
+    ['Operating cost', fmtMoney(s.totalCost), null],
+    ['EBITDA', fmtMoney(s.totalEbitda), s.totalEbitda >= 0 ? 'good' : 'bad'],
+    ['Royalties &amp; tax', fmtMoney(s.totalGovTake), null],
+    ['Initial capex', fmtMoney(s.capex), null],
+    ['Net cash flow (after capex)', fmtMoney(s.netCashFlow), s.netCashFlow >= 0 ? 'good' : 'bad'],
+    ['NPV @ ' + params.discountRate.toFixed(1) + '%/yr', fmtMoney(s.npv), s.npv >= 0 ? 'good' : 'bad'],
+    ['IRR (annualized)', s.annualIrr === null ? 'n/a' : (s.annualIrr * 100).toFixed(1) + '%',
+      s.annualIrr === null ? null : (s.annualIrr * 100 > params.discountRate ? 'good' : 'bad')],
+    ['Payback on capital', s.paybackMonth ? 'Month ' + s.paybackMonth : 'Not reached', s.paybackMonth ? 'good' : 'bad'],
+    ['Discounted payback', s.discPaybackMonth ? 'Month ' + s.discPaybackMonth : 'Not reached', null],
+    ['Cash cost per tonne ore', '$' + s.cashCost.toFixed(2) + '/t', null],
+    ['Reserve exhausted at', s.depletedMonth ? 'Month ' + s.depletedMonth : 'Not within horizon', null]
   ];
   document.getElementById('kpiGrid').innerHTML = kpis.map(([label, value, cls]) =>
     `<div class="kpi"><div class="label">${label}</div><div class="value ${cls || ''}">${value}</div></div>`
@@ -649,7 +770,7 @@ function renderKPIs(){
 
   document.getElementById('tsNote').textContent =
     `Seed ${document.getElementById('seed').value} · ${lastRun.length} months simulated. ` +
-    `Change the metric dropdown to inspect production, cost, price or grade dynamics instead of profit.`;
+    `Change the metric dropdown to inspect production, cost, price or grade dynamics instead of cash flow.`;
 }
 
 function runSimulation(){
@@ -676,8 +797,8 @@ document.getElementById('clearScenarios').addEventListener('click', () => {
 });
 
 document.getElementById('exportCsv').addEventListener('click', () => {
-  const cols = ['month','oreMined','grade','metalProduced','price','revenue','cost',
-                'profit','cumProfit','discountedProfit','cumDiscProfit','reserve'];
+  const cols = ['month','oreMined','grade','metalProduced','price','revenue','cost','royalty',
+                'ebitda','tax','sustainingCapex','fcf','cumFcf','discFcf','cumDiscFcf','reserve'];
   const lines = [cols.join(',')].concat(
     lastRun.map(r => cols.map(c => r[c].toFixed(2)).join(','))
   );
@@ -706,14 +827,14 @@ function runMonteCarlo(){
   const p = readInputs();
   const trials = Math.round(parseFloat(document.getElementById('mcTrials').value));
   const points = [];
-  const profits = [];
+  const npvs = [];
 
   for(let i = 0; i < trials; i++){
     const run = simulate(p, p.seed + i * 7919 + 1);
     const last = run[run.length - 1];
     const totalMetal = run.reduce((s,r) => s + r.metalProduced, 0);
-    points.push({ x: totalMetal, y: last.cumProfit });
-    profits.push(last.cumProfit);
+    points.push({ x: totalMetal, y: last.cumDiscFcf });
+    npvs.push(last.cumDiscFcf);
   }
 
   const ctx = document.getElementById('mcChart');
@@ -734,28 +855,28 @@ function runMonteCarlo(){
       maintainAspectRatio: false,
       scales: {
         x: { title: { display: true, text: 'Total metal produced (t)' } },
-        y: { title: { display: true, text: 'Final cumulative profit ($)' } }
+        y: { title: { display: true, text: 'Project NPV ($)' } }
       },
       plugins: {
         legend: { display: false },
         tooltip: {
           callbacks: {
-            label: c => `Metal: ${fmtInt(c.parsed.x)} t · Profit: ${fmtMoney(c.parsed.y)}`
+            label: c => `Metal: ${fmtInt(c.parsed.x)} t · NPV: ${fmtMoney(c.parsed.y)}`
           }
         }
       }
     }
   });
 
-  profits.sort((a,b) => a-b);
-  const mean = profits.reduce((s,v) => s+v, 0) / profits.length;
-  const variance = profits.reduce((s,v) => s + (v-mean)**2, 0) / profits.length;
+  npvs.sort((a,b) => a-b);
+  const mean = npvs.reduce((s,v) => s+v, 0) / npvs.length;
+  const variance = npvs.reduce((s,v) => s + (v-mean)**2, 0) / npvs.length;
   const stdDev = Math.sqrt(variance);
-  const pct = q => profits[clamp(Math.floor(q * profits.length), 0, profits.length-1)];
-  const profitableShare = profits.filter(v => v >= 0).length / profits.length * 100;
+  const pct = q => npvs[clamp(Math.floor(q * npvs.length), 0, npvs.length-1)];
+  const positiveShare = npvs.filter(v => v >= 0).length / npvs.length * 100;
 
   const stats = [
-    ['Mean profit', fmtMoney(mean)],
+    ['Mean NPV', fmtMoney(mean)],
     ['Std. deviation', fmtMoney(stdDev)],
     ['P10 (downside)', fmtMoney(pct(0.10))],
     ['Median (P50)', fmtMoney(pct(0.50))],
@@ -763,8 +884,8 @@ function runMonteCarlo(){
   ];
   document.getElementById('mcStats').innerHTML = stats.map(([label, value]) =>
     `<div class="kpi"><div class="label">${label}</div><div class="value">${value}</div></div>`
-  ).join('') + `<div class="kpi" style="grid-column:1/-1;"><div class="label">Trials profitable</div>` +
-    `<div class="value ${profitableShare >= 50 ? 'good' : 'bad'}">${profitableShare.toFixed(0)}% of ${trials}</div></div>`;
+  ).join('') + `<div class="kpi" style="grid-column:1/-1;"><div class="label">Probability of positive NPV</div>` +
+    `<div class="value ${positiveShare >= 50 ? 'good' : 'bad'}">${positiveShare.toFixed(0)}% of ${trials} trials</div></div>`;
 }
 document.getElementById('runMC').addEventListener('click', runMonteCarlo);
 
