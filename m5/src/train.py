@@ -51,31 +51,68 @@ PARAMS = {
 
 POOL_COLS = {"store": None, "store_cat": "cat_id", "store_dept": "dept_id"}
 
+# Tree models cannot extrapolate a level they have not seen (Januschowski et al., "Forecasting
+# with trees", IJF 2022), and M5 demand grew 14-20% year on year. Two remedies from the VN2
+# winning solution (2026 report): per-series dynamic scaling, so the model learns patterns
+# relative to each item's recent level instead of absolute volumes, and time-decayed sample
+# weights, so recent behaviour counts more. Whole-history item means are dropped because they
+# anchor forecasts to old volume levels.
+OPTIONS = {"scale": True, "decay_half_life": 365, "drop_enc": True}
+LEVEL_FEATURE = {"direct": ("rmean_28_30", "rmean_28_180"), "recursive": ("rmean_1_30", "rmean_1_60")}
 
-def train_group(grid, label, kind, last_train, rounds, params, log):
+
+def level_of(X, kind):
+    short, long = LEVEL_FEATURE[kind]
+    lvl = np.fmax(X[short].to_numpy(), 0.25 * np.nan_to_num(X[long].to_numpy()))
+    return np.fmax(np.nan_to_num(lvl), 0.05)
+
+
+def scale_frame(X, kind, opts):
+    """Divide every sales-history feature by the item's recent level; return frame and level."""
+    X = X.drop(columns=[c for c in ("enc_item_mean", "enc_item_std") if opts["drop_enc"]
+                        and c in X.columns])
+    if not opts["scale"]:
+        return X, np.ones(len(X))
+    lvl = level_of(X, kind)
+    hist = [c for c in X.columns if c.startswith(("lag_", "rmean_", "rstd_", "dow_mean_"))]
+    X[hist] = X[hist].to_numpy() / lvl[:, None]
+    X["log_level"] = np.log(lvl)
+    return X, lvl
+
+
+def train_group(grid, label, kind, last_train, rounds, params, log, opts=None):
+    opts = opts or OPTIONS
     items, wide = to_wide(grid, last_train)
     train_days = range(last_train - TRAIN_DAYS + 1, last_train + 1)
     X = assemble(grid, items, wide, kind, train_days, last_train)
-    X = X[X["sales"].notna()]
+    X = X[X["sales"].notna()].reset_index(drop=True)
+    X, lvl = scale_frame(X, kind, opts)
     feat_cols = [c for c in X.columns if c not in ("d", "sales")]
-    ds = lgb.Dataset(X[feat_cols], X["sales"], categorical_feature=CATEGORICAL,
-                     free_raw_data=True)
+    weight = lvl.copy()                               # keep the loss on the unit scale
+    if opts["decay_half_life"]:
+        weight *= 0.5 ** ((last_train - X["d"].to_numpy()) / opts["decay_half_life"])
+    ds = lgb.Dataset(X[feat_cols], X["sales"].to_numpy() / lvl, weight=weight,
+                     categorical_feature=CATEGORICAL, free_raw_data=True)
     t = time.time()
     model = lgb.train(params, ds, num_boost_round=rounds)
     log(f"  {label}: {len(X):,} rows, {len(feat_cols)} features, trained in {time.time() - t:.0f}s")
     del X, ds
 
     fc_days = list(range(last_train + 1, last_train + HORIZON + 1))
+    def predict(F):
+        Fs, lv = scale_frame(F.copy(), kind, opts)
+        return np.clip(model.predict(Fs[feat_cols]) * lv, 0, None)
+
     if kind == "direct":
         F = assemble(grid, items, wide, kind, fc_days, last_train)
-        pred = np.clip(model.predict(F[feat_cols]), 0, None)
+        pred = predict(F)
         out = F[["item_id", "d"]].assign(pred=pred)
     else:
         # Walk forward: each day's prediction becomes history for the next day's features.
         parts = []
         for day in fc_days:
             F = assemble(grid, items, wide, kind, [day], last_train)
-            pred = np.clip(model.predict(F[feat_cols]), 0, None)
+            pred = predict(F)
             rows = np.searchsorted(items, F["item_id"].to_numpy())
             wide[rows, day - 1] = pred
             parts.append(F[["item_id", "d"]].assign(pred=pred))
