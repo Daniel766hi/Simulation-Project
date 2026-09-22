@@ -1,13 +1,17 @@
 """Freeze the final forecast, then score the private window once.
 
-Order matters and is enforced here: ensemble weights and alignment strength are chosen on the
-rolling folds, the final forecast is written, and only then is anything scored on d_1942-1969.
+Order matters and is enforced here: ensemble weights, alignment strength and bias calibration
+are chosen on the rolling folds, the final forecast is written, and only then is anything
+scored on d_1942-1969.
+
+Pipeline: members -> ensemble -> top-down alignment -> walk-forward bias calibration.
 """
 import json
 import shutil
 
 import pandas as pd
 
+import calibrate
 import ensemble
 import reconcile
 from config import OUTPUTS, RAW
@@ -19,13 +23,16 @@ FOLDS, FINAL = ensemble.FOLDS, ensemble.FINAL
 def main():
     ensemble.main()
     rec = reconcile.main(base_name="ensemble", origins_tune=FOLDS, origin_final=FINAL)
+    cal = calibrate.main(name="ensemble_aligned", folds=FOLDS, final=FINAL)
     for o in (*FOLDS, FINAL):
-        shutil.copy(OUTPUTS / f"preds_ensemble_aligned_o{o}.npy", OUTPUTS / f"preds_final_o{o}.npy")
+        shutil.copy(OUTPUTS / f"preds_ensemble_aligned_cal_o{o}.npy",
+                    OUTPUTS / f"preds_final_o{o}.npy")
 
     # ---- everything below reads the private window; nothing above may change after it ----
     ens = json.loads((OUTPUTS / "ensemble.json").read_text())
-    names = ens["members"] + ["ensemble", "final"]
-    out = {"weights": ens["chosen_weights"], "alpha": rec["alpha"], "models": {}}
+    names = ens["members"] + ["ensemble", "ensemble_aligned", "final"]
+    out = {"weights": ens["chosen_weights"], "alpha": rec["alpha"],
+           "calibration": {"grain": cal["grain"], "shrink": cal["shrink"]}, "models": {}}
     for n in names:
         folds = {o: evaluator(o).score(load(f"{n}_o{o}"))[0] for o in FOLDS}
         s, lv = evaluator(FINAL).score(load(f"{n}_o{FINAL}"))

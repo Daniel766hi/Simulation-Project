@@ -3,8 +3,9 @@
 Ma & Fildes ("The performance of the global bottom-up approach in the M5 accuracy competition:
 A robustness check", IJF 2022) showed the top M5 methods were not robust across time periods
 and called the final ranking "somewhat of a lottery". So every choice here (members, weights,
-alignment strength) is scored on two rolling origins, d_1885 and d_1913, and the average
-decides. The private window (origin d_1941) is scored once, after everything is fixed.
+alignment strength, bias calibration) is scored on three rolling origins, d_1857, d_1885 and
+d_1913, and the average decides. The private window (origin d_1941) is scored once, after
+everything is fixed.
 
 Candidates:
 * each single model;
@@ -23,8 +24,8 @@ import numpy as np
 from config import OUTPUTS
 from score import evaluator
 
-MEMBERS = ["direct_store", "recursive_store", "direct_store_cat", "recursive_store_cat"]
-FOLDS = (1885, 1913)
+MEMBERS = ["mh_store", "recursive_store", "direct_store"]
+FOLDS = (1857, 1885, 1913)
 FINAL = 1941
 
 
