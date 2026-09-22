@@ -402,6 +402,12 @@
       <div class="table-scroll" id="stepTable"></div>
       <div class="note" id="stepNote"></div>
     </div>
+    <div class="panel chart-panel">
+      <div class="chart-head"><div><h2>Diagnosing a level bias: why trees under-forecast a growing business</h2>
+        <p class="sub">Direct model on stores CA_2 and TX_1, two rolling origins; other stores held at seasonal naive so only these change</p></div></div>
+      <div class="table-scroll" id="ablTable"></div>
+      <div class="note" id="ablNote"></div>
+    </div>
   </section>
 
   <!-- ============ Explorer ============ -->
@@ -664,6 +670,23 @@ function renderScoreTable(){
     '(to 4 decimals for Naive, sNaive, MA, Croston and SBA) is the proof that this project’s evaluator computes the metric exactly as Kaggle did.</p>';
 }
 
+function renderAblation(){
+  const A = DATA.scaling_ablation, keys = Object.keys(A);
+  const cfgs = [...new Set(keys.map(k => k.split('@')[0]))], origins = [...new Set(keys.map(k => k.split('@')[1]))];
+  const label = c => c.replace(/^[A-D]_/, '').replace(/_/g, ' ');
+  document.getElementById('ablTable').innerHTML = '<table class="cmp"><thead><tr><th>Setting</th>' +
+    origins.map(o => '<th>WRMSSE, origin d' + o + '</th><th>Forecast ÷ actual</th>').join('') + '</tr></thead><tbody>' +
+    cfgs.map(c => '<tr><td>' + label(c) + '</td>' + origins.map(o => { const r = A[c + '@' + o];
+      return '<td>' + fmt(r.wrmsse, 4) + '</td><td>' + r.bias.toFixed(3) + '</td>'; }).join('') + '</tr>').join('') +
+    '</tbody></table>';
+  document.getElementById('ablNote').innerHTML = '<b>What happened.</b> The first model was unbiased on its own training days ' +
+    '(forecast ÷ actual 0.99) but under-forecast the next 28 days by 7.5%. M5 demand grew 14–20% year on year, and a tree assigns ' +
+    'constant values per leaf, so it cannot extrapolate beyond levels it has seen (Januschowski et al., “Forecasting with trees”, IJF 2022). ' +
+    'The fix follows the 2026 VN2 competition winner: scale every series by its own recent level so the model learns shape rather than ' +
+    'volume, and weight recent observations more. A flat ×1.08 multiplier would have scored better on the public window, but choosing ' +
+    'a multiplier on the window being scored is leakage, so it was not used.';
+}
+
 function renderSteps(){
   const E = DATA.ensemble, R = DATA.reconcile, fm = k => FOLDS.reduce((a, f) => a + DATA.ours[k].folds[f], 0) / FOLDS.length;
   const bestSingle = Object.keys(E.single).reduce((a, b) => E.single[a] < E.single[b] ? a : b);
@@ -895,6 +918,8 @@ const REFS = [
   ['Trapero, Cardós & Kourentzes (2019). Empirical safety stock estimation based on kernel and GARCH models. Omega.', 'https://www.sciencedirect.com/science/article/abs/pii/S0305048316306090'],
   ['Trapero, Cardós & Kourentzes (2019). Quantile forecast optimal combination to enhance safety stock estimation. International Journal of Forecasting.', 'https://www.sciencedirect.com/science/article/abs/pii/S0169207018300918'],
   ['Sprangers, Wadman, Schelter & de Rijke (2024). Hierarchical forecasting at scale. International Journal of Forecasting.', 'https://www.sciencedirect.com/science/article/pii/S0169207024000116'],
+  ['Januschowski, Wang, Torkkola, Erkkilä, Hasson & Gasthaus (2022). Forecasting with trees. International Journal of Forecasting 38(4).', 'https://econpapers.repec.org/RePEc:eee:intfor:v:38:y:2022:i:4:p:1473-1481'],
+  ['VN2 Inventory Planning Challenge winner report (2026). One global model, many behaviors: stockout-aware feature engineering and dynamic scaling for multi-horizon retail demand forecasting. arXiv:2601.18919.', 'https://arxiv.org/abs/2601.18919'],
   ['Marik et al. (2026). Beyond accuracy: Evaluating forecasting models by multi-echelon inventory cost. arXiv:2603.16815.', 'https://arxiv.org/abs/2603.16815'],
 ];
 function renderMethod(){
@@ -937,7 +962,7 @@ function drawAll(){
 }
 document.getElementById('invTarget').addEventListener('change', drawInventory);
 document.getElementById('genDate').textContent = DATA.generated;
-renderHero(); renderScoreTable(); renderSteps(); renderMethod();
+renderHero(); renderScoreTable(); renderSteps(); renderAblation(); renderMethod();
 moveInk(document.querySelector('.tab-btn.active'));
 drawAll();
 </script>

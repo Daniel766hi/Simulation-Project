@@ -98,6 +98,7 @@ def main():
         "rank_equivalent": final["rank_equivalent"],
         "ensemble": json.loads((OUTPUTS / "ensemble.json").read_text()),
         "reconcile": json.loads((OUTPUTS / "reconcile.json").read_text()),
+        "scaling_ablation": json.loads((OUTPUTS / "experiment_scaling.json").read_text()),
         "benchmarks": [{"method": b["method"], "wrmsse": r(b["wrmsse"]),
                         "official": r(b["official"]),
                         "levels": [r(b["levels"][lv]) for lv, _ in LEVELS]} for b in bench],

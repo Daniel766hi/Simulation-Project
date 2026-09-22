@@ -102,6 +102,40 @@ Each store's model learns from its last 1,000 days.
   result and not a verified Kaggle submission. The process above is the only guard against
   overfitting to the answer, and it is stated here so it can be checked in the code.
 
+## What the research literature changed
+
+The first version followed the standard competition recipe. A second pass applied findings from
+the forecasting literature published since the competition; each change is tested on rolling
+folds before it is kept.
+
+| Change | Why (source) | Where |
+|---|---|---|
+| Per-series dynamic scaling and time-decayed weights; whole-history item means dropped | The first model was unbiased in sample but under-forecast the next 28 days by 7.5%: demand grew 14–20% a year and trees cannot extrapolate levels they have not seen (Januschowski et al., *Forecasting with trees*, IJF 2022). Remedy taken from the VN2 inventory-challenge winner (2026 report) | `train.py`, `experiment_scaling.py` |
+| Several data pools (store, store × category) and both horizon strategies | The M5 winner averaged 220 LightGBM models over three pools, each direct and recursive (Makridakis, Spiliotis & Assimakopoulos, IJF 2022) | `train.py`, `ensemble.py` |
+| Two rolling validation origins instead of one window | Top M5 methods were not robust across periods; the final ranking was "somewhat of a lottery" (Ma & Fildes, IJF 2022) | `ensemble.py`, `finalize.py` |
+| Top-down alignment to an independent store × department model | The M5 runner-up aligned bottom forecasts to separate top-level forecasts (Anderer & Li, IJF 2022); why combining levels helps (Athanasopoulos et al., *Forecast reconciliation: a review*, IJF 2024) | `reconcile.py` |
+| Cost-based inventory evaluation, intermittent-demand methods included | Accuracy and inventory cost are not the same ranking, especially for intermittent items (Theodorou, Spiliotis & Assimakopoulos, EJOR 2025; Marik et al., 2026) | `inventory_sim.py` |
+| Empirical vs normal safety stock | Gaussian iid errors are a poor assumption; empirical quantiles set safety stock more reliably (Trapero, Cardós & Kourentzes, Omega 2019 and IJF 2019) | `inventory_sim.py` |
+
+Not tried: time-series foundation models (Chronos, TimesFM). Recent benchmarks show them
+competitive on regular, strongly seasonal series, but their weights are hosted on Hugging Face,
+which the build environment could not reach.
+
+### References
+
+- Makridakis, S., Spiliotis, E., & Assimakopoulos, V. (2022). M5 accuracy competition: Results, findings, and conclusions. *International Journal of Forecasting*, 38(4), 1346–1364.
+- Anderer, M., & Li, F. (2022). Hierarchical forecasting with a top-down alignment of independent-level forecasts. *International Journal of Forecasting*.
+- Ma, S., & Fildes, R. (2022). The performance of the global bottom-up approach in the M5 accuracy competition: A robustness check. *International Journal of Forecasting*.
+- Januschowski, T., Wang, Y., Torkkola, K., Erkkilä, T., Hasson, H., & Gasthaus, J. (2022). Forecasting with trees. *International Journal of Forecasting*, 38(4), 1473–1481.
+- Athanasopoulos, G., Hyndman, R. J., Kourentzes, N., & Panagiotelis, A. (2024). Forecast reconciliation: A review. *International Journal of Forecasting*, 40(2), 430–456.
+- Kolassa, S. (2023). Do we want coherent hierarchical forecasts, or minimal MAPEs or MAEs? (We won't get both!). *International Journal of Forecasting*, 39(4), 1512–1517.
+- Sprangers, O., Wadman, W., Schelter, S., & de Rijke, M. (2024). Hierarchical forecasting at scale. *International Journal of Forecasting*.
+- Theodorou, E., Spiliotis, E., & Assimakopoulos, V. (2025). Forecast accuracy and inventory performance: Insights on their relationship from the M5 competition data. *European Journal of Operational Research*, 322(2), 414–426.
+- Trapero, J. R., Cardós, M., & Kourentzes, N. (2019). Empirical safety stock estimation based on kernel and GARCH models. *Omega*.
+- Trapero, J. R., Cardós, M., & Kourentzes, N. (2019). Quantile forecast optimal combination to enhance safety stock estimation. *International Journal of Forecasting*.
+- VN2 Inventory Planning Challenge winner report (2026). One global model, many behaviors: Stockout-aware feature engineering and dynamic scaling for multi-horizon retail demand forecasting with a cost-aware ordering policy. arXiv:2601.18919.
+- Marik, S., et al. (2026). Beyond accuracy: Evaluating forecasting models by multi-echelon inventory cost. arXiv:2603.16815.
+
 ## Data
 
 M5 data © the M5 organisers, redistributed by them for research after the competition, and
