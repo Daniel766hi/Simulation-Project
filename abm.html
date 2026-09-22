@@ -96,6 +96,7 @@
   .nav a.active{color:var(--accent);background:var(--accent-wash);border-color:var(--accent-line)}
   .nav a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
   @media(max-width:620px){.nav a{padding:6px 8px;font-size:.72rem}}
+  @media(max-width:620px){.nav{order:3;width:100%;overflow-x:auto;scrollbar-width:none}.nav a{white-space:nowrap}}
 
   /* ---- Intro ---- */
   .intro{margin:0 0 18px;color:var(--tx2);font-size:.875rem;max-width:78ch}
@@ -394,6 +395,7 @@
       <a href="index.html">Mine economics</a>
       <a href="abm.html" class="active" aria-current="page">Supply chain ABM</a>
       <a href="bass.html">Bass diffusion</a>
+      <a href="m5.html">M5 forecasting</a>
     </nav>
     <button type="button" class="icon-btn" id="themeToggle" aria-label="Switch between dark and light theme">
       <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>

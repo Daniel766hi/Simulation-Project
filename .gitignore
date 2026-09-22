@@ -1,0 +1,7 @@
+# M5 raw/processed data is downloaded by m5/src/download.py, never committed
+m5/data/
+__pycache__/
+*.pyc
+m5/outputs/*.parquet
+m5/outputs/*.pkl
+m5/outputs/models/
