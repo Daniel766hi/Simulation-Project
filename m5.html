@@ -396,6 +396,12 @@
       <div class="chart-head"><div><h2>Score table</h2><p class="sub">Validation = public-leaderboard days (used for all tuning). Evaluation = private leaderboard (scored once).</p></div></div>
       <div class="table-scroll" id="scoreTable"></div>
     </div>
+    <div class="panel chart-panel">
+      <div class="chart-head"><div><h2>What the research literature added, step by step</h2>
+        <p class="sub">Each row adds one published idea; fold mean = average of the two rolling validation windows</p></div></div>
+      <div class="table-scroll" id="stepTable"></div>
+      <div class="note" id="stepNote"></div>
+    </div>
   </section>
 
   <!-- ============ Explorer ============ -->
@@ -469,6 +475,18 @@
       <div class="chart-box tall"><canvas id="invChart" aria-label="Fill rate against inventory value"></canvas></div>
       <div class="kpi-grid" id="invKpis" style="margin-top:14px"></div>
       <div class="note" id="invNote"></div>
+    </div>
+    <div class="panel chart-panel">
+      <div class="chart-head"><div><h2>Is the most accurate forecast the cheapest?</h2>
+        <p class="sub">Total cost (holding + lost sales) with each method's cost-minimising safety factor, for three cost ratios</p></div></div>
+      <div class="table-scroll" id="costTable"></div>
+      <div class="note" id="costNote"></div>
+    </div>
+    <div class="panel chart-panel">
+      <div class="chart-head"><div><h2>Textbook vs empirical safety stock</h2>
+        <p class="sub">Cycle service level each rule actually delivers against the target, final LightGBM forecast</p></div></div>
+      <div class="table-scroll" id="calibTable"></div>
+      <div class="note" id="calibNote"></div>
     </div>
   </section>
 
@@ -551,20 +569,23 @@ function legend(id, items){
 }
 
 // ---------- derived numbers ----------
-const OURS = DATA.ours.ensemble.wrmsse;
+const OURS = DATA.ours.final.wrmsse;
+const NAMES = { direct_store:'Direct · per store', recursive_store:'Recursive · per store',
+  direct_store_cat:'Direct · per store×category', recursive_store_cat:'Recursive · per store×category',
+  ensemble:'Ensemble (before alignment)', final:'Final · ensemble + top-down alignment' };
 const SNAIVE = DATA.benchmarks.find(b => b.method === 'sNaive').wrmsse;
 const betterThan = DATA.top50.filter(t => t.wrmsse > OURS).length;
-const wouldRank = OURS <= DATA.top50[DATA.top50.length - 1].wrmsse
-  ? DATA.top50.filter(t => t.wrmsse < OURS).length + 1 : null;
+const wouldRank = DATA.rank_equivalent;
 const INV = DATA.inventory.methods;
 const invKeys = Object.keys(INV);
 const oursInvKey = invKeys.find(k => /lightgbm/i.test(k)) || invKeys[0];
+const FOLDS = Object.keys(DATA.ours.final.folds);
 
 function renderHero(){
   const inv95 = INV[oursInvKey].inventory_at_95, base95 = INV['sNaive'] && INV['sNaive'].inventory_at_95;
   const saving = inv95 && base95 ? 1 - inv95 / base95 : null;
   const cards = [
-    ['Private-leaderboard WRMSSE', fmt(OURS, 4), OURS < SNAIVE ? 'good' : '', 'ensemble of direct + recursive LightGBM'],
+    ['Private-leaderboard WRMSSE', fmt(OURS, 4), OURS < SNAIVE ? 'good' : '', '4 LightGBM models + top-down alignment'],
     ['vs seasonal-naive benchmark', pct(OURS / SNAIVE - 1), OURS < SNAIVE ? 'good' : 'bad', 'sNaive ' + fmt(SNAIVE, 3) + ' (organisers’ benchmark)'],
     ['Kaggle placement equivalent', wouldRank ? '#' + wouldRank + ' of ~5,500' : 'outside top 50',
        wouldRank ? 'good' : '', 'winner 0.520 · 50th place ' + fmt(DATA.top50[49].wrmsse, 3) + ' · retrospective'],
@@ -584,8 +605,8 @@ function drawLeaderboard(){
     .forEach(b => rows.push({label:'Benchmark · ' + b.method, v:b.wrmsse, kind:'base'}));
   [[1,'Kaggle #1'],[10,'Kaggle #10'],[25,'Kaggle #25'],[50,'Kaggle #50']].forEach(([rk, name]) =>
     rows.push({label:name + ' · ' + DATA.top50[rk-1].team, v:DATA.top50[rk-1].wrmsse, kind:'ref'}));
-  const names = {direct:'Ours · direct LightGBM', recursive:'Ours · recursive LightGBM', ensemble:'Ours · ensemble'};
-  Object.entries(DATA.ours).forEach(([k, o]) => rows.push({label:names[k] || k, v:o.wrmsse, kind:'ours'}));
+  ['direct_store','recursive_store','ensemble','final'].filter(k => DATA.ours[k])
+    .forEach(k => rows.push({label:'Ours · ' + NAMES[k], v:DATA.ours[k].wrmsse, kind:'ours'}));
   rows.sort((a, b) => a.v - b.v);
   const col = {ours:token('--s-ours'), base:token('--s-mute'), ref:token('--s-ref')};
   make('lbChart', { type:'bar',
@@ -597,7 +618,7 @@ function drawLeaderboard(){
   // Chart.js keeps y-axis ticks; recolor our labels via tooltip only (text stays text-coloured)
   document.getElementById('lbNote').innerHTML =
     '<b>How to read it.</b> Teal bars are this project, blue are published Kaggle top-50 scores, gray are the ' +
-    'organisers’ statistical benchmarks. The ensemble scores <b>' + fmt(OURS, 4) + '</b>, ' +
+    'organisers’ statistical benchmarks. The final forecast scores <b>' + fmt(OURS, 4) + '</b>, ' +
     (wouldRank ? 'which would have placed <b>#' + wouldRank + '</b> on the private leaderboard, ahead of ' + betterThan +
       ' of the published top-50 teams' : 'outside the published top 50 (50th place scored ' + fmt(DATA.top50[49].wrmsse, 3) + ')') +
     '. This is a <b>retrospective</b> result: the competition closed in 2020 ' +
@@ -609,7 +630,7 @@ function drawLevels(){
   const sn = DATA.benchmarks.find(b => b.method === 'sNaive').levels;
   const sets = [
     ['sNaive benchmark', sn, token('--s-base')],
-    ['Ours · ensemble', DATA.ours.ensemble.levels, token('--s-ours')],
+    ['Ours · final', DATA.ours.final.levels, token('--s-ours')],
     ['Kaggle winner', DATA.winner_levels, token('--s-ref')]
   ];
   legend('lvLegend', sets.map(s => [s[0], s[2], true]));
@@ -618,7 +639,7 @@ function drawLevels(){
       backgroundColor:c, borderRadius:4, borderSkipped:'start', barPercentage:.82, categoryPercentage:.72 })) },
     options:baseOpts(axes('', 'WRMSSE'), { plugins:{ legend:{display:false},
       tooltip:{ mode:'index', intersect:false, callbacks:{ label:c => ' ' + c.dataset.label + ': ' + c.parsed.y.toFixed(3) } } } }) });
-  const o = DATA.ours.ensemble.levels;
+  const o = DATA.ours.final.levels;
   document.getElementById('lvNote').innerHTML =
     'Aggregate forecasts are where machine learning gains most: at the <b>total</b> level the error falls from ' + fmt(sn[0]) +
     ' to ' + fmt(o[0]) + ', at the <b>store</b> level from ' + fmt(sn[2]) + ' to ' + fmt(o[2]) + '. At the <b>single item-store</b> ' +
@@ -628,18 +649,45 @@ function drawLevels(){
 }
 
 function renderScoreTable(){
-  const rows = [];
-  Object.entries(DATA.ours).forEach(([k, o]) => rows.push([
-    {direct:'Direct LightGBM', recursive:'Recursive LightGBM', ensemble:'Ensemble (w_direct = ' + DATA.ensemble_weight_direct + ')'}[k],
-    DATA.ours_validation[k], o.wrmsse, null, true]));
-  DATA.benchmarks.forEach(b => rows.push([b.method + ' benchmark', null, b.wrmsse, b.official, false]));
-  document.getElementById('scoreTable').innerHTML = '<table class="cmp"><thead><tr><th>Method</th>' +
-    '<th>Validation</th><th>Evaluation (private)</th><th>Official score</th><th>vs sNaive</th></tr></thead><tbody>' +
-    rows.map(([n, v, e, off, ours]) => '<tr><td>' + n + (ours ? '<span class="tag ours">ours</span>' : '') + '</td>' +
-      '<td>' + fmt(v, 4) + '</td><td class="' + (ours ? 'hl' : '') + '">' + fmt(e, 4) + '</td><td>' + fmt(off, 4) + '</td>' +
-      '<td>' + pct(e / SNAIVE - 1) + '</td></tr>').join('') + '</tbody></table>' +
-    '<p class="prose" style="margin-top:12px">“Official score” is the organisers’ published score for the same benchmark. ' +
-    'Matching it (to 4 decimals for Naive, sNaive, MA, Croston and SBA) is the proof that the evaluator in this project computes the metric exactly as Kaggle did.</p>';
+  const foldHead = FOLDS.map(o => '<th>Fold d' + (+o + 1) + '–' + (+o + 28) + '</th>').join('');
+  const rows = Object.keys(NAMES).filter(k => DATA.ours[k]).map(k => {
+    const o = DATA.ours[k];
+    return '<tr><td>' + NAMES[k] + '<span class="tag ours">ours</span></td>' +
+      FOLDS.map(f => '<td>' + fmt(o.folds[f], 4) + '</td>').join('') +
+      '<td class="hl">' + fmt(o.wrmsse, 4) + '</td><td>—</td><td>' + pct(o.wrmsse / SNAIVE - 1) + '</td></tr>';
+  }).concat(DATA.benchmarks.map(b => '<tr><td>' + b.method + ' benchmark</td>' + FOLDS.map(() => '<td>—</td>').join('') +
+      '<td>' + fmt(b.wrmsse, 4) + '</td><td>' + fmt(b.official, 4) + '</td><td>' + pct(b.wrmsse / SNAIVE - 1) + '</td></tr>'));
+  document.getElementById('scoreTable').innerHTML = '<table class="cmp"><thead><tr><th>Method</th>' + foldHead +
+    '<th>Private LB</th><th>Official score</th><th>vs sNaive</th></tr></thead><tbody>' + rows.join('') + '</tbody></table>' +
+    '<p class="prose" style="margin-top:12px">Folds are rolling origins used for every modelling choice; the second fold is the public ' +
+    'leaderboard window. “Official score” is the organisers’ published score for the same benchmark. Matching it ' +
+    '(to 4 decimals for Naive, sNaive, MA, Croston and SBA) is the proof that this project’s evaluator computes the metric exactly as Kaggle did.</p>';
+}
+
+function renderSteps(){
+  const E = DATA.ensemble, R = DATA.reconcile, fm = k => FOLDS.reduce((a, f) => a + DATA.ours[k].folds[f], 0) / FOLDS.length;
+  const bestSingle = Object.keys(E.single).reduce((a, b) => E.single[a] < E.single[b] ? a : b);
+  const steps = [
+    ['Best single model', NAMES[bestSingle], fm(bestSingle), DATA.ours[bestSingle].wrmsse,
+      'Tweedie LightGBM, one model per pool (Makridakis et al., 2022: LightGBM was used by nearly all top-50 teams)'],
+    ['+ combine pools and strategies', 'weights ' + Object.entries(DATA.weights).filter(([, w]) => w > 0)
+        .map(([k, w]) => NAMES[k].replace(' · ', ' ') + ' ' + w.toFixed(2)).join(', '),
+      fm('ensemble'), DATA.ours.ensemble.wrmsse,
+      'The M5 winner averaged store, store×category and store×department models, each direct and recursive'],
+    ['+ top-down alignment', 'α = ' + R.alpha + ' towards an independent store×department model', fm('final'), DATA.ours.final.wrmsse,
+      'Anderer & Li (2022), the M5 runner-up; reconciliation review by Athanasopoulos et al. (2024)']
+  ];
+  document.getElementById('stepTable').innerHTML = '<table class="cmp"><thead><tr><th>Step</th><th>Detail</th>' +
+    '<th>Fold mean</th><th>Private LB</th><th>Source of the idea</th></tr></thead><tbody>' +
+    steps.map(([a, b, f, p, c]) => '<tr><td>' + a + '</td><td style="white-space:normal;min-width:220px">' + b + '</td><td>' + fmt(f, 4) +
+      '</td><td class="hl">' + fmt(p, 4) + '</td><td style="white-space:normal;text-align:left;min-width:260px;color:var(--tx3)">' + c + '</td></tr>').join('') +
+    '</tbody></table>';
+  const f0 = R.folds[FOLDS[0]] || Object.values(R.folds)[0];
+  document.getElementById('stepNote').innerHTML = '<b>Why alignment helps.</b> On the folds the independent store×department ' +
+    'model had a daily error (WAPE) of ' + Object.values(R.folds).map(x => (x.agg_model_wape * 100).toFixed(1) + '%').join(' and ') +
+    ', against ' + Object.values(R.folds).map(x => (x.bottom_up_wape * 100).toFixed(1) + '%').join(' and ') +
+    ' for the same totals built bottom-up from item forecasts. Item models optimise item-level loss, so small shared biases ' +
+    'add up at the top. Every choice in this table (members, weights, α) was made on the folds before the private window was scored.';
 }
 
 // ---------- explorer ----------
@@ -662,12 +710,12 @@ function drawExplorer(){
   const H = EX.history, n = s.actual.length;
   const pad = arr => Array(H).fill(null).concat(arr);
   const cA = token('--tx2'), cO = token('--s-ours'), cB = token('--s-base');
-  legend('exLegend', [['Actual', cA], ['Ours · ensemble', cO], ['sNaive (last week repeated)', cB]]);
+  legend('exLegend', [['Actual', cA], ['Ours · final', cO], ['sNaive (last week repeated)', cB]]);
   document.getElementById('exTitle').textContent = 'Forecast vs actual · ' + levelNames[s.level] + (s.level === 'L1' ? '' : ' · ' + s.name);
   make('exChart', { type:'line',
     data:{ labels:EX.dates, datasets:[
       { label:'Actual', data:s.actual, borderColor:cA, backgroundColor:cA, borderWidth:1.5, pointRadius:0, tension:0 },
-      { label:'Ours · ensemble', data:pad(s.ours), borderColor:cO, backgroundColor:cO, borderWidth:2, pointRadius:0, tension:0 },
+      { label:'Ours · final', data:pad(s.ours), borderColor:cO, backgroundColor:cO, borderWidth:2, pointRadius:0, tension:0 },
       { label:'sNaive', data:pad(s.snaive), borderColor:cB, backgroundColor:cB, borderWidth:2, pointRadius:0, tension:0 }
     ]},
     options:baseOpts(axes('', 'Units per day', {}), {
@@ -691,10 +739,10 @@ function drawExplorer(){
 
 function drawHorizon(){
   const cO = token('--s-ours'), cB = token('--s-base');
-  legend('hzLegend', [['Ours · ensemble', cO], ['sNaive', cB]]);
-  const days = DATA.horizon_error.ensemble.map((_, i) => i + 1);
+  legend('hzLegend', [['Ours · final', cO], ['sNaive', cB]]);
+  const days = DATA.horizon_error.final.map((_, i) => i + 1);
   make('hzChart', { type:'line', data:{ labels:days, datasets:[
-      { label:'Ours · ensemble', data:DATA.horizon_error.ensemble.map(v => v * 100), borderColor:cO, backgroundColor:cO, borderWidth:2, pointRadius:3 },
+      { label:'Ours · final', data:DATA.horizon_error.final.map(v => v * 100), borderColor:cO, backgroundColor:cO, borderWidth:2, pointRadius:3 },
       { label:'sNaive', data:DATA.horizon_error.sNaive.map(v => v * 100), borderColor:cB, backgroundColor:cB, borderWidth:2, pointRadius:3 } ]},
     options:baseOpts(axes('Days ahead', 'Absolute error, % of actual'), { interaction:{mode:'index', intersect:false},
       plugins:{ legend:{display:false}, tooltip:Object.assign(baseOpts({}).plugins.tooltip,
@@ -763,13 +811,19 @@ function drawDrivers(){
 }
 
 // ---------- inventory ----------
+function invColor(k){
+  if(/lightgbm/i.test(k)) return token('--s-ours');
+  if(k === 'sNaive') return token('--s-base');
+  if(k === 'SBA') return token('--s-ref');
+  return token('--s-mute');
+}
 function drawInventory(){
   const target = parseFloat(document.getElementById('invTarget').value);
-  const colFor = k => /lightgbm/i.test(k) ? token('--s-ours') : k === 'sNaive' ? token('--s-base') : token('--s-ref');
-  legend('invLegend', invKeys.map(k => [k, colFor(k), true]));
+  legend('invLegend', invKeys.map(k => [k + (invColor(k) === token('--s-mute') ? ' (dashed)' : ''), invColor(k), true]));
   make('invChart', { type:'line', data:{ datasets:invKeys.map(k => ({ label:k,
       data:INV[k].curve.map(c => ({x:c.avg_inventory_value / 1e6, y:c.fill_rate * 100, z:c.z})),
-      borderColor:colFor(k), backgroundColor:colFor(k), borderWidth:2, pointRadius:4, tension:.25 })) },
+      borderColor:invColor(k), backgroundColor:invColor(k), borderWidth:2, pointRadius:3.5, tension:.25,
+      borderDash: invColor(k) === token('--s-mute') ? (k === 'TSB' ? [2,3] : [6,4]) : [] })) },
     options:baseOpts(Object.assign(axes('Average inventory held, $M at shelf price', 'Fill rate, % of demand served'),
         { x:Object.assign(axes('Average inventory held, $M at shelf price').x, {type:'linear'}) }),
       { plugins:{ legend:{display:false}, tooltip:Object.assign(baseOpts({}).plugins.tooltip, { callbacks:{
@@ -781,13 +835,9 @@ function drawInventory(){
     return null;
   };
   const ours = interp(oursInvKey), base = interp('sNaive');
-  const others = invKeys.filter(k => k !== oursInvKey && k !== 'sNaive');
-  document.getElementById('invKpis').innerHTML = [
-    ['Stock needed, ' + oursInvKey, ours ? money(ours) : 'not reached', ''],
-    ['Stock needed, sNaive', base ? money(base) : 'not reached', ''],
-    ...others.map(k => ['Stock needed, ' + k, interp(k) ? money(interp(k)) : 'not reached', '']),
-    ['Saving vs sNaive', ours && base ? pct(ours / base - 1) : '—', ours < base ? 'good' : 'bad']
-  ].map(([l,v,c]) => '<div class="kpi"><div class="label">' + l + '</div><div class="value ' + c + '">' + v + '</div></div>').join('');
+  document.getElementById('invKpis').innerHTML = invKeys.map(k => ['Stock needed · ' + k, interp(k) ? money(interp(k)) : 'not reached', ''])
+    .concat([['Saving vs sNaive', ours && base ? pct(ours / base - 1) : '—', ours < base ? 'good' : 'bad']])
+    .map(([l,v,c]) => '<div class="kpi"><div class="label">' + l + '</div><div class="value ' + c + '">' + v + '</div></div>').join('');
   const p = DATA.inventory.policy;
   document.getElementById('invNote').innerHTML =
     '<b>The policy.</b> Every item-store reviews stock every ' + p.review_days + ' days with a ' + p.lead_time_days + '-day lead ' +
@@ -795,33 +845,87 @@ function drawInventory(){
     (p.review_days + p.lead_time_days) + '</i>. Unmet demand is lost. σ is each method’s own out-of-sample error on the 28 days ' +
     'before, so a worse forecast pays twice: wrong order quantities <i>and</i> more safety stock. <b>Caveats:</b> a single 28-day ' +
     'window, stock valued at shelf price rather than cost, and no case packs, minimum orders or shelf capacity.';
+  renderCost(); renderCalib();
+}
+
+function renderCost(){
+  const ratios = DATA.inventory.policy.cost_ratios;
+  const minBy = r => Math.min(...invKeys.map(k => INV[k].best_by_ratio[r].cost));
+  const accRank = invKeys.slice().sort((a, b) => INV[a].wape - INV[b].wape);
+  document.getElementById('costTable').innerHTML = '<table class="cmp"><thead><tr><th>Method</th><th>Item-day WAPE</th>' +
+    ratios.map(r => '<th>Lost sale = ' + r + '× weekly holding</th>').join('') + '</tr></thead><tbody>' +
+    accRank.map(k => '<tr><td>' + k + (/lightgbm/i.test(k) ? '<span class="tag ours">ours</span>' : '') + '</td><td>' +
+      (INV[k].wape * 100).toFixed(1) + '%</td>' + ratios.map(r => { const b = INV[k].best_by_ratio[r], m = minBy(r);
+        return '<td class="' + (b.cost === m ? 'hl' : '') + '">' + money(b.cost) + ' <span style="color:var(--tx3);font-size:.72rem">z=' + b.z +
+          (b.cost === m ? '' : ', +' + ((b.cost / m - 1) * 100).toFixed(0) + '%') + '</span></td>'; }).join('') + '</tr>').join('') +
+    '</tbody></table>';
+  const winners = ratios.map(r => invKeys.find(k => INV[k].best_by_ratio[r].cost === minBy(r)));
+  document.getElementById('costNote').innerHTML = '<b>Reading it.</b> Rows are ordered by forecast accuracy. The cheapest method ' +
+    'for each cost ratio is highlighted: ' + ratios.map((r, i) => r + '× → ' + winners[i]).join(', ') + '. ' +
+    'Theodorou, Spiliotis & Assimakopoulos (EJOR 2025) found on the same M5 data that accuracy translates most directly into cost ' +
+    'when holding costs are comparable to lost-sale costs, and that the most accurate method is not always cheapest when lost ' +
+    'sales dominate, particularly for intermittent items. Holding cost here is ' + (DATA.inventory.policy.hold_per_week * 100) +
+    '% of price per unit-week; the three ratios bracket perishables (1×) to high-margin, cheap-to-store goods (20×).';
+}
+
+function renderCalib(){
+  const c = INV[oursInvKey].calibration;
+  document.getElementById('calibTable').innerHTML = '<table class="cmp"><thead><tr><th>Target cycle service</th>' +
+    '<th>Normal z·σ·√(R+L): achieved</th><th>Stock</th><th>Empirical quantile: achieved</th><th>Stock</th></tr></thead><tbody>' +
+    c.map(x => '<tr><td>' + (x.target * 100).toFixed(0) + '%</td><td>' + (x.normal_csl * 100).toFixed(1) + '%</td><td>' +
+      money(x.normal_inventory) + '</td><td class="hl">' + (x.empirical_csl * 100).toFixed(1) + '%</td><td>' + money(x.empirical_inventory) +
+      '</td></tr>').join('') + '</tbody></table>';
+  const gapN = c.reduce((a, x) => a + Math.abs(x.normal_csl - x.target), 0) / c.length;
+  const gapE = c.reduce((a, x) => a + Math.abs(x.empirical_csl - x.target), 0) / c.length;
+  document.getElementById('calibNote').innerHTML = '<b>The Gaussian assumption fails on retail data.</b> Item-day demand is ' +
+    'zero-heavy and right-skewed, so a normal safety factor misses its own service target by ' + (gapN * 100).toFixed(1) +
+    ' points on average. Replacing it with empirical quantiles of the forecast’s actual (R+L)-day errors, pooled across items of ' +
+    'similar sales velocity, cuts the miss to ' + (gapE * 100).toFixed(1) + ' points, in line with Trapero, Cardós & Kourentzes ' +
+    '(Omega 2019; IJF 2019). The better-calibrated rule holds more stock: this is the price of the service level actually promised.';
 }
 
 // ---------- method ----------
+const REFS = [
+  ['Makridakis, Spiliotis & Assimakopoulos (2022). M5 accuracy competition: Results, findings, and conclusions. International Journal of Forecasting 38(4).', 'https://www.sciencedirect.com/science/article/pii/S0169207021001874'],
+  ['Anderer & Li (2022). Hierarchical forecasting with a top-down alignment of independent-level forecasts. International Journal of Forecasting.', 'https://www.sciencedirect.com/science/article/abs/pii/S0169207021002211'],
+  ['Ma & Fildes (2022). The performance of the global bottom-up approach in the M5 accuracy competition: A robustness check. International Journal of Forecasting.', 'https://www.sciencedirect.com/science/article/abs/pii/S0169207021001400'],
+  ['Athanasopoulos, Hyndman, Kourentzes & Panagiotelis (2024). Forecast reconciliation: A review. International Journal of Forecasting 40(2).', 'https://doi.org/10.1016/j.ijforecast.2023.10.010'],
+  ['Kolassa (2023). Do we want coherent hierarchical forecasts, or minimal MAPEs or MAEs? (We won’t get both!). International Journal of Forecasting 39(4).', 'https://www.sciencedirect.com/science/article/abs/pii/S0169207022001492'],
+  ['Theodorou, Spiliotis & Assimakopoulos (2025). Forecast accuracy and inventory performance: Insights on their relationship from the M5 competition data. European Journal of Operational Research 322(2).', 'https://www.sciencedirect.com/science/article/abs/pii/S0377221724009755'],
+  ['Trapero, Cardós & Kourentzes (2019). Empirical safety stock estimation based on kernel and GARCH models. Omega.', 'https://www.sciencedirect.com/science/article/abs/pii/S0305048316306090'],
+  ['Trapero, Cardós & Kourentzes (2019). Quantile forecast optimal combination to enhance safety stock estimation. International Journal of Forecasting.', 'https://www.sciencedirect.com/science/article/abs/pii/S0169207018300918'],
+  ['Sprangers, Wadman, Schelter & de Rijke (2024). Hierarchical forecasting at scale. International Journal of Forecasting.', 'https://www.sciencedirect.com/science/article/pii/S0169207024000116'],
+  ['Marik et al. (2026). Beyond accuracy: Evaluating forecasting models by multi-echelon inventory cost. arXiv:2603.16815.', 'https://arxiv.org/abs/2603.16815'],
+];
 function renderMethod(){
   const e = DATA.evaluator;
   document.getElementById('methodPanel').innerHTML = `
   <div class="chart-head"><div><h2>How it was built</h2><p class="sub">Full pipeline in <code>m5/src/</code>; every number on this page is reproduced by <code>m5/run_all.sh</code></p></div></div>
   <p class="prose"><b>1 · An exact evaluator first.</b> WRMSSE weights each of 42,840 series by its recent dollar sales and scales its
   error by that series' own day-to-day volatility, across 12 levels of the product/store hierarchy. Before trusting any score the
-  implementation was checked against the organisers: all ${e.benchmarks ? '42,840' : ''} series weights match their file
+  implementation was checked against the organisers: all 42,840 series weights match their file
   (max difference ${e.weights_max_abs_diff.toExponential(1)}), and the Naive and seasonal-naive benchmarks reproduce the published
   scores to six decimals (${e.benchmarks.Naive.ours.toFixed(6)} and ${e.benchmarks.sNaive.ours.toFixed(6)}).</p>
   <p class="prose"><b>2 · Benchmarks.</b> Seven of the organisers' statistical benchmarks re-implemented, vectorised across all series
   (Naive, seasonal naive, moving average, exponential smoothing, Croston, SBA and TSB for intermittent demand).</p>
   <p class="prose"><b>3 · Features.</b> Per item-store-day: calendar (weekday, month, event type and distance to the next event), SNAP days
-  for the store's state, eight price features (discount vs regular price, price momentum, how many items share the price), weeks since
+  for the store's state, price features (discount vs regular price, price momentum, how many items share the price), weeks since
   launch, and sales history: lags, rolling means and volatility, same-weekday means and the share of zero-sales days.</p>
-  <p class="prose"><b>4 · Two LightGBM strategies, one model per store.</b> <i>Direct</i>: every sales feature is at least 28 days old, so one
-  model forecasts the whole horizon at once without feeding on its own predictions. <i>Recursive</i>: short lags (1–14 days); the model walks
-  forward one day at a time and each prediction becomes history for the next. Tweedie loss handles the zero-heavy, long-tailed sales distribution.
-  The two are blended with the weight chosen on the public-leaderboard window (w_direct = ${DATA.ensemble_weight_direct}).</p>
-  <p class="prose"><b>5 · Discipline.</b> All tuning used days 1914–1941 (public leaderboard). Models were then retrained on data to day 1941
-  and scored once on 1942–1969 (private leaderboard). No setting was changed after seeing the private score.</p>
-  <p class="prose"><b>6 · From accuracy to money.</b> The forecasts drive a periodic-review inventory simulation over all 30,490 item-stores,
-  translating a lower WRMSSE into the stock needed to hit a service target (Inventory impact tab).</p>
-  <p class="prose"><b>Limitations.</b> Retrospective, so not a verified Kaggle submission; single-seed models; no hyperparameter search beyond
-  a few manual trials; M5 contains no promotion flag, stock-out indicator or store traffic, which caps what any model can learn.</p>`;
+  <p class="prose"><b>4 · A model family, as the winner built it.</b> LightGBM with Tweedie loss, trained on two data pools (per store,
+  per store×category) and with two horizon strategies. <i>Direct</i>: every sales feature is at least 28 days old, so one pass forecasts the
+  whole horizon. <i>Recursive</i>: short lags; the model walks forward a day at a time, feeding on its own predictions. Four models per
+  forecast origin, combined with weights chosen on the folds.</p>
+  <p class="prose"><b>5 · Top-down alignment.</b> A separate model forecasts the 70 store×department totals; item forecasts are scaled
+  towards them with strength α = ${DATA.alpha}, chosen on the folds.</p>
+  <p class="prose"><b>6 · Robust validation.</b> Every choice was scored on two rolling origins (days 1886–1913 and 1914–1941) rather
+  than one window, following Ma &amp; Fildes (2022). Final models were retrained to day 1941 and scored once on 1942–1969.</p>
+  <p class="prose"><b>7 · From accuracy to money.</b> Forecasts drive a periodic-review, lost-sales inventory simulation over all 30,490
+  item-stores: service vs stock, total cost under three cost ratios, and textbook vs empirical safety stock.</p>
+  <p class="prose"><b>Limitations.</b> Retrospective, so not a verified Kaggle submission; single-seed models; a light manual
+  hyperparameter search only; no store×department pool (compute); time-series foundation models (Chronos, TimesFM) were not tested
+  because their weights could not be downloaded in this environment; M5 has no promotion flag, stock-out indicator or store traffic.</p>
+  <h3 style="font-size:.9rem;margin:18px 0 8px">References</h3>
+  <ol class="prose" style="padding-left:18px">${REFS.map(([t, u]) => '<li style="margin-bottom:6px"><a href="' + u + '" style="color:var(--accent)">' + t + '</a></li>').join('')}</ol>`;
 }
 
 function drawAll(){
@@ -833,7 +937,7 @@ function drawAll(){
 }
 document.getElementById('invTarget').addEventListener('change', drawInventory);
 document.getElementById('genDate').textContent = DATA.generated;
-renderHero(); renderScoreTable(); renderMethod();
+renderHero(); renderScoreTable(); renderSteps(); renderMethod();
 moveInk(document.querySelector('.tab-btn.active'));
 drawAll();
 </script>

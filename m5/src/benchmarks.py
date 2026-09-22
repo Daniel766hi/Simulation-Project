@@ -140,15 +140,18 @@ def run(last_train_day=LAST_TRAIN_EVALUATION):
     return rows, methods
 
 
+ORIGINS = (1885, LAST_TRAIN_VALIDATION, LAST_TRAIN_EVALUATION)
+
+
 def main():
     OUTPUTS.mkdir(exist_ok=True)
-    # Validation-window forecasts are kept too: the inventory simulation measures each
-    # method's out-of-sample error there before replaying the evaluation window.
-    for phase, last in (("validation", LAST_TRAIN_VALIDATION), ("evaluation", LAST_TRAIN_EVALUATION)):
-        rows, methods = run(last)
+    # Earlier-origin forecasts are kept too: the inventory simulation measures each method's
+    # out-of-sample error there, and the extra fold feeds the rolling-origin comparison.
+    for origin in ORIGINS:
+        rows, methods = run(origin)
         for name, fc in methods.items():
-            np.save(OUTPUTS / f"preds_{name}_{phase}.npy", fc.astype(np.float32))
-        if phase == "evaluation":
+            np.save(OUTPUTS / f"preds_{name}_o{origin}.npy", fc.astype(np.float32))
+        if origin == LAST_TRAIN_EVALUATION:
             (OUTPUTS / "benchmarks.json").write_text(json.dumps(rows, indent=2))
 
 

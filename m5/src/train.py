@@ -1,12 +1,16 @@
-"""Train one LightGBM model per store and forecast the 28-day horizon.
+"""Train pooled LightGBM models and forecast the 28 days after a forecast origin.
 
-    python train.py --kind direct    --phase validation   # tune: train <= d_1913, predict 1914-1941
-    python train.py --kind recursive --phase evaluation   # final: train <= d_1941, predict 1942-1969
+    python train.py --kind direct    --pool store     --origin 1913   # public-LB window
+    python train.py --kind recursive --pool store_cat --origin 1941   # private-LB window
 
-Per-store models keep each model's data small enough for a laptop and let every store learn
-its own weekly rhythm and SNAP response. The Tweedie objective suits the target: a point mass
-at zero (most item-days sell nothing) plus a long right tail on promotion and holiday days.
-Predictions are written to outputs/preds_<kind>_<phase>.npy in the row order of the official
+A pool is the slice of data one model learns from: one model per store (10 models), per store
+x category (30) or per store x department (70). The M5 winner averaged all three pools in both
+a direct and a recursive variant (Makridakis, Spiliotis & Assimakopoulos, IJF 2022): different
+pools see different cross-series patterns, so their errors are partly independent and the
+average beats each member. The Tweedie objective suits the target: a point mass at zero (most
+item-days sell nothing) plus a long right tail on promotion and holiday days.
+
+Predictions go to outputs/preds_<kind>_<pool>_o<origin>.npy in the row order of the official
 sales file so they can be scored or blended directly.
 """
 import argparse
@@ -18,9 +22,8 @@ import lightgbm as lgb
 import numpy as np
 import pandas as pd
 
-from config import (HORIZON, LAST_TRAIN_EVALUATION, LAST_TRAIN_VALIDATION, OUTPUTS,
-                    PROCESSED, RAW)
-from features import CATEGORICAL, assemble, history_features, load_grid, to_wide
+from config import HORIZON, OUTPUTS, PROCESSED, RAW
+from features import CATEGORICAL, assemble, load_grid, to_wide
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
@@ -46,8 +49,10 @@ PARAMS = {
 }
 
 
-def train_store(store, kind, last_train, rounds, params, log):
-    grid = load_grid(store)
+POOL_COLS = {"store": None, "store_cat": "cat_id", "store_dept": "dept_id"}
+
+
+def train_group(grid, label, kind, last_train, rounds, params, log):
     items, wide = to_wide(grid, last_train)
     train_days = range(last_train - TRAIN_DAYS + 1, last_train + 1)
     X = assemble(grid, items, wide, kind, train_days, last_train)
@@ -57,7 +62,7 @@ def train_store(store, kind, last_train, rounds, params, log):
                      free_raw_data=True)
     t = time.time()
     model = lgb.train(params, ds, num_boost_round=rounds)
-    log(f"  {store}: {len(X):,} rows, {len(feat_cols)} features, trained in {time.time() - t:.0f}s")
+    log(f"  {label}: {len(X):,} rows, {len(feat_cols)} features, trained in {time.time() - t:.0f}s")
     del X, ds
 
     fc_days = list(range(last_train + 1, last_train + HORIZON + 1))
@@ -79,6 +84,20 @@ def train_store(store, kind, last_train, rounds, params, log):
     return out, imp
 
 
+def train_store(store, pool, kind, last_train, rounds, params, log):
+    grid = load_grid(store)
+    col = POOL_COLS[pool]
+    if col is None:
+        return train_group(grid, store, kind, last_train, rounds, params, log)
+    outs, imps = [], []
+    for key, sub in grid.groupby(col):
+        out, imp = train_group(sub.reset_index(drop=True), f"{store}/{col}={key}", kind,
+                               last_train, rounds, params, log)
+        outs.append(out)
+        imps.append(imp)
+    return pd.concat(outs, ignore_index=True), pd.concat(imps, axis=1).sum(axis=1)
+
+
 def to_matrix(pred_long, last_train):
     """Reshape {store: long predictions} into the 30,490 x 28 official row order."""
     enc = pd.read_pickle(PROCESSED / "encoders.pkl")
@@ -96,17 +115,19 @@ def to_matrix(pred_long, last_train):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--kind", choices=["direct", "recursive"], default="direct")
-    ap.add_argument("--phase", choices=["validation", "evaluation"], default="validation")
+    ap.add_argument("--pool", choices=list(POOL_COLS), default="store")
+    ap.add_argument("--origin", type=int, default=1913,
+                    help="last training day; 1913 = public LB, 1941 = private LB, 1885 = extra fold")
     ap.add_argument("--rounds", type=int, default=800)
     ap.add_argument("--stores", default="all")
     ap.add_argument("--tag", default="")
     ap.add_argument("--params", default="{}", help="JSON overrides for PARAMS")
     args = ap.parse_args()
 
-    last_train = LAST_TRAIN_VALIDATION if args.phase == "validation" else LAST_TRAIN_EVALUATION
+    last_train = args.origin
     stores = STORES if args.stores == "all" else args.stores.split(",")
     params = {**PARAMS, **json.loads(args.params)}
-    name = f"{args.kind}_{args.phase}{args.tag}"
+    name = f"{args.kind}_{args.pool}_o{last_train}{args.tag}"
     OUTPUTS.mkdir(exist_ok=True)
     log_file = open(OUTPUTS / f"log_{name}.txt", "w")
 
@@ -118,7 +139,8 @@ def main():
     log(f"{name}: train <= d_{last_train}, {args.rounds} rounds, params {params}")
     preds, imps = {}, []
     for store in stores:
-        preds[store], imp = train_store(store, args.kind, last_train, args.rounds, params, log)
+        preds[store], imp = train_store(store, args.pool, args.kind, last_train, args.rounds,
+                                        params, log)
         imps.append(imp.rename(store))
     np.save(OUTPUTS / f"preds_{name}.npy", to_matrix(preds, last_train))
     pd.concat(imps, axis=1).to_csv(OUTPUTS / f"importance_{name}.csv")

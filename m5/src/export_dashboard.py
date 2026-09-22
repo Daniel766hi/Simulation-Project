@@ -47,8 +47,8 @@ def explorer(full):
     first = LAST_TRAIN_EVALUATION - HISTORY + 1
     cols = [f"d_{d}" for d in range(first, LAST_TRAIN_EVALUATION + HORIZON + 1)]
     actual = S @ full[cols].to_numpy(np.float32)
-    ours = S @ np.load(OUTPUTS / "preds_ensemble_evaluation.npy")
-    snaive = S @ np.load(OUTPUTS / "preds_sNaive_evaluation.npy")
+    ours = S @ np.load(OUTPUTS / f"preds_final_o{LAST_TRAIN_EVALUATION}.npy")
+    snaive = S @ np.load(OUTPUTS / f"preds_sNaive_o{LAST_TRAIN_EVALUATION}.npy")
     series = []
     for i, row in labels.iterrows():
         name = row["series"].replace("__", " · ")
@@ -68,14 +68,15 @@ def horizon_error(full):
     act = full[[f"d_{d}" for d in range(LAST_TRAIN_EVALUATION + 1,
                                         LAST_TRAIN_EVALUATION + HORIZON + 1)]].to_numpy().sum(0)
     out = {}
-    for name in ("ensemble", "sNaive"):
-        fc = np.load(OUTPUTS / f"preds_{name}_evaluation.npy").sum(0)
+    for name in ("final", "sNaive"):
+        fc = np.load(OUTPUTS / f"preds_{name}_o{LAST_TRAIN_EVALUATION}.npy").sum(0)
         out[name] = [r(abs(f - a) / a, 4) for f, a in zip(fc, act)]
     return out
 
 
 def importance():
-    imp = pd.read_csv(OUTPUTS / "importance_direct_evaluation.csv", index_col=0).sum(axis=1)
+    imp = pd.read_csv(OUTPUTS / f"importance_direct_store_o{LAST_TRAIN_EVALUATION}.csv",
+                      index_col=0).sum(axis=1)
     imp = (imp / imp.sum()).sort_values(ascending=False)
     return [{"feature": f, "share": r(v)} for f, v in imp.head(15).items()]
 
@@ -84,16 +85,19 @@ def main():
     full, calendar, prices = load_raw()
     top50, winner_levels, official = leaderboard()
     final = json.loads((OUTPUTS / "final_scores.json").read_text())
-    ours = {k: {"wrmsse": r(v["wrmsse"]), "levels": [r(v["levels"][lv]) for lv, _ in LEVELS]}
-            for k, v in final["evaluation"].items()}
-    ours_val = {k: r(v["wrmsse"]) for k, v in final["validation"].items()}
+    ours = {k: {"wrmsse": r(v["private"]), "folds": {str(o): r(x) for o, x in v["folds"].items()},
+                "levels": [r(v["levels"][lv]) for lv, _ in LEVELS]}
+            for k, v in final["models"].items()}
     bench = json.loads((OUTPUTS / "benchmarks.json").read_text())
     data = {
         "generated": date.today().isoformat(),
         "levels": [LEVEL_NAMES[lv] for lv, _ in LEVELS],
         "ours": ours,
-        "ours_validation": ours_val,
-        "ensemble_weight_direct": final["weight_direct"],
+        "weights": final["weights"],
+        "alpha": final["alpha"],
+        "rank_equivalent": final["rank_equivalent"],
+        "ensemble": json.loads((OUTPUTS / "ensemble.json").read_text()),
+        "reconcile": json.loads((OUTPUTS / "reconcile.json").read_text()),
         "benchmarks": [{"method": b["method"], "wrmsse": r(b["wrmsse"]),
                         "official": r(b["official"]),
                         "levels": [r(b["levels"][lv]) for lv, _ in LEVELS]} for b in bench],
