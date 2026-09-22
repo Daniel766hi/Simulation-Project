@@ -23,7 +23,7 @@ import numpy as np
 import pandas as pd
 
 from config import HORIZON, OUTPUTS, PROCESSED, RAW
-from features import CATEGORICAL, assemble, load_grid, to_wide
+from features import CATEGORICAL, assemble, assemble_mh, load_grid, to_wide
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
@@ -57,7 +57,7 @@ POOL_COLS = {"store": None, "store_cat": "cat_id", "store_dept": "dept_id"}
 # relative to each item's recent level instead of absolute volumes, and time-decayed sample
 # weights, so recent behaviour counts more. Whole-history item means are dropped because they
 # anchor forecasts to old volume levels.
-OPTIONS = {"scale": True, "decay_half_life": 365, "drop_enc": True}
+OPTIONS = {"scale": True, "decay_half_life": 365, "drop_enc": True, "drop_item_id": True}
 LEVEL_FEATURE = {"direct": ("rmean_28_30", "rmean_28_180"), "recursive": ("rmean_1_30", "rmean_1_60")}
 
 
@@ -80,8 +80,46 @@ def scale_frame(X, kind, opts):
     return X, lvl
 
 
+MH_ORIGINS = 26          # training origins for the multi-horizon model, one every MH_STEP days
+MH_STEP = 14
+
+
+def train_group_mh(grid, label, last_train, rounds, params, log, opts):
+    """Origin-anchored multi-horizon model: one pass, freshest data, every horizon at once."""
+    items, wide = to_wide(grid, last_train)
+    origins = [last_train - 28 - MH_STEP * k for k in range(MH_ORIGINS)]
+    parts = []
+    for o in origins:
+        block, lvl = assemble_mh(grid, items, wide, o)
+        block["_lvl"] = lvl
+        block["_age"] = last_train - o
+        parts.append(block)
+    X = pd.concat(parts, ignore_index=True)
+    X = X[X["sales"].notna()].reset_index(drop=True)
+    # item_id as a 3,049-level categorical lets the model memorise each item's past ratio to its
+    # level; out of sample that over-shrinks slow movers, so it is dropped by default.
+    drop = {"d", "sales", "_lvl", "_age"} | ({"item_id"} if opts.get("drop_item_id") else set())
+    feat_cols = [c for c in X.columns if c not in drop]
+    lvl = X["_lvl"].to_numpy()
+    weight = lvl * (0.5 ** (X["_age"].to_numpy() / opts["decay_half_life"])
+                    if opts["decay_half_life"] else 1.0)
+    ds = lgb.Dataset(X[feat_cols], X["sales"].to_numpy() / lvl, weight=weight,
+                     categorical_feature=[c for c in CATEGORICAL if c in feat_cols],
+                     free_raw_data=True)
+    t = time.time()
+    model = lgb.train(params, ds, num_boost_round=rounds)
+    log(f"  {label}: {len(X):,} rows, {len(feat_cols)} features, trained in {time.time() - t:.0f}s")
+    del X, ds
+    F, lv = assemble_mh(grid, items, wide, last_train)
+    pred = np.clip(model.predict(F[feat_cols]) * lv, 0, None)
+    imp = pd.Series(model.feature_importance("gain"), index=feat_cols)
+    return F[["item_id", "d"]].assign(pred=pred), imp
+
+
 def train_group(grid, label, kind, last_train, rounds, params, log, opts=None):
     opts = opts or OPTIONS
+    if kind == "mh":
+        return train_group_mh(grid, label, last_train, rounds, params, log, opts)
     items, wide = to_wide(grid, last_train)
     train_days = range(last_train - TRAIN_DAYS + 1, last_train + 1)
     X = assemble(grid, items, wide, kind, train_days, last_train)
@@ -151,7 +189,7 @@ def to_matrix(pred_long, last_train):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--kind", choices=["direct", "recursive"], default="direct")
+    ap.add_argument("--kind", choices=["direct", "recursive", "mh"], default="direct")
     ap.add_argument("--pool", choices=list(POOL_COLS), default="store")
     ap.add_argument("--origin", type=int, default=1913,
                     help="last training day; 1913 = public LB, 1941 = private LB, 1885 = extra fold")
