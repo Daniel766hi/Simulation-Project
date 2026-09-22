@@ -1,6 +1,7 @@
 """Ablation behind the model-design decisions (results in outputs/experiment_scaling.json).
 
-Two stores x two rolling origins x four designs. The other eight stores keep the
+Two stores x four designs, at the first rolling origin (d_1885). The three-fold comparison
+of the designs that were kept is in the final pipeline (finalize.py). The other eight stores keep the
 seasonal-naive forecast in every run, so score differences come only from these two stores.
 
 A  direct, lag >= 28 relative to the target day (the common M5 public-kernel design)
@@ -18,7 +19,7 @@ from features import load_grid
 from score import evaluator
 
 STORES = ["CA_2", "TX_1"]
-ORIGINS = [1885, 1913]
+ORIGINS = [1885]
 ROUNDS = 600
 OFF = {"scale": False, "decay_half_life": 0, "drop_enc": False, "drop_item_id": False}
 CONFIGS = {
