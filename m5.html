@@ -457,7 +457,7 @@
       </div>
       <div class="panel chart-panel">
         <div class="chart-head"><div><h2>What the model relies on</h2>
-          <p class="sub">Share of total split gain, direct model, summed over the 10 store models</p></div></div>
+          <p class="sub">Share of total split gain, multi-horizon model, summed over the 10 store models</p></div></div>
         <div class="chart-box tall"><canvas id="impChart" aria-label="Feature importance"></canvas></div>
       </div>
     </div>
@@ -576,9 +576,9 @@ function legend(id, items){
 
 // ---------- derived numbers ----------
 const OURS = DATA.ours.final.wrmsse;
-const NAMES = { direct_store:'Direct · per store', recursive_store:'Recursive · per store',
-  direct_store_cat:'Direct · per store×category', recursive_store_cat:'Recursive · per store×category',
-  ensemble:'Ensemble (before alignment)', final:'Final · ensemble + top-down alignment' };
+const NAMES = { mh_store:'Multi-horizon · origin-anchored', recursive_store:'Recursive · short lags',
+  direct_store:'Direct · lag ≥ 28', ensemble:'Ensemble', ensemble_aligned:'Ensemble + top-down alignment',
+  final:'Final · + bias calibration' };
 const SNAIVE = DATA.benchmarks.find(b => b.method === 'sNaive').wrmsse;
 const betterThan = DATA.top50.filter(t => t.wrmsse > OURS).length;
 const wouldRank = DATA.rank_equivalent;
@@ -591,7 +591,7 @@ function renderHero(){
   const inv95 = INV[oursInvKey].inventory_at_95, base95 = INV['sNaive'] && INV['sNaive'].inventory_at_95;
   const saving = inv95 && base95 ? 1 - inv95 / base95 : null;
   const cards = [
-    ['Private-leaderboard WRMSSE', fmt(OURS, 4), OURS < SNAIVE ? 'good' : '', '4 LightGBM models + top-down alignment'],
+    ['Private-leaderboard WRMSSE', fmt(OURS, 4), OURS < SNAIVE ? 'good' : '', '3 LightGBM designs, aligned and bias-calibrated'],
     ['vs seasonal-naive benchmark', pct(OURS / SNAIVE - 1), OURS < SNAIVE ? 'good' : 'bad', 'sNaive ' + fmt(SNAIVE, 3) + ' (organisers’ benchmark)'],
     ['Kaggle placement equivalent', wouldRank ? '#' + wouldRank + ' of ~5,500' : 'outside top 50',
        wouldRank ? 'good' : '', 'winner 0.520 · 50th place ' + fmt(DATA.top50[49].wrmsse, 3) + ' · retrospective'],
@@ -611,7 +611,7 @@ function drawLeaderboard(){
     .forEach(b => rows.push({label:'Benchmark · ' + b.method, v:b.wrmsse, kind:'base'}));
   [[1,'Kaggle #1'],[10,'Kaggle #10'],[25,'Kaggle #25'],[50,'Kaggle #50']].forEach(([rk, name]) =>
     rows.push({label:name + ' · ' + DATA.top50[rk-1].team, v:DATA.top50[rk-1].wrmsse, kind:'ref'}));
-  ['direct_store','recursive_store','ensemble','final'].filter(k => DATA.ours[k])
+  ['mh_store','recursive_store','direct_store','final'].filter(k => DATA.ours[k])
     .forEach(k => rows.push({label:'Ours · ' + NAMES[k], v:DATA.ours[k].wrmsse, kind:'ours'}));
   rows.sort((a, b) => a.v - b.v);
   const col = {ours:token('--s-ours'), base:token('--s-mute'), ref:token('--s-ref')};
@@ -680,28 +680,35 @@ function renderAblation(){
       return '<td>' + fmt(r.wrmsse, 4) + '</td><td>' + r.bias.toFixed(3) + '</td>'; }).join('') + '</tr>').join('') +
     '</tbody></table>';
   document.getElementById('ablNote').innerHTML = '<b>What happened.</b> The first model was unbiased on its own training days ' +
-    '(forecast ÷ actual 0.99) but under-forecast the next 28 days by 7.5%. M5 demand grew 14–20% year on year, and a tree assigns ' +
-    'constant values per leaf, so it cannot extrapolate beyond levels it has seen (Januschowski et al., “Forecasting with trees”, IJF 2022). ' +
-    'The fix follows the 2026 VN2 competition winner: scale every series by its own recent level so the model learns shape rather than ' +
-    'volume, and weight recent observations more. A flat ×1.08 multiplier would have scored better on the public window, but choosing ' +
-    'a multiplier on the window being scored is leakage, so it was not used.';
+    '(forecast ÷ actual 0.99) but under-forecast the next 28 days by 7.5%. Two causes were found. (1) The common M5 “lag ≥ 28” design ' +
+    'computes features relative to the target day, so for day 1 of the horizon it ignores the 27 most recent days: its information is ' +
+    'a month stale. The origin-anchored multi-horizon design computes everything at the forecast origin and takes the horizon as a ' +
+    'feature, the single global multi-horizon model of the VN2 inventory-challenge winner (2026). (2) Trees cannot extrapolate to ' +
+    'levels they have not seen (Januschowski et al., “Forecasting with trees”, IJF 2022), so every series is scaled by its own recent ' +
+    'level and recent observations weigh more. Using item_id as a feature let the model memorise item ratios and over-shrink slow ' +
+    'movers, so it was dropped. A residual out-of-sample bias remained in every design and is corrected by walk-forward calibration. ' +
+    'A flat multiplier tuned on the window being scored (the M5 “magic multiplier”) would be leakage and was not used.';
 }
 
 function renderSteps(){
   const E = DATA.ensemble, R = DATA.reconcile, fm = k => FOLDS.reduce((a, f) => a + DATA.ours[k].folds[f], 0) / FOLDS.length;
   const bestSingle = Object.keys(E.single).reduce((a, b) => E.single[a] < E.single[b] ? a : b);
+  const C = DATA.calibration;
   const steps = [
     ['Best single model', NAMES[bestSingle], fm(bestSingle), DATA.ours[bestSingle].wrmsse,
-      'Tweedie LightGBM, one model per pool (Makridakis et al., 2022: LightGBM was used by nearly all top-50 teams)'],
-    ['+ combine pools and strategies', 'weights ' + Object.entries(DATA.weights).filter(([, w]) => w > 0)
-        .map(([k, w]) => NAMES[k].replace(' · ', ' ') + ' ' + w.toFixed(2)).join(', '),
+      'Tweedie LightGBM with dynamic scaling (VN2 winner, 2026); LightGBM used by nearly all M5 top-50 teams (Makridakis et al., 2022)'],
+    ['+ combine designs', 'weights ' + Object.entries(DATA.weights).filter(([, w]) => w > 0)
+        .map(([k, w]) => NAMES[k].split(' · ')[0] + ' ' + w.toFixed(2)).join(', '),
       fm('ensemble'), DATA.ours.ensemble.wrmsse,
-      'The M5 winner averaged store, store×category and store×department models, each direct and recursive'],
-    ['+ top-down alignment', 'α = ' + R.alpha + ' towards an independent store×department model', fm('final'), DATA.ours.final.wrmsse,
-      'Anderer & Li (2022), the M5 runner-up; reconciliation review by Athanasopoulos et al. (2024)']
+      'The M5 winner averaged direct and recursive LightGBM models over several data pools'],
+    ['+ top-down alignment', 'α = ' + R.alpha + ' towards an independent store×department model', fm('ensemble_aligned'),
+      DATA.ours.ensemble_aligned.wrmsse, 'Anderer & Li (2022), the M5 runner-up; Athanasopoulos et al. (2024)'],
+    ['+ bias calibration', 'correct by forecast ÷ actual on earlier folds · ' + C.grain + ', shrink ' + C.shrink,
+      fm('final'), DATA.ours.final.wrmsse,
+      'Bias tracking from past out-of-sample errors; factors never see the window they correct']
   ];
   document.getElementById('stepTable').innerHTML = '<table class="cmp"><thead><tr><th>Step</th><th>Detail</th>' +
-    '<th>Fold mean</th><th>Private LB</th><th>Source of the idea</th></tr></thead><tbody>' +
+    '<th>Fold mean*</th><th>Private LB</th><th>Source of the idea</th></tr></thead><tbody>' +
     steps.map(([a, b, f, p, c]) => '<tr><td>' + a + '</td><td style="white-space:normal;min-width:220px">' + b + '</td><td>' + fmt(f, 4) +
       '</td><td class="hl">' + fmt(p, 4) + '</td><td style="white-space:normal;text-align:left;min-width:260px;color:var(--tx3)">' + c + '</td></tr>').join('') +
     '</tbody></table>';
@@ -710,7 +717,8 @@ function renderSteps(){
     'model had a daily error (WAPE) of ' + Object.values(R.folds).map(x => (x.agg_model_wape * 100).toFixed(1) + '%').join(' and ') +
     ', against ' + Object.values(R.folds).map(x => (x.bottom_up_wape * 100).toFixed(1) + '%').join(' and ') +
     ' for the same totals built bottom-up from item forecasts. Item models optimise item-level loss, so small shared biases ' +
-    'add up at the top. Every choice in this table (members, weights, α) was made on the folds before the private window was scored.';
+    'add up at the top. Every choice in this table (members, weights, α, calibration) was made on the folds before the private window was scored. ' +
+    '*For the calibration row the fold mean includes the first fold uncorrected, since it has no earlier fold to learn from.';
 }
 
 // ---------- explorer ----------
@@ -936,18 +944,19 @@ function renderMethod(){
   <p class="prose"><b>3 · Features.</b> Per item-store-day: calendar (weekday, month, event type and distance to the next event), SNAP days
   for the store's state, price features (discount vs regular price, price momentum, how many items share the price), weeks since
   launch, and sales history: lags, rolling means and volatility, same-weekday means and the share of zero-sales days.</p>
-  <p class="prose"><b>4 · A model family, as the winner built it.</b> LightGBM with Tweedie loss, trained on two data pools (per store,
-  per store×category) and with two horizon strategies. <i>Direct</i>: every sales feature is at least 28 days old, so one pass forecasts the
-  whole horizon. <i>Recursive</i>: short lags; the model walks forward a day at a time, feeding on its own predictions. Four models per
-  forecast origin, combined with weights chosen on the folds.</p>
+  <p class="prose"><b>4 · Three model designs.</b> LightGBM with Tweedie loss, one model per store, every series scaled by its own recent
+  level and recent days weighted more. <i>Multi-horizon</i>: all features computed at the forecast origin, horizon as a feature, one pass
+  for all 28 days. <i>Recursive</i>: short lags; the model walks forward a day at a time, feeding on its own predictions. <i>Direct</i>:
+  lags of at least 28 days relative to the target day. Combined with weights chosen on the folds.</p>
   <p class="prose"><b>5 · Top-down alignment.</b> A separate model forecasts the 70 store×department totals; item forecasts are scaled
-  towards them with strength α = ${DATA.alpha}, chosen on the folds.</p>
-  <p class="prose"><b>6 · Robust validation.</b> Every choice was scored on two rolling origins (days 1886–1913 and 1914–1941) rather
-  than one window, following Ma &amp; Fildes (2022). Final models were retrained to day 1941 and scored once on 1942–1969.</p>
+  towards them with strength α = ${DATA.alpha}, chosen on the folds. A final bias calibration uses forecast ÷ actual measured on
+  earlier folds only (${DATA.calibration.grain}, shrink ${DATA.calibration.shrink}).</p>
+  <p class="prose"><b>6 · Robust validation.</b> Every choice was scored on three rolling origins (days 1858–1885, 1886–1913 and
+  1914–1941) rather than one window, following Ma &amp; Fildes (2022). Final models were retrained to day 1941 and scored once on 1942–1969.</p>
   <p class="prose"><b>7 · From accuracy to money.</b> Forecasts drive a periodic-review, lost-sales inventory simulation over all 30,490
   item-stores: service vs stock, total cost under three cost ratios, and textbook vs empirical safety stock.</p>
   <p class="prose"><b>Limitations.</b> Retrospective, so not a verified Kaggle submission; single-seed models; a light manual
-  hyperparameter search only; no store×department pool (compute); time-series foundation models (Chronos, TimesFM) were not tested
+  hyperparameter search only; one data pool per design (compute); time-series foundation models (Chronos, TimesFM) were not tested
   because their weights could not be downloaded in this environment; M5 has no promotion flag, stock-out indicator or store traffic.</p>
   <h3 style="font-size:.9rem;margin:18px 0 8px">References</h3>
   <ol class="prose" style="padding-left:18px">${REFS.map(([t, u]) => '<li style="margin-bottom:6px"><a href="' + u + '" style="color:var(--accent)">' + t + '</a></li>').join('')}</ol>`;

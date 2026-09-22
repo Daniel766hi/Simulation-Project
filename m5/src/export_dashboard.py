@@ -75,7 +75,7 @@ def horizon_error(full):
 
 
 def importance():
-    imp = pd.read_csv(OUTPUTS / f"importance_direct_store_o{LAST_TRAIN_EVALUATION}.csv",
+    imp = pd.read_csv(OUTPUTS / f"importance_mh_store_o{LAST_TRAIN_EVALUATION}.csv",
                       index_col=0).sum(axis=1)
     imp = (imp / imp.sum()).sort_values(ascending=False)
     return [{"feature": f, "share": r(v)} for f, v in imp.head(15).items()]
@@ -95,6 +95,7 @@ def main():
         "ours": ours,
         "weights": final["weights"],
         "alpha": final["alpha"],
+        "calibration": final["calibration"],
         "rank_equivalent": final["rank_equivalent"],
         "ensemble": json.loads((OUTPUTS / "ensemble.json").read_text()),
         "reconcile": json.loads((OUTPUTS / "reconcile.json").read_text()),
