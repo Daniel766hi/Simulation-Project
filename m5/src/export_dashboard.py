@@ -184,6 +184,9 @@ def main():
     sc = OUTPUTS / "supply_chain.json"
     if sc.exists():
         data["supply_chain"] = json.loads(sc.read_text())
+    rl = OUTPUTS / "robust_level.json"
+    if rl.exists():
+        data["robust_level"] = json.loads(rl.read_text())
     wc = OUTPUTS / "winner_comparison.json"
     if wc.exists():
         data["winner_comparison"] = json.loads(wc.read_text())

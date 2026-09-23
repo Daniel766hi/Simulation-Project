@@ -71,6 +71,24 @@ choice had been fixed on three rolling validation folds.
   Every stage beats seasonal naive by roughly 45% on unseen windows. The steps are less reliable
   one by one: the ensemble beat its best member in 3 of 7 windows, alignment helped in 5 of 7 and
   calibration in 3 of 7. Alignment is the only step that helped in most windows.
+- **More choice made it worse** (`robust_level.py`, written after the backtest). Each window's
+  settings were chosen from the windows before it only, then scored once on that window. The
+  bigger the menu, the worse the out-of-sample result (mean WRMSSE, windows d1830–1941):
+
+  | Chosen walk-forward from | Settings | Mean WRMSSE | Private window (already seen) |
+  |---|---|---|---|
+  | Member weights × alignment strength × bias rule | 675 | 0.606 | 0.586 |
+  | Bias rule only (none, pooled, last window, persistent sign) | 9 | 0.587 | 0.582 |
+  | Calibration strength only (none, half, full) | 3 | **0.582** | 0.582 |
+  | Frozen pipeline (no re-selection) | 1 | 0.585 | 0.634 |
+
+  With two to five past windows to choose from, a large search fits noise: it picked a single
+  model twice and changed its bias rule every window. The rule "correct only stores whose bias
+  kept its sign" did not help either. The one setting that held up is a half-strength
+  correction, a hedge for not knowing whether a bias will persist. It gains little on average
+  and cannot be proven on the private window, which was already seen, so the reported 0.5866
+  stays; the lesson for practice is to keep the number of choices small relative to the number
+  of test windows.
 
 ### Uncertainty track (WSPL, lower is better)
 
@@ -175,7 +193,8 @@ stores' forecasts up to the DC recovered most of the loss ($706,108).
 | 11 | `demand_drivers.py` | Price elasticity (two-way fixed effects), SNAP uplift, calendar-event effects, promotion vs markdown |
 | 12 | `inventory_sim.py` | Replays the private window through a periodic-review policy: service vs stock, total cost under three cost ratios, normal vs empirical safety stock |
 | 13 | `backtest.py` | Replays the frozen pipeline on three earlier windows never used for any choice |
-| 14 | `export_dashboard.py` | Embeds every result into `../m5.html`, including 240 real item-stores for the in-browser replenishment simulator |
+| 14 | `robust_level.py` | Walk-forward test of ensemble weights, alignment strength and bias rules chosen from menus of 675, 9 and 3 settings |
+| 15 | `export_dashboard.py` | Embeds every result into `../m5.html`, including 240 real item-stores for the in-browser replenishment simulator |
 
 `./run_all.sh` runs everything end to end (8–9 hours on a 4-core machine, almost all of it
 LightGBM training). `python3 -m pytest` runs the unit tests in seconds without the data:
