@@ -102,7 +102,10 @@ class WRMSSEEvaluator:
     def rmsse(self, forecast: np.ndarray) -> np.ndarray:
         agg_fc = self.S @ np.asarray(forecast, dtype=np.float32)
         mse = ((self.agg_actuals - agg_fc) ** 2).mean(axis=1)
-        return np.sqrt(mse / self.scale)
+        # A series with no sales history yet (not launched at an early origin) has scale 0 and
+        # weight 0; give it zero error instead of 0 * inf = NaN.
+        with np.errstate(divide="ignore", invalid="ignore"):
+            return np.where(self.scale > 0, np.sqrt(mse / np.where(self.scale > 0, self.scale, 1)), 0.0)
 
     def score(self, forecast: np.ndarray):
         """Return (overall WRMSSE, {level: score})."""

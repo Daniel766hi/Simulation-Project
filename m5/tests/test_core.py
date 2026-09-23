@@ -136,3 +136,11 @@ def test_alignment_with_alpha_zero_is_identity_and_one_matches_totals():
 def test_pinball_quantiles_are_ordered_and_symmetric():
     assert np.all(np.diff(QUANTILES) > 0)
     np.testing.assert_allclose(QUANTILES + QUANTILES[::-1], 1.0)
+
+
+def test_unlaunched_series_do_not_turn_the_score_into_nan():
+    df, cal, prices, n, act = toy_hierarchy()
+    df.loc[0, [f"d_{d}" for d in range(1, n + 1)]] = 0.0     # item not on sale yet at the origin
+    ev = WRMSSEEvaluator(df, prices, cal, n, act)
+    s, per_level = ev.score(act + 1.0)
+    assert np.isfinite(s) and all(np.isfinite(v) for v in per_level.values())

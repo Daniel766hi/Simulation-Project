@@ -56,6 +56,21 @@ choice had been fixed on three rolling validation folds.
 - **Rankings flip between windows.** Each ensemble member was the best single model in a
   different fold, and the multi-horizon model, weakest on the public window, was the best single
   model on the private one. Combining them was worth about 6% on the folds.
+- **Rolling-origin backtest** (`backtest.py`): the frozen pipeline, with no settings changed, was
+  re-run from scratch at four more origins, three of them (d1774–1801, d1802–1829, d1830–1857)
+  never used for any choice. Mean WRMSSE on those three untouched windows:
+
+  | Stage | Untouched windows (3) | All windows (7) |
+  |---|---|---|
+  | Seasonal naive | 1.182 | 1.010 |
+  | Best single model | 0.626 | 0.625 |
+  | Ensemble | 0.660 | 0.611 |
+  | + top-down alignment | 0.652 | 0.596 |
+  | + calibration (final pipeline) | 0.616 | 0.600 |
+
+  Every stage beats seasonal naive by roughly 45% on unseen windows. The steps are less reliable
+  one by one: the ensemble beat its best member in 3 of 7 windows, alignment helped in 5 of 7 and
+  calibration in 3 of 7. Alignment is the only step that helped in most windows.
 
 ### Uncertainty track (WSPL, lower is better)
 
@@ -103,6 +118,23 @@ stress test then layers synthetic promotions on real demand and asks who needs t
 them. The results table is in the dashboard's *Supply chain & bullwhip* tab; the synthetic
 counterpart of this chain is `abm.html`.
 
+Results over 20 measured weeks (six 28-day windows, d1802–1969), with holding cost at 1% of shelf
+price per unit-week and each lost sale costing 20 weeks of holding:
+
+| Strategy | DC bullwhip (order var ÷ demand var) | Total cost |
+|---|---|---|
+| Seasonal naive, no sharing (baseline) | 6.22 | $826,695 |
+| ML forecast | 4.52 | $722,400 |
+| ML forecast + information sharing | 3.74 | **$699,988** (−15.3%) |
+
+Order smoothing gave the lowest bullwhip but cost more, because the DCs ran short more often.
+ML forecasting with information sharing was cheapest in 8 of 9 one-at-a-time sensitivity settings
+(DC lead time 3/7/14 days, lost-sale cost 4/20/40× weekly holding, service target 90/95/98%),
+saving 13–18% against the baseline; when a lost sale costs only 4× weekly holding, ML with
+smoothing was cheapest. In the promotion stress test, telling only
+the stores about promotions cost more ($737,216) than telling nobody ($723,948); passing the
+stores' forecasts up to the DC recovered most of the loss ($706,108).
+
 ### Demand drivers
 
 - **Price:** own-price elasticities from −0.35 (HOUSEHOLD_2) to −1.31 (FOODS_1), estimated with
@@ -117,10 +149,10 @@ counterpart of this chain is `abm.html`.
   11,072 probable stock-outs on 6,573 item-stores, about $1.09M of revenue lost at normal selling
   rates (2.4% of sales in these stores; 1,876 longer gaps are excluded as possible delistings).
   They also bias the forecast: at every origin checked, items coming back from a stock-out were
-  under-forecast by 8–29% while regular sellers were within ±6%. A targeted correction (scale
+  under-forecast by 8–29% at all seven origins while regular sellers were within ±7%. A targeted correction (scale
   those items by the under-forecast seen at earlier windows, `stockout_correction.py`) was tested
-  walk-forward and rejected: items still off the shelf at the forecast date swung from 0.45× to
-  1.35× their actual sales between windows, because restock timing is not in the sales data.
+  walk-forward on six windows and rejected (it helped in 2 of 6): items still off the shelf at the
+  forecast date swung from 0.46× to 1.43× their actual sales between windows, because restock timing is not in the sales data.
   Fixing censored demand needs inventory or restock data, or retraining with stock-out days
   treated as missing.
 
