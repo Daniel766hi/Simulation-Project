@@ -10,9 +10,11 @@ learned only from windows before the one being scored. It does not survive that 
 split by recovered vs still-out-of-stock items explains why: items still off the shelf at the
 origin are under-forecast in some windows (restocked during the window) and over-forecast in
 others, so the size of the bias is not predictable from sales history. Fixing censored demand
-needs inventory or restock data, or retraining with stock-out days treated as missing. Windows whose forecasts were used for
-earlier choices, and the already-seen private window, are labelled as such; this correction was
-designed after the private window was scored, so it can never change the reported result.
+needs inventory or restock data, or retraining with stock-out days treated as missing.
+
+Windows whose forecasts were used for earlier choices, and the already-seen private window, are
+labelled as such; this correction was designed after the private window was scored, so it can
+never change the reported result.
 """
 import json
 
