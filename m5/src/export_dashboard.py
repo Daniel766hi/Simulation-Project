@@ -175,6 +175,9 @@ def main():
         "simulator": simulator_items(full, calendar, prices),
         "wspl_validation": json.loads((OUTPUTS / "wspl_validation.json").read_text()),
     }
+    sc = OUTPUTS / "supply_chain.json"
+    if sc.exists():
+        data["supply_chain"] = json.loads(sc.read_text())
     bt = OUTPUTS / "backtest.json"
     if bt.exists():
         data["backtest"] = json.loads(bt.read_text())
