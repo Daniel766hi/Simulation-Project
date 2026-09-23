@@ -72,8 +72,13 @@ def pout(forecast_review, target, position, beta):
     return np.maximum(forecast_review + beta * (target - forecast_review - position), 0)
 
 
-def simulate(full, fc, sigma_fc, price, windows, sharing, beta=1.0, sigma_dc=None):
-    """Run the whole network day by day, vectorised over all item-stores and item-DCs."""
+def simulate(full, fc, sigma_fc, price, windows, sharing, beta=1.0, sigma_dc=None,
+             demand_mult=None, store_fc_mult=None, dc_fc_mult=None):
+    """Run the whole network day by day, vectorised over all item-stores and item-DCs.
+
+    demand_mult scales real demand (promotional shocks); store_fc_mult / dc_fc_mult scale the
+    forecasts the stores and the sharing DCs use, i.e. who knows about the promotion.
+    """
     n = len(full)
     dc_key = (full["item_id"] + "|" + full["state_id"]).to_numpy()
     dc_codes, dc_idx = np.unique(dc_key, return_inverse=True)
@@ -81,9 +86,11 @@ def simulate(full, fc, sigma_fc, price, windows, sharing, beta=1.0, sigma_dc=Non
     first, last = windows[0] + 1, windows[-1] + HORIZON
     T = last - first + 1
     demand = full[[f"d_{d}" for d in range(first, last + 1)]].to_numpy(float)
+    if demand_mult is not None:
+        demand = demand * demand_mult
     dc_price = np.bincount(dc_idx, weights=price, minlength=n_dc) / np.bincount(dc_idx, minlength=n_dc)
 
-    def fc_at(t, days):
+    def fc_at(t, days, mult=None):
         """Store forecast of the next `days` days, made at the latest origin <= day t."""
         d = first + t
         o = max(w for w in windows if w < d)
@@ -91,7 +98,11 @@ def simulate(full, fc, sigma_fc, price, windows, sharing, beta=1.0, sigma_dc=Non
         start = d - o - 1
         idx = np.arange(start, start + days)
         idx = np.where(idx < HORIZON, idx, HORIZON - 7 + (idx - HORIZON) % 7)
-        return f[:, idx].sum(axis=1), o
+        vals = f[:, idx]
+        if mult is not None:
+            cols = np.minimum(np.arange(t, t + days), T - 1)
+            vals = vals * mult[:, cols]
+        return vals.sum(axis=1), o
 
     # initial state: stores hold their first lead time plus safety stock, DCs a full cycle
     f0, o0 = fc_at(0, R_S + L_S)
@@ -130,10 +141,10 @@ def simulate(full, fc, sigma_fc, price, windows, sharing, beta=1.0, sigma_dc=Non
             s_pipe[:, t + L_S] += ship
         # store review
         if t % R_S == 0:
-            f, o = fc_at(t, R_S + L_S)
+            f, o = fc_at(t, R_S + L_S, store_fc_mult)
             ss_s = Z * sigma_fc[o] * np.sqrt(R_S + L_S)
             position = s_on + s_pipe[:, t + 1:].sum(axis=1) + owed
-            q = pout(fc_at(t, R_S)[0], f + ss_s, position, beta)
+            q = pout(fc_at(t, R_S, store_fc_mult)[0], f + ss_s, position, beta)
             need = np.bincount(dc_idx, weights=q, minlength=n_dc)
             ratio = np.where(need > 0, np.minimum(d_on / np.maximum(need, 1e-9), 1), 1)
             ship = q * ratio[dc_idx]
@@ -152,7 +163,7 @@ def simulate(full, fc, sigma_fc, price, windows, sharing, beta=1.0, sigma_dc=Non
         # DC review, the day after store orders
         if t % R_D == 1:
             if sharing:
-                f, o = fc_at(t, R_D + L_D)
+                f, o = fc_at(t, R_D + L_D, dc_fc_mult)
                 mean = np.bincount(dc_idx, weights=f, minlength=n_dc)
                 if sigma_dc is not None:
                     # correlation-aware: sd of the DC-level (summed) forecast error
@@ -236,6 +247,60 @@ def label(src, sh, beta):
             + (" + smoothing" if beta < 1 else ""))
 
 
+PROMO_SHARE, PROMO_LIFT, PROMO_DIP, PROMOS_PER_ITEM = 0.15, 1.0, 0.25, 2
+
+
+def promo_calendar(full, windows, seed=11):
+    """Synthetic promotions on real demand: for 15% of products in each state, two one-week
+    promotions (+100%) at random weeks after the warm-up, each followed by a week at -25%
+    (customers stocked up: the pull-forward dip). Returns a day-level demand multiplier."""
+    rng = np.random.default_rng(seed)
+    first, last = windows[0] + 1, windows[-1] + HORIZON
+    T = last - first + 1
+    weeks = T // 7
+    dc_key = (full["item_id"] + "|" + full["state_id"]).to_numpy()
+    codes, dc_idx = np.unique(dc_key, return_inverse=True)
+    chosen = rng.random(len(codes)) < PROMO_SHARE
+    mult_dc = np.ones((len(codes), T))
+    for c in np.flatnonzero(chosen):
+        for wk in rng.choice(np.arange(WARMUP_WEEKS, weeks - 1), PROMOS_PER_ITEM, replace=False):
+            mult_dc[c, wk * 7:wk * 7 + 7] *= 1 + PROMO_LIFT
+            mult_dc[c, wk * 7 + 7:wk * 7 + 14] *= 1 - PROMO_DIP
+    return mult_dc[dc_idx], chosen
+
+
+def promotion_experiment(full, fcs, sigmas, sig_dc, price, windows):
+    """Who needs to know about a promotion? ML forecast, sharing DCs, four information set-ups."""
+    mult, promo_dc = promo_calendar(full, windows)
+    base_args = (full, fcs["ml"], sigmas["ml"], price, windows)
+    setups = {
+        "No promotion": dict(sharing=True),
+        "Surprise promotion (nobody knew)": dict(sharing=True, demand_mult=mult),
+        "Stores knew, DC saw only orders": dict(sharing=False, demand_mult=mult, store_fc_mult=mult),
+        "Stores knew, DC used unadjusted shared forecasts": dict(sharing=True, demand_mult=mult,
+                                                                 store_fc_mult=mult),
+        "Promotion calendar shared across the chain": dict(sharing=True, demand_mult=mult,
+                                                           store_fc_mult=mult, dc_fc_mult=mult),
+    }
+    res, per = {}, {}
+    for name, kw in setups.items():
+        r = simulate(*base_args, sigma_dc=sig_dc["ml"], **kw)
+        per[name] = r.pop("_per_dc_cost")
+        r.pop("_per_dc_bullwhip")
+        res[name] = r
+        print(f"promo | {name:50s} DC bullwhip {r['bullwhip_dc_orders']:.2f}  store fill "
+              f"{r['store_fill_rate']:.3f}  DC fill {r['dc_fill_rate']:.3f}  cost ${r['total_cost']:,.0f}")
+    ref = "Surprise promotion (nobody knew)"
+    rng = np.random.default_rng(1)
+    # paired over the promoted product-DC pairs only: the others are unaffected by design
+    tests = {k: paired(per[ref][promo_dc], per[k][promo_dc], rng)
+             for k in setups if k not in (ref, "No promotion")}
+    return {"setups": res, "paired_vs_surprise": tests,
+            "design": {"share_of_products": PROMO_SHARE, "lift": PROMO_LIFT, "dip": PROMO_DIP,
+                       "promotions_per_product": PROMOS_PER_ITEM,
+                       "promoted_product_dcs": int(promo_dc.sum())}}
+
+
 def main(windows=WINDOWS):
     full, calendar, prices = load_raw()
     price = unit_prices(full, calendar, prices, windows[0])
@@ -295,7 +360,8 @@ def main(windows=WINDOWS):
         best = min(sweep[name], key=lambda x: x["total_cost"])
         print(f"beta sweep {name:28s} cost-optimal beta {best['beta']}  cost ${best['total_cost']:,.0f}"
               f"  DC bullwhip {best['bullwhip_dc']:.2f}")
-    out = {"windows": windows, "baseline": base, "beta_sweep": sweep,
+    promo = promotion_experiment(full, fcs, sigmas, sig_dc, price, windows)
+    out = {"windows": windows, "baseline": base, "beta_sweep": sweep, "promotions": promo,
            "policy": {"store_review": R_S, "store_lead": L_S, "dc_review": R_D, "dc_lead": L_D,
                       "service": 0.95, "alpha_es": ALPHA_ES, "beta_smoothing": BETA_SMOOTH,
                       "warmup_weeks": WARMUP_WEEKS, "hold_per_week": HOLD_PER_WEEK,
