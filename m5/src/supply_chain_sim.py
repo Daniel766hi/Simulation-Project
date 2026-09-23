@@ -17,6 +17,9 @@ The 2 x 2 x 2 experiment (Lee, Padmanabhan & Whang, 1997; Chen, Drezner, Ryan & 
 * Forecast quality - stores order from the ML forecast, or from seasonal naive.
 * Information sharing - the DC forecasts from the store orders it receives (exponential
   smoothing, the traditional set-up), or from the stores' shared point-of-sale demand forecasts.
+  Its safety stock uses the error of the summed store forecasts, which carries the correlation
+  between stores; the first version assumed independent store errors, under-stocked the DCs,
+  and is kept as a comparison row.
 * Order smoothing - orders close the whole gap to the order-up-to level (beta = 1), or only a
   share of it each review (proportional order-up-to, beta < 1; Disney & Towill, 2003).
 
@@ -69,7 +72,7 @@ def pout(forecast_review, target, position, beta):
     return np.maximum(forecast_review + beta * (target - forecast_review - position), 0)
 
 
-def simulate(full, fc, sigma_fc, price, windows, sharing, beta=1.0):
+def simulate(full, fc, sigma_fc, price, windows, sharing, beta=1.0, sigma_dc=None):
     """Run the whole network day by day, vectorised over all item-stores and item-DCs."""
     n = len(full)
     dc_key = (full["item_id"] + "|" + full["state_id"]).to_numpy()
@@ -151,7 +154,12 @@ def simulate(full, fc, sigma_fc, price, windows, sharing, beta=1.0):
             if sharing:
                 f, o = fc_at(t, R_D + L_D)
                 mean = np.bincount(dc_idx, weights=f, minlength=n_dc)
-                sd = np.sqrt(np.bincount(dc_idx, weights=sigma_fc[o] ** 2, minlength=n_dc))
+                if sigma_dc is not None:
+                    # correlation-aware: sd of the DC-level (summed) forecast error
+                    sd = sigma_dc[o]
+                else:
+                    # independence assumption: store errors add in quadrature
+                    sd = np.sqrt(np.bincount(dc_idx, weights=sigma_fc[o] ** 2, minlength=n_dc))
                 ss_d = Z * sd * np.sqrt(R_D + L_D)
             else:
                 mean = es_level * (R_D + L_D) / 7
@@ -232,23 +240,35 @@ def main(windows=WINDOWS):
     full, calendar, prices = load_raw()
     price = unit_prices(full, calendar, prices, windows[0])
     prev = [windows[0] - HORIZON] + windows[:-1]           # sigma from the window before
-    fcs, sigmas = {}, {}
+    dc_idx = np.unique((full["item_id"] + "|" + full["state_id"]).to_numpy(), return_inverse=True)[1]
+    fcs, sigmas, sig_dc = {}, {}, {}
     for source in ("ml", "snaive"):
         fcs[source] = window_forecasts(full, source, sorted(set(windows + prev)))
-        sigmas[source] = {}
+        sigmas[source], sig_dc[source] = {}, {}
         for o, p in zip(windows, prev):
             act = full[[f"d_{d}" for d in range(p + 1, p + HORIZON + 1)]].to_numpy(float)
-            sigmas[source][o] = np.sqrt(((act - fcs[source][p]) ** 2).mean(axis=1))
+            err = act - fcs[source][p]
+            sigmas[source][o] = np.sqrt((err ** 2).mean(axis=1))
+            agg_err = np.stack([np.bincount(dc_idx, weights=err[:, j]) for j in range(HORIZON)], 1)
+            sig_dc[source][o] = np.sqrt((agg_err ** 2).mean(axis=1))
     results, per = {}, {}
     for src, sh, beta in SCENARIOS:
         key = label(src, sh, beta)
-        res = simulate(full, fcs[src], sigmas[src], price, windows, sh, beta)
+        res = simulate(full, fcs[src], sigmas[src], price, windows, sh, beta, sig_dc[src])
         per[key] = (res.pop("_per_dc_cost"), res.pop("_per_dc_bullwhip"))
         results[key] = res
         print(f"{key:44s} bullwhip store {res['bullwhip_store_orders']:.2f}  "
               f"DC {res['bullwhip_dc_orders']:.2f}  store fill {res['store_fill_rate']:.3f}  "
               f"DC fill {res['dc_fill_rate']:.3f}  inv S ${res['avg_store_inventory']:,.0f} "
               f"DC ${res['avg_dc_inventory']:,.0f}  cost ${res['total_cost']:,.0f}")
+    # the flaw the first version exposed: sharing with an independence-based DC safety stock
+    for src in ("snaive", "ml"):
+        key = label(src, True, 1.0) + " (independent-error safety stock)"
+        res = simulate(full, fcs[src], sigmas[src], price, windows, True, 1.0, None)
+        per[key] = (res.pop("_per_dc_cost"), res.pop("_per_dc_bullwhip"))
+        results[key] = res
+        print(f"{key:60s} DC fill {res['dc_fill_rate']:.3f}  DC inv ${res['avg_dc_inventory']:,.0f}"
+              f"  cost ${res['total_cost']:,.0f}")
     base = label("snaive", False, 1.0)
     rng = np.random.default_rng(0)
     tests = {}
@@ -268,7 +288,7 @@ def main(windows=WINDOWS):
         name = label(src, sh, 1.0)
         sweep[name] = []
         for beta in (0.2, 0.3, 0.4, 0.5, 0.6, 0.8, 1.0):
-            r = simulate(full, fcs[src], sigmas[src], price, windows, sh, beta)
+            r = simulate(full, fcs[src], sigmas[src], price, windows, sh, beta, sig_dc[src])
             sweep[name].append({"beta": beta, "bullwhip_dc": r["bullwhip_dc_orders"],
                                 "bullwhip_store": r["bullwhip_store_orders"],
                                 "total_cost": r["total_cost"], "store_fill": r["store_fill_rate"]})
