@@ -36,6 +36,19 @@ choice had been fixed on three rolling validation folds.
   against the month before. The stage before it scored 0.5443, which would have placed about
   **#6** of ~5,500 teams. Switching to it now would be choosing on the answer, so the
   pre-registered result stands. This is the robustness problem Ma & Fildes (2022) describe.
+  Post-mortem (diagnosis only, nothing was changed after it): total forecast ÷ actual per stage
+
+  | Window | Ensemble | + alignment | + calibration |
+  |---|---|---|---|
+  | d1858–1885 | 1.007 | 0.996 | 0.996 |
+  | d1886–1913 | 1.014 | 0.997 | 1.001 |
+  | d1914–1941 | 0.958 | 0.954 | 0.959 |
+  | d1942–1969 (private) | 1.035 | 1.016 | 1.035 |
+
+  The ensemble over-forecast the private window and alignment halved the error; calibration had
+  learned its store factors mostly from the under-forecast public window and pushed the level
+  back up by about 2%. A bias correction is only as good as the persistence of the bias, and
+  three folds were not enough to tell that this one was not persistent.
 - **Rankings flip between windows.** Each ensemble member was the best single model in a
   different fold, and the multi-horizon model, weakest on the public window, was the best single
   model on the private one. Combining them was worth about 6% on the folds.
