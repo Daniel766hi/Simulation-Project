@@ -38,7 +38,7 @@ choice had been fixed on three rolling validation folds.
   pre-registered result stands. This is the robustness problem Ma & Fildes (2022) describe.
 - **Rankings flip between windows.** Each ensemble member was the best single model in a
   different fold, and the multi-horizon model, weakest on the public window, was the best single
-  model on the private one. Combining them was worth 5–6% on the folds.
+  model on the private one. Combining them was worth about 6% on the folds.
 
 ### Uncertainty track (WSPL, lower is better)
 
@@ -97,12 +97,15 @@ multipliers for aggregates, a negative binomial for item-level counts.
 | 8 | `reconcile.py` | Top-down alignment to an independent store × department model |
 | 9 | `calibrate.py` | Walk-forward bias calibration from earlier folds' errors |
 | 10 | `finalize.py` | Runs 7-9 in order, then scores the private window once |
+| 10b | `validate_wspl.py`, `uncertainty.py` | Uncertainty track: WSPL evaluator checked against the organisers' benchmarks, then nine quantiles for all 42,840 series |
 | 11 | `demand_drivers.py` | Price elasticity (two-way fixed effects), SNAP uplift, calendar-event effects, promotion vs markdown |
 | 12 | `inventory_sim.py` | Replays the private window through a periodic-review policy: service vs stock, total cost under three cost ratios, normal vs empirical safety stock |
 | 13 | `export_dashboard.py` | Embeds every result into `../m5.html` |
 
 `./run_all.sh` runs everything end to end (8–9 hours on a 4-core machine, almost all of it
-LightGBM training).
+LightGBM training). `python3 -m pytest` runs the unit tests in seconds without the data:
+metric maths against hand computations, hierarchy aggregation, alignment, and a leakage test
+that plants absurd future sales and checks that no feature changes.
 
 ### 1. An exact evaluator first
 
