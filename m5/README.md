@@ -80,8 +80,8 @@ Every row is one item-store-day.
 - **Sales history** (built from an items × days matrix so training and inference share one code
   path): lags, rolling means and standard deviations, the mean of the last four same-weekday
   observations and the share of zero-sale days in the last 28, all divided by the item's recent
-  level (dynamic scaling), plus the log of that level. Whole-history item means and `item_id`
-  were dropped after the bias diagnosis below.
+  level (dynamic scaling), plus the log of that level. Whole-history item means were dropped
+  after the bias diagnosis below, and so was `item_id` in the multi-horizon model.
 
 Rows before an item's first price week are dropped: the product was not on the shelf, so its
 zeros carry no demand information.
