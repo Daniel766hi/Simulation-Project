@@ -304,6 +304,40 @@ def promotion_experiment(full, fcs, sigmas, sig_dc, price, windows):
                        "promoted_product_dcs": int(promo_dc.sum())}}
 
 
+SENSITIVITY = {"dc_lead_days": [3, 7, 14], "lost_sale_multiple": [4, 20, 40],
+               "service_level": [0.90, 0.95, 0.98]}
+
+
+def sensitivity(full, fcs, sigmas, sig_dc, price, windows):
+    """One-factor-at-a-time sensitivity: does the ranking of strategies survive when each key
+    parameter is pushed away from its base value?"""
+    global L_D, LOST_SALE, Z
+    base = {"dc_lead_days": L_D, "lost_sale_multiple": LOST_SALE, "service_level": 0.95}
+    out = []
+    for param, values in SENSITIVITY.items():
+        for v in values:
+            L_D = v if param == "dc_lead_days" else base["dc_lead_days"]
+            LOST_SALE = v if param == "lost_sale_multiple" else base["lost_sale_multiple"]
+            Z = norm.ppf(v if param == "service_level" else base["service_level"])
+            costs = {}
+            for src, sh, beta in SCENARIOS:
+                r = simulate(full, fcs[src], sigmas[src], price, windows, sh, beta, sig_dc[src])
+                costs[label(src, sh, beta)] = r["total_cost"]
+            ranking = sorted(costs, key=costs.get)
+            b = label("snaive", False, 1.0)
+            out.append({"param": param, "value": v, "is_base": v == base[param],
+                        "cheapest": ranking[0], "ranking": ranking,
+                        "saving_vs_baseline": 1 - costs[ranking[0]] / costs[b],
+                        "ml_beats_snaive": costs[label("ml", False, 1.0)] < costs[b],
+                        "sharing_helps_ml": costs[label("ml", True, 1.0)] < costs[label("ml", False, 1.0)],
+                        "smoothing_helps_ml_sharing": costs[label("ml", True, BETA_SMOOTH)]
+                        < costs[label("ml", True, 1.0)]})
+            print(f"sensitivity {param}={v}: cheapest {ranking[0]}  saving "
+                  f"{out[-1]['saving_vs_baseline']:.1%}")
+    L_D, LOST_SALE, Z = base["dc_lead_days"], base["lost_sale_multiple"], norm.ppf(0.95)
+    return out
+
+
 def main(windows=WINDOWS):
     full, calendar, prices = load_raw()
     price = unit_prices(full, calendar, prices, windows[0])
@@ -364,7 +398,9 @@ def main(windows=WINDOWS):
         print(f"beta sweep {name:28s} cost-optimal beta {best['beta']}  cost ${best['total_cost']:,.0f}"
               f"  DC bullwhip {best['bullwhip_dc']:.2f}")
     promo = promotion_experiment(full, fcs, sigmas, sig_dc, price, windows)
+    sens = sensitivity(full, fcs, sigmas, sig_dc, price, windows)
     out = {"windows": windows, "baseline": base, "beta_sweep": sweep, "promotions": promo,
+           "sensitivity": sens,
            "policy": {"store_review": R_S, "store_lead": L_S, "dc_review": R_D, "dc_lead": L_D,
                       "service": 0.95, "alpha_es": ALPHA_ES, "beta_smoothing": BETA_SMOOTH,
                       "warmup_weeks": WARMUP_WEEKS, "hold_per_week": HOLD_PER_WEEK,
