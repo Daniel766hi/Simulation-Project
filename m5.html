@@ -406,6 +406,8 @@
       <div class="chart-head"><div><h2>Diagnosing a level bias: why trees under-forecast a growing business</h2>
         <p class="sub">Direct model on stores CA_2 and TX_1, two rolling origins; other stores held at seasonal naive so only these change</p></div></div>
       <div class="table-scroll" id="ablTable"></div>
+      <h3 style="font-size:.85rem;margin:16px 0 8px;color:var(--tx2)">Then all ten stores, public-leaderboard window (d1914–1941)</h3>
+      <div class="table-scroll" id="designTable"></div>
       <div class="note" id="ablNote"></div>
     </div>
   </section>
@@ -457,7 +459,7 @@
       </div>
       <div class="panel chart-panel">
         <div class="chart-head"><div><h2>What the model relies on</h2>
-          <p class="sub">Share of total split gain, multi-horizon model, summed over the 10 store models</p></div></div>
+          <p class="sub">Share of total split gain, recursive model, summed over the 10 store models</p></div></div>
         <div class="chart-box tall"><canvas id="impChart" aria-label="Feature importance"></canvas></div>
       </div>
     </div>
@@ -576,8 +578,8 @@ function legend(id, items){
 
 // ---------- derived numbers ----------
 const OURS = DATA.ours.final.wrmsse;
-const NAMES = { mh_store:'Multi-horizon · origin-anchored', recursive_store:'Recursive · short lags',
-  direct_store:'Direct · lag ≥ 28', ensemble:'Ensemble', ensemble_aligned:'Ensemble + top-down alignment',
+const NAMES = { recursive_store:'Recursive · per store', recursive_store_cat:'Recursive · per store×category',
+  mh_store:'Multi-horizon · origin-anchored', ensemble:'Ensemble', ensemble_aligned:'Ensemble + top-down alignment',
   final:'Final · + bias calibration' };
 const SNAIVE = DATA.benchmarks.find(b => b.method === 'sNaive').wrmsse;
 const betterThan = DATA.top50.filter(t => t.wrmsse > OURS).length;
@@ -611,7 +613,7 @@ function drawLeaderboard(){
     .forEach(b => rows.push({label:'Benchmark · ' + b.method, v:b.wrmsse, kind:'base'}));
   [[1,'Kaggle #1'],[10,'Kaggle #10'],[25,'Kaggle #25'],[50,'Kaggle #50']].forEach(([rk, name]) =>
     rows.push({label:name + ' · ' + DATA.top50[rk-1].team, v:DATA.top50[rk-1].wrmsse, kind:'ref'}));
-  ['mh_store','recursive_store','direct_store','final'].filter(k => DATA.ours[k])
+  ['recursive_store','recursive_store_cat','mh_store','final'].filter(k => DATA.ours[k])
     .forEach(k => rows.push({label:'Ours · ' + NAMES[k], v:DATA.ours[k].wrmsse, kind:'ours'}));
   rows.sort((a, b) => a.v - b.v);
   const col = {ours:token('--s-ours'), base:token('--s-mute'), ref:token('--s-ref')};
@@ -679,6 +681,11 @@ function renderAblation(){
     cfgs.map(c => '<tr><td>' + label(c) + '</td>' + origins.map(o => { const r = A[c + '@' + o];
       return '<td>' + fmt(r.wrmsse, 4) + '</td><td>' + r.bias.toFixed(3) + '</td>'; }).join('') + '</tr>').join('') +
     '</tbody></table>';
+  const D = DATA.design_1913, bestD = Math.min(...D.map(d => d.wrmsse));
+  document.getElementById('designTable').innerHTML = '<table class="cmp"><thead><tr><th>Design</th><th>WRMSSE</th>' +
+    '<th>Forecast ÷ actual</th></tr></thead><tbody>' + D.map(d => '<tr><td>' + d.design + '</td><td class="' +
+    (d.wrmsse === bestD ? 'hl' : '') + '">' + fmt(d.wrmsse, 4) + '</td><td>' + d.bias.toFixed(3) + '</td></tr>').join('') +
+    '</tbody></table>';
   document.getElementById('ablNote').innerHTML = '<b>What happened.</b> The first model was unbiased on its own training days ' +
     '(forecast ÷ actual 0.99) but under-forecast the next 28 days by 7.5%. Two causes were found. (1) The common M5 “lag ≥ 28” design ' +
     'computes features relative to the target day, so for day 1 of the horizon it ignores the 27 most recent days: its information is ' +
@@ -686,7 +693,8 @@ function renderAblation(){
     'feature, the single global multi-horizon model of the VN2 inventory-challenge winner (2026). (2) Trees cannot extrapolate to ' +
     'levels they have not seen (Januschowski et al., “Forecasting with trees”, IJF 2022), so every series is scaled by its own recent ' +
     'level and recent observations weigh more. Using item_id as a feature let the model memorise item ratios and over-shrink slow ' +
-    'movers, so it was dropped. A residual out-of-sample bias remained in every design and is corrected by walk-forward calibration. ' +
+    'movers, so it was dropped. On all ten stores the scaled recursive design won clearly; scaling a stale level did not rescue the ' +
+    'direct design, so it was dropped from the ensemble. A residual out-of-sample bias remained and is corrected by walk-forward calibration. ' +
     'A flat multiplier tuned on the window being scored (the M5 “magic multiplier”) would be leakage and was not used.';
 }
 
@@ -944,10 +952,11 @@ function renderMethod(){
   <p class="prose"><b>3 · Features.</b> Per item-store-day: calendar (weekday, month, event type and distance to the next event), SNAP days
   for the store's state, price features (discount vs regular price, price momentum, how many items share the price), weeks since
   launch, and sales history: lags, rolling means and volatility, same-weekday means and the share of zero-sales days.</p>
-  <p class="prose"><b>4 · Three model designs.</b> LightGBM with Tweedie loss, one model per store, every series scaled by its own recent
-  level and recent days weighted more. <i>Multi-horizon</i>: all features computed at the forecast origin, horizon as a feature, one pass
-  for all 28 days. <i>Recursive</i>: short lags; the model walks forward a day at a time, feeding on its own predictions. <i>Direct</i>:
-  lags of at least 28 days relative to the target day. Combined with weights chosen on the folds.</p>
+  <p class="prose"><b>4 · Model designs.</b> LightGBM with Tweedie loss, every series scaled by its own recent level and recent days
+  weighted more. Three designs were compared on all stores: <i>direct</i> (lags of at least 28 days relative to the target day),
+  <i>multi-horizon</i> (all features at the forecast origin, horizon as a feature) and <i>recursive</i> (short lags; the model walks
+  forward a day at a time, feeding on its own predictions). Recursive won; the ensemble combines recursive models trained per store and
+  per store×category (the winner's pooling idea) with the multi-horizon model, weights chosen on the folds.</p>
   <p class="prose"><b>5 · Top-down alignment.</b> A separate model forecasts the 70 store×department totals; item forecasts are scaled
   towards them with strength α = ${DATA.alpha}, chosen on the folds. A final bias calibration uses forecast ÷ actual measured on
   earlier folds only (${DATA.calibration.grain}, shrink ${DATA.calibration.shrink}).</p>

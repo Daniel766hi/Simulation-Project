@@ -75,10 +75,27 @@ def horizon_error(full):
 
 
 def importance():
-    imp = pd.read_csv(OUTPUTS / f"importance_mh_store_o{LAST_TRAIN_EVALUATION}.csv",
+    imp = pd.read_csv(OUTPUTS / f"importance_recursive_store_o{LAST_TRAIN_EVALUATION}.csv",
                       index_col=0).sum(axis=1)
     imp = (imp / imp.sum()).sort_values(ascending=False)
     return [{"feature": f, "share": r(v)} for f, v in imp.head(15).items()]
+
+
+def design_comparison():
+    """All-store public-LB scores of each model design (bias = forecast / actual)."""
+    from score import evaluator
+    full = load_raw()[0]
+    act = full[[f"d_{d}" for d in range(LAST_TRAIN_VALIDATION + 1,
+                                        LAST_TRAIN_VALIDATION + HORIZON + 1)]].to_numpy().sum()
+    out = []
+    for key, label in [("direct_store_unscaled", "Direct, lag >= 28 (first version)"),
+                       ("direct_store", "Direct + dynamic scaling"),
+                       ("mh_store", "Multi-horizon, origin-anchored"),
+                       ("recursive_store", "Recursive + dynamic scaling")]:
+        p = np.load(OUTPUTS / f"preds_{key}_o{LAST_TRAIN_VALIDATION}.npy")
+        s, _ = evaluator(LAST_TRAIN_VALIDATION).score(p)
+        out.append({"design": label, "wrmsse": r(s), "bias": r(p.sum() / act)})
+    return out
 
 
 def main():
@@ -100,6 +117,7 @@ def main():
         "ensemble": json.loads((OUTPUTS / "ensemble.json").read_text()),
         "reconcile": json.loads((OUTPUTS / "reconcile.json").read_text()),
         "scaling_ablation": json.loads((OUTPUTS / "experiment_scaling.json").read_text()),
+        "design_1913": design_comparison(),
         "benchmarks": [{"method": b["method"], "wrmsse": r(b["wrmsse"]),
                         "official": r(b["official"]),
                         "levels": [r(b["levels"][lv]) for lv, _ in LEVELS]} for b in bench],
