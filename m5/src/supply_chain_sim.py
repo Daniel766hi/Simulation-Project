@@ -197,6 +197,7 @@ def simulate(full, fc, sigma_fc, price, windows, sharing, beta=1.0, sigma_dc=Non
     keep = slice(WARMUP_WEEKS, weeks)
     dem, so, do = w_dem[:, keep], w_sord[:, keep], w_dord[:, keep]
     v_dem = dem.var(axis=1).sum()
+    safe = lambda x: float(x / v_dem) if v_dem > 0 else float("nan")
     days = T - measure_from
     hold = HOLD_PER_WEEK * (s_inv_val + d_inv_val) / 7
     lost_value = (lost * price).sum()
@@ -210,9 +211,11 @@ def simulate(full, fc, sigma_fc, price, windows, sharing, beta=1.0, sigma_dc=Non
     per_bw[ok] = do.var(axis=1)[ok] / vd[ok]
     return {
         "_per_dc_cost": per_cost, "_per_dc_bullwhip": per_bw,
-        "bullwhip_store_orders": float(so.var(axis=1).sum() / v_dem),
-        "bullwhip_dc_orders": float(do.var(axis=1).sum() / v_dem),
-        "store_fill_rate": float(served.sum() / (served.sum() + lost.sum())),
+        "bullwhip_store_orders": safe(so.var(axis=1).sum()),
+        "bullwhip_dc_orders": safe(do.var(axis=1).sum()),
+        "store_fill_rate": float(served.sum() / max(served.sum() + lost.sum(), 1e-9))
+        if served.sum() + lost.sum() > 0 else float("nan"),
+        "units_served": float(served.sum()), "units_lost": float(lost.sum()),
         "dc_fill_rate": float(1 - d_short_units / max(d_req_units, 1e-9)),
         "avg_store_inventory": float(s_inv_val / days),
         "avg_dc_inventory": float(d_inv_val / days),
