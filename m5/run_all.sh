@@ -12,6 +12,7 @@ python3 benchmarks.py               # statistical benchmarks at each origin
 python3 experiment_scaling.py       # design ablation: direct vs scaled vs multi-horizon
 # Design comparison on the public-LB window, all stores: direct (lag >= 28), scaled
 # recursive, origin-anchored multi-horizon. The direct design lost and is not an ensemble member.
+python3 train.py --kind direct --tag _unscaled --no-scaling --pool store --origin 1913 --rounds 800
 python3 train.py --kind direct --pool store --origin 1913 --rounds 800
 # Ensemble members at three rolling validation origins (1857, 1885, 1913 = public LB) and the
 # final origin (1941 = private LB).

@@ -198,6 +198,8 @@ def main():
     ap.add_argument("--stores", default="all")
     ap.add_argument("--tag", default="", help="variant name, appended to the model kind")
     ap.add_argument("--train-days", type=int, default=TRAIN_DAYS)
+    ap.add_argument("--no-scaling", action="store_true",
+                    help="first-version settings: no dynamic scaling, no decay, item means kept")
     ap.add_argument("--params", default="{}", help="JSON overrides for PARAMS")
     args = ap.parse_args()
 
@@ -206,6 +208,8 @@ def main():
     params = {**PARAMS, **json.loads(args.params)}
     name = f"{args.kind}{args.tag}_{args.pool}_o{last_train}"
     TRAIN_DAYS = args.train_days
+    if args.no_scaling:
+        OPTIONS.update({"scale": False, "decay_half_life": 0, "drop_enc": False})
     OUTPUTS.mkdir(exist_ok=True)
     log_file = open(OUTPUTS / f"log_{name}.txt", "w")
 

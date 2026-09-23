@@ -88,7 +88,7 @@ def design_comparison():
     act = full[[f"d_{d}" for d in range(LAST_TRAIN_VALIDATION + 1,
                                         LAST_TRAIN_VALIDATION + HORIZON + 1)]].to_numpy().sum()
     out = []
-    for key, label in [("direct_store_unscaled", "Direct, lag >= 28 (first version)"),
+    for key, label in [("direct_unscaled_store", "Direct, lag >= 28 (first version)"),
                        ("direct_store", "Direct + dynamic scaling"),
                        ("mh_store", "Multi-horizon, origin-anchored"),
                        ("recursive_store", "Recursive + dynamic scaling"),
