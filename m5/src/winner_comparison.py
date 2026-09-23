@@ -5,13 +5,16 @@ methods are scored on the three rolling windows that played no part in any choic
 this project (forecast origins d_1773, d_1801, d_1829).
 
 The winner's recipe (YeonJun In, 1st place, code in the organisers' M5-methods repository) is
-re-implemented at equal compute: the same six components - recursive and non-recursive LightGBM,
-each trained per store, per store x category and per store x department - the same tree size
-(2,047 leaves, 4,095 rows per leaf, 50% feature and row sampling, 100 bins), no per-series
-scaling, item-level mean encodings kept, and the final forecast as the plain average of the six.
-Its 3,000 trees at learning rate 0.015 and full history are scaled to 900 trees at 0.05 on the
-same 1,000-day window this project's models use (learning rate x trees is matched: 45 vs 45).
-So this compares the recipes, not the original full-size run.
+re-implemented at compute matched to this project: the same six components - recursive and
+non-recursive LightGBM, each trained per store, per store x category and per store x department -
+no per-series scaling, item-level mean encodings kept, the winner's leaf and sampling settings
+(4,095 rows per leaf, 50% feature and row sampling, 100 bins), and the final forecast as the plain
+average of the six. Two things are scaled down and stated openly:
+- 255 leaves per tree instead of 2,047 (the same as this project's models). At full size one store
+  took 2,060 s to train against 266 s, so 18 runs would need about four days on this machine.
+- 900 trees at learning rate 0.05 on the last 1,000 days, instead of 3,000 at 0.015 on the full
+  history (learning rate x trees is matched: 45 vs 45).
+So this compares the two recipes at equal compute, not against the original full-size run.
 """
 import json
 
