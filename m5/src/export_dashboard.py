@@ -99,6 +99,46 @@ def design_comparison():
     return out
 
 
+SIM_PER_BUCKET = 80
+SIM_BUCKETS = [("Fast movers (10+ units/day)", 10, np.inf),
+               ("Medium movers (1-10 units/day)", 1, 10),
+               ("Slow movers (0.2-1 units/day)", 0.2, 1)]
+
+
+def simulator_items(full, calendar, prices):
+    """Real item-stores for the in-browser replenishment simulator: actual private-window demand,
+    both forecasts, and each forecast's out-of-sample daily error sd from the previous window."""
+    from inventory_sim import unit_prices
+    o, prev = LAST_TRAIN_EVALUATION, LAST_TRAIN_VALIDATION
+    cols = lambda a, b: [f"d_{d}" for d in range(a, b + 1)]
+    demand = full[cols(o + 1, o + HORIZON)].to_numpy(float)
+    hist = full[cols(o - 55, o)].to_numpy(float)
+    rate = full[cols(o - 27, o)].to_numpy(float).mean(axis=1)
+    price = unit_prices(full, calendar, prices, o)
+    act_prev = full[cols(prev + 1, prev + HORIZON)].to_numpy(float)
+    fc = {k: np.load(OUTPUTS / f"preds_{k}_o{o}.npy") for k in ("final", "sNaive")}
+    sd = {k: np.sqrt(((act_prev - np.load(OUTPUTS / f"preds_{k}_o{prev}.npy")) ** 2).mean(axis=1))
+          for k in ("final", "sNaive")}
+    dollars = rate * price
+    items = []
+    for label, lo, hi in SIM_BUCKETS:
+        idx = np.flatnonzero((rate >= lo) & (rate < hi) & (price > 0))
+        idx = idx[np.argsort(-dollars[idx])][:SIM_PER_BUCKET]
+        for i in idx:
+            items.append({
+                "id": f"{full['item_id'].iat[i]} · {full['store_id'].iat[i]}",
+                "group": label, "price": round(float(price[i]), 2),
+                "hist": [int(v) for v in hist[i]], "demand": [int(v) for v in demand[i]],
+                "fc": [round(float(v), 2) for v in fc["final"][i]],
+                "fc_base": [round(float(v), 2) for v in fc["sNaive"][i]],
+                "sd": round(float(sd["final"][i]), 3), "sd_base": round(float(sd["sNaive"][i]), 3),
+            })
+    unc = json.loads((OUTPUTS / "uncertainty.json").read_text())["choice"]["L12"]["chosen"]
+    r = float(unc.split("=")[1].rstrip(")")) if unc.startswith("nb") else 8.0
+    return {"items": items, "nb_r": r,
+            "dates": calendar["date"].iloc[o - 56:o + HORIZON].tolist()}
+
+
 def main():
     full, calendar, prices = load_raw()
     top50, winner_levels, official = leaderboard()
@@ -132,6 +172,7 @@ def main():
         "drivers": json.loads((OUTPUTS / "demand_drivers.json").read_text()),
         "inventory": json.loads((OUTPUTS / "inventory_sim.json").read_text()),
         "uncertainty": json.loads((OUTPUTS / "uncertainty.json").read_text()),
+        "simulator": simulator_items(full, calendar, prices),
         "wspl_validation": json.loads((OUTPUTS / "wspl_validation.json").read_text()),
     }
     blob = json.dumps(data, separators=(",", ":"))
