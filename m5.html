@@ -431,6 +431,14 @@
       <div class="table-scroll" id="stepTable"></div>
       <div class="note" id="stepNote"></div>
     </div>
+    <div class="panel chart-panel" id="btPanel" hidden>
+      <div class="chart-head"><div><h2>Robustness backtest: the frozen pipeline on seven windows</h2>
+        <p class="sub">After the final result was fixed, the same pipeline was replayed on three earlier windows that played no part in any choice</p></div></div>
+      <div class="legend-inline" id="btLegend"></div>
+      <div class="chart-box"><canvas id="btChart" aria-label="WRMSSE per window and stage"></canvas></div>
+      <div class="table-scroll" id="btTable" style="margin-top:14px"></div>
+      <div class="note" id="btNote"></div>
+    </div>
     <div class="panel chart-panel">
       <div class="chart-head"><div><h2>Diagnosing a level bias: why trees under-forecast a growing business</h2>
         <p class="sub">Direct model on stores CA_2 and TX_1, two rolling origins; other stores held at seasonal naive so only these change</p></div></div>
@@ -770,6 +778,35 @@ function renderScoreTable(){
     '<p class="prose" style="margin-top:12px">Folds are rolling origins used for every modelling choice; the second fold is the public ' +
     'leaderboard window. “Official score” is the organisers’ published score for the same benchmark. Matching it ' +
     '(to 4 decimals for Naive, sNaive, MA, Croston and SBA) is the proof that this project’s evaluator computes the metric exactly as Kaggle did.</p>';
+}
+
+function drawBacktest(){
+  const B = DATA.backtest; if(!B) return;
+  document.getElementById('btPanel').hidden = false;
+  const W = B.windows, origins = Object.keys(W);
+  const lab = o => 'd' + (+o + 1) + '–' + (+o + 28) + (W[o].role === 'backtest' ? ' (backtest)' : W[o].role === 'private' ? ' (private)' : '');
+  const stages = [['sNaive', 'Seasonal naive', token('--s-mute')], ['aligned', 'Ensemble + alignment', token('--s-ref')],
+                  ['calibrated', 'Final (+ calibration)', token('--s-ours')]];
+  legend('btLegend', stages.map(s => [s[1], s[2], true]));
+  make('btChart', { type:'bar', data:{ labels:origins.map(lab), datasets:stages.map(([k, l, c]) => ({ label:l,
+      data:origins.map(o => W[o].wrmsse[k]), backgroundColor:c, borderRadius:4, borderSkipped:'start', barPercentage:.82, categoryPercentage:.72 })) },
+    options:baseOpts(axes('', 'WRMSSE'), { plugins:{ legend:{display:false}, tooltip:Object.assign(baseOpts({}).plugins.tooltip,
+      { mode:'index', intersect:false, callbacks:{ label:c => ' ' + c.dataset.label + ': ' + c.parsed.y.toFixed(4) } }) } }) });
+  const cols = ['sNaive', 'recursive_store', 'recursive2_store', 'mh_store', 'ensemble', 'aligned', 'calibrated'];
+  const names = { sNaive:'sNaive', recursive_store:'Recursive', recursive2_store:'Recursive 2', mh_store:'Multi-horizon',
+                  ensemble:'Ensemble', aligned:'+ alignment', calibrated:'+ calibration' };
+  document.getElementById('btTable').innerHTML = '<table class="cmp"><thead><tr><th>Window</th>' +
+    cols.map(c => '<th>' + names[c] + '</th>').join('') + '</tr></thead><tbody>' + origins.map(o => {
+      const best = Math.min(...cols.map(c => W[o].wrmsse[c]));
+      return '<tr><td>' + lab(o) + '</td>' + cols.map(c => '<td class="' + (W[o].wrmsse[c] === best ? 'hl' : '') + '">' +
+        fmt(W[o].wrmsse[c], 4) + '</td>').join('') + '</tr>'; }).join('') + '</tbody></table>';
+  const S = B.summary.all, SB = B.summary.backtest;
+  document.getElementById('btNote').innerHTML = '<b>What seven windows say.</b> Across all seven windows the ensemble beat its best ' +
+    'single member in ' + S.ensemble_vs_best_member.wins + ' of ' + S.ensemble_vs_best_member.of + ', alignment improved the ensemble in ' +
+    S.alignment.wins + ' of ' + S.alignment.of + ', and calibration improved on alignment in ' + S.calibration.wins + ' of ' + S.calibration.of +
+    ' (in the three untouched backtest windows: ' + SB.calibration.wins + ' of ' + SB.calibration.of + '). Mean WRMSSE over all windows: seasonal naive ' +
+    fmt(S.mean.sNaive, 3) + ', ensemble + alignment ' + fmt(S.mean.aligned, 3) + ', final ' + fmt(S.mean.calibrated, 3) +
+    '. Nothing here changed the reported result; it tells a reader how much to trust each step.';
 }
 
 function renderUncertainty(){
@@ -1254,7 +1291,7 @@ function drawSimulator(){
 
 function drawAll(){
   const tab = document.querySelector('.tab-btn.active').dataset.tab;
-  if(tab === 'lb'){ drawLeaderboard(); drawLevels(); }
+  if(tab === 'lb'){ drawLeaderboard(); drawLevels(); drawBacktest(); }
   if(tab === 'ex'){ drawExplorer(); drawHorizon(); }
   if(tab === 'dr') drawDrivers();
   if(tab === 'inv') drawInventory();

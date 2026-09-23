@@ -175,6 +175,9 @@ def main():
         "simulator": simulator_items(full, calendar, prices),
         "wspl_validation": json.loads((OUTPUTS / "wspl_validation.json").read_text()),
     }
+    bt = OUTPUTS / "backtest.json"
+    if bt.exists():
+        data["backtest"] = json.loads(bt.read_text())
     blob = json.dumps(data, separators=(",", ":"))
     html = PAGE.read_text()
     html, n = re.subn(r"(/\*M5-DATA\*/).*?(/\*END-M5-DATA\*/)",
