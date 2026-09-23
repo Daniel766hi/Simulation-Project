@@ -1446,7 +1446,7 @@ function drawSensitivity(){
   document.getElementById('sensNote').innerHTML = '<b>Robustness.</b> ' + (same ? 'The same strategy, <b>' + S[0].cheapest + '</b>, is cheapest in every ' +
     'one of the ' + S.length + ' settings' : '<b>' + modal[0] + '</b> is cheapest in ' + modal[1] + ' of ' + S.length + ' settings' +
     (mlAll ? ', and the ML forecast is part of the cheapest strategy in all ' + S.length : '')) + ', with savings of ' + (lo * 100).toFixed(0) + '–' + (hi * 100).toFixed(0) +
-    '% against the baseline. The saving grows with longer lead times and higher service targets, where forecast quality matters most. ' +
+    '% against the baseline. The saving rises with the service target (13% at 90%, 18% at 98%), where forecast error drives safety stock; it is roughly flat across DC lead times. ' +
     'This, together with the extreme-condition and mass-balance tests in <code>m5/tests/</code>, is the evidence that the conclusion is a property ' +
     'of the chain and not of one parameter choice.';
 }
