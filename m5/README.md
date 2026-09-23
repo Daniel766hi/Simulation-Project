@@ -112,6 +112,13 @@ counterpart of this chain is `abm.html`.
 - **SNAP days** lift FOODS sales by 10% (CA), 15% (TX) and 29% (WI), with little effect on
   other categories.
 - **Calendar:** Christmas (stores closed, −100%), Thanksgiving (−30%), Labor Day (+27%).
+- **Hidden stock-outs** (`stockouts.py`): M5 has no stock-out flag, but 7–55-day runs of zero
+  sales in items that normally sell 1+ unit a day are almost never chance. Over the last year:
+  11,072 probable stock-outs on 6,573 item-stores, about $1.09M of revenue lost at normal selling
+  rates (2.4% of sales in these stores; 1,876 longer gaps are excluded as possible delistings).
+  They also bias the forecast: at every origin checked, items coming back from a stock-out were
+  under-forecast by 8–29% while regular sellers were within ±6%. Stockout-aware features, as
+  the 2026 VN2 winner used, are the most concrete next improvement.
 
 
 ## How it is built
