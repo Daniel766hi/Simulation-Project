@@ -15,6 +15,11 @@ average of the six. Two things are scaled down and stated openly:
 - 900 trees at learning rate 0.05 on the last 1,000 days, instead of 3,000 at 0.015 on the full
   history (learning rate x trees is matched: 45 vs 45).
 So this compares the two recipes at equal compute, not against the original full-size run.
+
+Pre-registered before any result was seen (committed while the replica was still training):
+a fixed 50/50 average of this project's final forecast and the winner's recipe ("combined").
+No weight is tuned, so it cannot be fitted to these windows. The M5 organisers found that
+combining different strong methods was the most reliable gain in the competition.
 """
 import json
 
@@ -40,7 +45,9 @@ def main():
         comps = {c: load(c, o) for c in COMPONENTS}
         winner = np.mean(list(comps.values()), axis=0)
         np.save(OUTPUTS / f"preds_winner_recipe_o{o}.npy", winner.astype(np.float32))
-        entries = {"winner_recipe": winner, **comps, **{k: load(v, o) for k, v in OURS.items()}}
+        ours = {k: load(v, o) for k, v in OURS.items()}
+        entries = {"winner_recipe": winner, **comps, **ours,
+                   "combined": 0.5 * winner + 0.5 * ours["ours_final"]}
         rows[o] = {}
         for name, mat in entries.items():
             s, lv = ev.score(mat)
@@ -50,7 +57,10 @@ def main():
               f"({'ours better' if f < w else 'winner better'} by {abs(w - f):.4f})")
     mean = {k: float(np.mean([rows[o][k]["wrmsse"] for o in WINDOWS])) for k in rows[WINDOWS[0]]}
     wins = sum(rows[o]["ours_final"]["wrmsse"] < rows[o]["winner_recipe"]["wrmsse"] for o in WINDOWS)
-    summary = {"mean_wrmsse": mean, "ours_final_wins": int(wins), "of": len(WINDOWS)}
+    comb = sum(rows[o]["combined"]["wrmsse"] < min(rows[o]["winner_recipe"]["wrmsse"],
+                                                   rows[o]["ours_final"]["wrmsse"]) for o in WINDOWS)
+    summary = {"mean_wrmsse": mean, "ours_final_wins": int(wins), "combined_beats_both": int(comb),
+               "of": len(WINDOWS)}
     print(json.dumps(summary, indent=1))
     (OUTPUTS / "winner_comparison.json").write_text(json.dumps(
         {"windows": {str(k): v for k, v in rows.items()}, "summary": summary}, indent=2))

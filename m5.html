@@ -908,7 +908,8 @@ function drawWinner(){
   const pretty = k => k.replace('_win_', ', ').replace('store_dept', 'store × dept').replace('store_cat', 'store × cat')
     .replace(/^recursive/, 'Recursive').replace(/^direct/, 'Direct');
   const cols = [['winner_recipe', 'Winner recipe (6-model mean)'], [bestComp, 'Best winner component: ' + pretty(bestComp)],
-                ['ours_before_calibration', 'Ours, before calibration'], ['ours_final', 'Ours, final pipeline']];
+                ['ours_before_calibration', 'Ours, before calibration'], ['ours_final', 'Ours, final pipeline'],
+                ['combined', 'Combined 50/50 (pre-registered)']];
   const row = (label, get) => { const v = cols.map(([k]) => get(k)), best = Math.min(...v);
     return '<tr><td>' + label + '</td>' + v.map(x => '<td class="' + (x === best ? 'hl' : '') + '">' + fmt(x, 4) + '</td>').join('') + '</tr>'; };
   document.getElementById('winTable').innerHTML = '<table class="cmp"><thead><tr><th>Window</th>' +
@@ -920,6 +921,8 @@ function drawWinner(){
     ? 'The final pipeline beat the winner’s recipe by ' + pct.toFixed(1) + '% on mean WRMSSE (' + fmt(f, 4) + ' vs ' + fmt(w, 4) + ')'
     : 'The winner’s recipe beat the final pipeline by ' + pct.toFixed(1) + '% on mean WRMSSE (' + fmt(w, 4) + ' vs ' + fmt(f, 4) + ')') +
     ', winning ' + (f < w ? C.summary.ours_final_wins : C.summary.of - C.summary.ours_final_wins) + ' of ' + C.summary.of + ' windows. ' +
+    'The 50/50 combination, fixed before any result was seen, scored ' + fmt(M.combined, 4) + ' and beat both parents in ' +
+    C.summary.combined_beats_both + ' of ' + C.summary.of + ' windows. ' +
     '<b>How it was run.</b> The winner’s recipe (YeonJun In, 1st place) was re-implemented from the organisers’ published code: recursive and ' +
     'non-recursive LightGBM per store, per store × category and per store × department, averaged with equal weights, no per-series scaling. ' +
     'To fit this machine it used 255 leaves per tree instead of 2,047 and 900 trees at learning rate 0.05 on the last 1,000 days instead of 3,000 at 0.015 ' +
