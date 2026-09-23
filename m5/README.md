@@ -89,6 +89,20 @@ multipliers for aggregates, a negative binomial for item-level counts.
   average; empirical error quantiles by 2.5; the negative binomial from the Uncertainty model by
   2.2, and it holds *less* stock than the normal rule at every target.
 
+### Supply chain: the bullwhip effect on real demand
+
+`supply_chain_sim.py` runs a two-echelon chain, with 10 stores ordering from 3 state distribution
+centres and the DCs ordering from a supplier, on the real M5 demand. The stores order from the
+project's genuine out-of-sample forecasts, remade every four weeks. A full 2 × 2 × 2 factorial
+crosses the three classic mitigation levers for bullwhip (Lee, Padmanabhan & Whang, 1997; Chen
+et al., 2000; Disney & Towill, 2003): forecast quality (ML vs seasonal naive), information sharing
+(the DC plans from the stores' demand forecasts, or only from their orders) and order smoothing
+(proportional order-up-to). Every strategy is compared with the baseline per product–DC pair
+using a paired Wilcoxon signed-rank test and a bootstrap confidence interval. A promotional-shock
+stress test then layers synthetic promotions on real demand and asks who needs to know about
+them. The results table is in the dashboard's *Supply chain & bullwhip* tab; the synthetic
+counterpart of this chain is `abm.html`.
+
 ### Demand drivers
 
 - **Price:** own-price elasticities from −0.35 (HOUSEHOLD_2) to −1.31 (FOODS_1), estimated with

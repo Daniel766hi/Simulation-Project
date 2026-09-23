@@ -11,7 +11,8 @@ frozen and replayed on three earlier windows that played no part in any decision
 
 Calibration at each origin uses every earlier origin in this sequence (walk-forward), so the
 backtest also answers the open question from the post-mortem: does bias calibration help in
-general, or was the private-window failure typical?
+general, or was the private-window failure typical? The frozen pipeline's forecasts for all
+seven windows (196 contiguous days, remade every four weeks) also drive supply_chain_sim.py.
 """
 import json
 
@@ -50,6 +51,7 @@ def main():
             calibrated = aligned * np.clip(f, 0.8, 1.25)[codes][:, None]
         else:
             calibrated = aligned
+        np.save(OUTPUTS / f"preds_bt_final_o{o}.npy", calibrated.astype(np.float32))
         hist = full[[f"d_{d}" for d in range(o - 6, o + 1)]].to_numpy(float)
         snaive = np.tile(hist, HORIZON // 7)
         act = full[[f"d_{d}" for d in range(o + 1, o + HORIZON + 1)]].to_numpy().sum()

@@ -30,4 +30,13 @@ python3 finalize.py                 # ensemble -> alignment -> bias calibration,
 python3 uncertainty.py              # Uncertainty track: quantiles for all 42,840 series
 python3 demand_drivers.py           # price elasticity, SNAP, calendar events
 python3 inventory_sim.py            # forecast accuracy -> inventory cost and service level
+# Robustness backtest: frozen pipeline on three earlier windows (1773, 1801, 1829)
+for origin in 1773 1801 1829; do
+  python3 train.py --kind recursive              --pool store --origin "$origin" --rounds 800
+  python3 train.py --kind recursive --tag 2 --train-days 730 --params "$V2" \
+                                                 --pool store --origin "$origin" --rounds 800
+  python3 train.py --kind mh                     --pool store --origin "$origin" --rounds 800
+done
+python3 backtest.py                 # seven-window robustness table + rolling forecasts
+python3 supply_chain_sim.py         # two-echelon bullwhip experiment + promotion stress test
 python3 export_dashboard.py         # embed results in ../m5.html
