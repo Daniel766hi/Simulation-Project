@@ -1147,6 +1147,9 @@ const REFS = [
   ['Sprangers, Wadman, Schelter & de Rijke (2024). Hierarchical forecasting at scale. International Journal of Forecasting.', 'https://www.sciencedirect.com/science/article/pii/S0169207024000116'],
   ['Januschowski, Wang, Torkkola, Erkkilä, Hasson & Gasthaus (2022). Forecasting with trees. International Journal of Forecasting 38(4).', 'https://econpapers.repec.org/RePEc:eee:intfor:v:38:y:2022:i:4:p:1473-1481'],
   ['VN2 Inventory Planning Challenge winner report (2026). One global model, many behaviors: stockout-aware feature engineering and dynamic scaling for multi-horizon retail demand forecasting. arXiv:2601.18919.', 'https://arxiv.org/abs/2601.18919'],
+  ['Lee, Padmanabhan & Whang (1997). Information distortion in a supply chain: The bullwhip effect. Management Science 43(4).', 'https://doi.org/10.1287/mnsc.43.4.546'],
+  ['Chen, Drezner, Ryan & Simchi-Levi (2000). Quantifying the bullwhip effect in a simple supply chain: The impact of forecasting, lead times, and information. Management Science 46(3).', 'https://doi.org/10.1287/mnsc.46.3.436.12069'],
+  ['Disney & Towill (2003). On the bullwhip and inventory variance produced by an ordering policy. Omega 31(3).', 'https://doi.org/10.1016/S0305-0483(03)00012-1'],
   ['Marik et al. (2026). Beyond accuracy: Evaluating forecasting models by multi-echelon inventory cost. arXiv:2603.16815.', 'https://arxiv.org/abs/2603.16815'],
 ];
 function renderMethod(){
@@ -1176,6 +1179,9 @@ function renderMethod(){
   1914–1941) rather than one window, following Ma &amp; Fildes (2022). Final models were retrained to day 1941 and scored once on 1942–1969.</p>
   <p class="prose"><b>7 · From accuracy to money.</b> Forecasts drive a periodic-review, lost-sales inventory simulation over all 30,490
   item-stores: service vs stock, total cost under three cost ratios, and textbook vs empirical safety stock.</p>
+  <p class="prose"><b>8 · Supply chain.</b> A two-echelon simulation (10 stores, 3 state DCs, a supplier) runs on the real demand with the
+  project's rolling forecasts, crossing forecast quality, information sharing and order smoothing in a full factorial, with paired Wilcoxon
+  tests per product–DC pair and a promotional-shock stress test.</p>
   <p class="prose"><b>Limitations.</b> Retrospective, so not a verified Kaggle submission; single-seed models; a light manual
   hyperparameter search only; one data pool per design (compute); time-series foundation models (Chronos, TimesFM) were not tested
   because their weights could not be downloaded in this environment; M5 has no promotion flag, stock-out indicator or store traffic.</p>
