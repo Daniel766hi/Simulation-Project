@@ -91,7 +91,8 @@ def design_comparison():
     for key, label in [("direct_store_unscaled", "Direct, lag >= 28 (first version)"),
                        ("direct_store", "Direct + dynamic scaling"),
                        ("mh_store", "Multi-horizon, origin-anchored"),
-                       ("recursive_store", "Recursive + dynamic scaling")]:
+                       ("recursive_store", "Recursive + dynamic scaling"),
+                       ("recursive_store_cat", "Recursive, per store x category pool")]:
         p = np.load(OUTPUTS / f"preds_{key}_o{LAST_TRAIN_VALIDATION}.npy")
         s, _ = evaluator(LAST_TRAIN_VALIDATION).score(p)
         out.append({"design": label, "wrmsse": r(s), "bias": r(p.sum() / act)})

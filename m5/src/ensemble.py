@@ -24,7 +24,7 @@ import numpy as np
 from config import OUTPUTS
 from score import evaluator
 
-MEMBERS = ["recursive_store", "recursive_store_cat", "mh_store"]
+MEMBERS = ["recursive_store", "recursive2_store", "mh_store"]
 FOLDS = (1857, 1885, 1913)
 FINAL = 1941
 

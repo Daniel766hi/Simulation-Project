@@ -112,10 +112,12 @@ stronger regularisation (which did not help). All ten stores, public window:
 | Direct + dynamic scaling | 0.7288 | 0.917 |
 | Multi-horizon, origin-anchored | 0.6677 | 0.933 |
 | **Recursive + dynamic scaling** | **0.5721** | 0.971 |
+| Recursive, per store × category pool | 0.6990 | 0.933 |
 
 The recursive design, which always uses the latest day, won clearly. Scaling did not rescue the
-direct design: it scales by a level that is itself a month old. The ensemble therefore combines
-recursive models trained per store and per store × category (the winner's pooling idea) with the
+direct design: it scales by a level that is itself a month old. Splitting each store's model by
+category, as the M5 winner did, made things worse here (HOBBIES fell to 80% of actual), so the
+ensemble combines two differently seeded and configured recursive per-store models with the
 multi-horizon model, and the remaining out-of-sample bias is corrected by walk-forward calibration.
 
 All models use a **Tweedie** objective (variance power 1.1): the target is a point mass at zero

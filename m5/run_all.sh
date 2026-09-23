@@ -14,10 +14,14 @@ python3 experiment_scaling.py       # design ablation: direct vs scaled vs multi
 python3 train.py --kind direct --pool store --origin 1913 --rounds 800
 # Ensemble members at three rolling validation origins (1857, 1885, 1913 = public LB) and the
 # final origin (1941 = private LB).
+# recursive2 is a diversified sibling: other seed, 730-day history, smaller trees.
+V2='{"seed":7,"num_leaves":127,"feature_fraction":0.5,"bagging_seed":7,"feature_fraction_seed":7}'
+python3 train.py --kind recursive --pool store_cat --origin 1913 --rounds 800  # compared, dropped
 for origin in 1857 1885 1913 1941; do
-  python3 train.py --kind recursive --pool store     --origin "$origin" --rounds 800
-  python3 train.py --kind recursive --pool store_cat --origin "$origin" --rounds 800
-  python3 train.py --kind mh        --pool store     --origin "$origin" --rounds 800
+  python3 train.py --kind recursive              --pool store --origin "$origin" --rounds 800
+  python3 train.py --kind recursive --tag 2 --train-days 730 --params "$V2" \
+                                                 --pool store --origin "$origin" --rounds 800
+  python3 train.py --kind mh                     --pool store --origin "$origin" --rounds 800
 done
 python3 finalize.py                 # ensemble -> alignment -> bias calibration, all chosen on
                                     # the folds; the private window is scored once, last

@@ -188,6 +188,7 @@ def to_matrix(pred_long, last_train):
 
 
 def main():
+    global TRAIN_DAYS
     ap = argparse.ArgumentParser()
     ap.add_argument("--kind", choices=["direct", "recursive", "mh"], default="direct")
     ap.add_argument("--pool", choices=list(POOL_COLS), default="store")
@@ -195,14 +196,16 @@ def main():
                     help="last training day; 1913 = public LB, 1941 = private LB, 1885 = extra fold")
     ap.add_argument("--rounds", type=int, default=800)
     ap.add_argument("--stores", default="all")
-    ap.add_argument("--tag", default="")
+    ap.add_argument("--tag", default="", help="variant name, appended to the model kind")
+    ap.add_argument("--train-days", type=int, default=TRAIN_DAYS)
     ap.add_argument("--params", default="{}", help="JSON overrides for PARAMS")
     args = ap.parse_args()
 
     last_train = args.origin
     stores = STORES if args.stores == "all" else args.stores.split(",")
     params = {**PARAMS, **json.loads(args.params)}
-    name = f"{args.kind}_{args.pool}_o{last_train}{args.tag}"
+    name = f"{args.kind}{args.tag}_{args.pool}_o{last_train}"
+    TRAIN_DAYS = args.train_days
     OUTPUTS.mkdir(exist_ok=True)
     log_file = open(OUTPUTS / f"log_{name}.txt", "w")
 

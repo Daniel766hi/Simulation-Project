@@ -578,7 +578,7 @@ function legend(id, items){
 
 // ---------- derived numbers ----------
 const OURS = DATA.ours.final.wrmsse;
-const NAMES = { recursive_store:'Recursive · per store', recursive_store_cat:'Recursive · per store×category',
+const NAMES = { recursive_store:'Recursive · per store', recursive2_store:'Recursive · diversified sibling',
   mh_store:'Multi-horizon · origin-anchored', ensemble:'Ensemble', ensemble_aligned:'Ensemble + top-down alignment',
   final:'Final · + bias calibration' };
 const SNAIVE = DATA.benchmarks.find(b => b.method === 'sNaive').wrmsse;
@@ -613,7 +613,7 @@ function drawLeaderboard(){
     .forEach(b => rows.push({label:'Benchmark · ' + b.method, v:b.wrmsse, kind:'base'}));
   [[1,'Kaggle #1'],[10,'Kaggle #10'],[25,'Kaggle #25'],[50,'Kaggle #50']].forEach(([rk, name]) =>
     rows.push({label:name + ' · ' + DATA.top50[rk-1].team, v:DATA.top50[rk-1].wrmsse, kind:'ref'}));
-  ['recursive_store','recursive_store_cat','mh_store','final'].filter(k => DATA.ours[k])
+  ['recursive_store','recursive2_store','mh_store','final'].filter(k => DATA.ours[k])
     .forEach(k => rows.push({label:'Ours · ' + NAMES[k], v:DATA.ours[k].wrmsse, kind:'ours'}));
   rows.sort((a, b) => a.v - b.v);
   const col = {ours:token('--s-ours'), base:token('--s-mute'), ref:token('--s-ref')};
@@ -955,8 +955,9 @@ function renderMethod(){
   <p class="prose"><b>4 · Model designs.</b> LightGBM with Tweedie loss, every series scaled by its own recent level and recent days
   weighted more. Three designs were compared on all stores: <i>direct</i> (lags of at least 28 days relative to the target day),
   <i>multi-horizon</i> (all features at the forecast origin, horizon as a feature) and <i>recursive</i> (short lags; the model walks
-  forward a day at a time, feeding on its own predictions). Recursive won; the ensemble combines recursive models trained per store and
-  per store×category (the winner's pooling idea) with the multi-horizon model, weights chosen on the folds.</p>
+  forward a day at a time, feeding on its own predictions). Recursive won. Training per store×category, as the M5 winner also did, scored
+  worse here (0.699 vs 0.572) and was dropped; the ensemble combines two differently seeded and configured recursive models with the
+  multi-horizon model, weights chosen on the folds.</p>
   <p class="prose"><b>5 · Top-down alignment.</b> A separate model forecasts the 70 store×department totals; item forecasts are scaled
   towards them with strength α = ${DATA.alpha}, chosen on the folds. A final bias calibration uses forecast ÷ actual measured on
   earlier folds only (${DATA.calibration.grain}, shrink ${DATA.calibration.shrink}).</p>
