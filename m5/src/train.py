@@ -149,7 +149,7 @@ def train_group(grid, label, kind, last_train, rounds, params, log, opts=None):
         # Walk forward: each day's prediction becomes history for the next day's features.
         parts = []
         for day in fc_days:
-            F = assemble(grid, items, wide, kind, [day], last_train)
+            F = assemble(grid, items, wide, kind, [day], last_train, window=200)
             pred = predict(F)
             rows = np.searchsorted(items, F["item_id"].to_numpy())
             wide[rows, day - 1] = pred

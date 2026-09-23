@@ -116,13 +116,19 @@ def item_encodings(wide, last_known_day):
                 "enc_item_std": np.nanstd(known, axis=1)}
 
 
-def assemble(grid, items, wide, kind, days, last_known_day):
-    """Long feature frame for the rows of `grid` whose day is in `days`."""
+def assemble(grid, items, wide, kind, days, last_known_day, window=None):
+    """Long feature frame for the rows of `grid` whose day is in `days`.
+
+    `window` limits history features to that many days before the first requested day. Every
+    feature looks back at most 74 days, so a 200-day window gives identical values while making
+    the recursive day-by-day walk far cheaper than recomputing over the full history.
+    """
     sub = grid[grid["d"].isin(days)].reset_index(drop=True)
     row = np.searchsorted(items, sub["item_id"].to_numpy())
     day_cols = np.asarray(sorted(days)) - 1
     col_pos = np.searchsorted(day_cols, sub["d"].to_numpy() - 1)
-    feats = history_features(wide, kind, day_cols)
+    off = max(0, int(day_cols.min()) - window) if window else 0
+    feats = history_features(wide[:, off:], kind, day_cols - off)
     out = sub[["item_id", "d", "sales"] + [c for c in STATIC if c != "item_id"]].copy()
     for name, arr in feats.items():
         out[name] = arr[row, col_pos]
