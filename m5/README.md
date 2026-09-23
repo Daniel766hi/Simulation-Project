@@ -21,13 +21,17 @@ Interactive results: [`../m5.html`](../m5.html) (opens offline, like the other p
 | 2 | `validate_evaluator.py` | Proves the WRMSSE implementation matches the organisers before any score is trusted |
 | 3 | `prepare_data.py` | Wide sales files to one long feature grid per store: calendar, events, SNAP, 13 price features |
 | 4 | `benchmarks.py` | Re-implements seven of the organisers' statistical benchmarks, vectorised across all series |
-| 5 | `train.py` | Per-store LightGBM, two strategies (direct and recursive), Tweedie loss |
-| 6 | `ensemble.py` | Blend weight chosen on the validation window, then applied unchanged to the private window |
-| 7 | `demand_drivers.py` | Price elasticity (two-way fixed effects), SNAP uplift, calendar-event effects, promotion vs markdown |
-| 8 | `inventory_sim.py` | Replays the private window through a periodic-review inventory policy driven by each forecast |
-| 9 | `export_dashboard.py` | Embeds every result into `../m5.html` |
+| 5 | `experiment_scaling.py` | Design ablation behind the choice of model (see "Diagnosing a level bias") |
+| 6 | `train.py` | LightGBM, Tweedie loss, three designs (direct, recursive, origin-anchored multi-horizon), per-store or per-store × category pools, dynamic scaling and time-decayed weights |
+| 7 | `ensemble.py` | Combines the members, weights chosen on three rolling folds |
+| 8 | `reconcile.py` | Top-down alignment to an independent store × department model |
+| 9 | `calibrate.py` | Walk-forward bias calibration from earlier folds' errors |
+| 10 | `finalize.py` | Runs 7-9 in order, then scores the private window once |
+| 11 | `demand_drivers.py` | Price elasticity (two-way fixed effects), SNAP uplift, calendar-event effects, promotion vs markdown |
+| 12 | `inventory_sim.py` | Replays the private window through a periodic-review policy: service vs stock, total cost under three cost ratios, normal vs empirical safety stock |
+| 13 | `export_dashboard.py` | Embeds every result into `../m5.html` |
 
-`./run_all.sh` runs everything end to end (about 2–3 hours on a 4-core machine, almost all of it
+`./run_all.sh` runs everything end to end (8–9 hours on a 4-core machine, almost all of it
 LightGBM training).
 
 ### 1. An exact evaluator first
@@ -75,27 +79,53 @@ Every row is one item-store-day.
   max; number of distinct prices; number of items sharing the same price; weeks since launch.
 - **Sales history** (built from an items × days matrix so training and inference share one code
   path): lags, rolling means and standard deviations, the mean of the last four same-weekday
-  observations, the share of zero-sale days in the last 28, and item-level mean and std.
+  observations and the share of zero-sale days in the last 28, all divided by the item's recent
+  level (dynamic scaling), plus the log of that level. Whole-history item means and `item_id`
+  were dropped after the bias diagnosis below.
 
 Rows before an item's first price week are dropped: the product was not on the shelf, so its
 zeros carry no demand information.
 
-### 4. Two LightGBM strategies, one model per store
+### 4. Diagnosing a level bias, then choosing the design
 
-- **Direct:** every sales feature is at least 28 days old, so one model forecasts all 28 days in
-  a single pass and never consumes its own predictions. Robust, and no error accumulation.
-- **Recursive:** short lags (1–14 days) and recent rolling means. The model walks forward one day
-  at a time and writes each prediction back into history for the next day's features. Sharper
-  at short horizons, at the risk of compounding its own errors.
+The first model (the common M5 "lag ≥ 28" direct design) scored 0.6956 on the public window and
+forecast **7.5% below actual in every store**, while being unbiased on its own training days
+(ratio 0.99). A flat ×1.08 multiplier would have lifted it to 0.5453, which says the error was
+almost entirely *level*, not *shape*. Tuning that multiplier on the window being scored is the
+M5 "magic multiplier" and is leakage, so the cause was investigated instead:
 
-Both use a **Tweedie** objective (variance power 1.1): the target is a point mass at zero (most
-item-days sell nothing) plus a long right tail, which is exactly the distribution Tweedie models.
-Each store's model learns from its last 1,000 days.
+1. **Stale information.** Lag ≥ 28 features are computed relative to the target day, so on day 1
+   of the horizon the model ignores the 27 most recent known days.
+2. **Trees do not extrapolate.** M5 demand grew 14–20% a year; a tree predicts constants per leaf
+   and cannot reach levels it has not seen (Januschowski et al., 2022).
+3. **Regression to the mean in slow movers.** Items in the slowest quartile sold 2.5–3× their
+   previous month's level in the next month; using `item_id` as a feature let the model memorise
+   item ratios and over-shrink them.
+
+Remedies were tested before being adopted: per-series dynamic scaling and time-decayed weights
+(from the 2026 VN2 winner), an origin-anchored multi-horizon design, dropping `item_id`, and
+stronger regularisation (which did not help). All ten stores, public window:
+
+| Design | WRMSSE | Forecast ÷ actual |
+|---|---|---|
+| Direct, lag ≥ 28 (first version) | 0.6956 | 0.926 |
+| Direct + dynamic scaling | 0.7288 | 0.917 |
+| Multi-horizon, origin-anchored | 0.6677 | 0.933 |
+| **Recursive + dynamic scaling** | **0.5721** | 0.971 |
+
+The recursive design, which always uses the latest day, won clearly. Scaling did not rescue the
+direct design: it scales by a level that is itself a month old. The ensemble therefore combines
+recursive models trained per store and per store × category (the winner's pooling idea) with the
+multi-horizon model, and the remaining out-of-sample bias is corrected by walk-forward calibration.
+
+All models use a **Tweedie** objective (variance power 1.1): the target is a point mass at zero
+(most item-days sell nothing) plus a long right tail.
 
 ### 5. Discipline
 
-- Day 1914–1941 (the public leaderboard) was the only window used to compare settings, choose the
-  ensemble weight and check the feature code.
+- Every choice (design, members, weights, alignment strength, calibration) was made on three
+  rolling origins, forecasting days 1858–1885, 1886–1913 and 1914–1941 (the last is the public
+  leaderboard). No choice used days 1942–1969.
 - Final models were retrained on data up to day 1941 and scored **once** on days 1942–1969 (the
   private leaderboard). No setting was changed after that score was seen.
 - The competition closed in 2020 and its actuals are now public, so this is a retrospective
