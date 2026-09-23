@@ -6,6 +6,7 @@ set -euo pipefail
 cd "$(dirname "$0")/src"
 python3 download.py                 # M5 data + official scores (~50 MB)
 python3 validate_evaluator.py       # WRMSSE must match the organisers before anything else runs
+python3 validate_wspl.py            # and so must WSPL (Uncertainty track)
 python3 prepare_data.py             # long per-store feature grids
 python3 benchmarks.py               # statistical benchmarks at each origin
 python3 experiment_scaling.py       # design ablation: direct vs scaled vs multi-horizon
@@ -25,6 +26,7 @@ for origin in 1857 1885 1913 1941; do
 done
 python3 finalize.py                 # ensemble -> alignment -> bias calibration, all chosen on
                                     # the folds; the private window is scored once, last
+python3 uncertainty.py              # Uncertainty track: quantiles for all 42,840 series
 python3 demand_drivers.py           # price elasticity, SNAP, calendar events
 python3 inventory_sim.py            # forecast accuracy -> inventory cost and service level
 python3 export_dashboard.py         # embed results in ../m5.html

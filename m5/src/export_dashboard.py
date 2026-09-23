@@ -131,6 +131,8 @@ def main():
         "importance": importance(),
         "drivers": json.loads((OUTPUTS / "demand_drivers.json").read_text()),
         "inventory": json.loads((OUTPUTS / "inventory_sim.json").read_text()),
+        "uncertainty": json.loads((OUTPUTS / "uncertainty.json").read_text()),
+        "wspl_validation": json.loads((OUTPUTS / "wspl_validation.json").read_text()),
     }
     blob = json.dumps(data, separators=(",", ":"))
     html = PAGE.read_text()

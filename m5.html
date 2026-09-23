@@ -360,8 +360,8 @@
 </header>
 
 <div class="wrap">
-  <p class="intro">A full solution to the Kaggle <strong>M5 Forecasting – Accuracy</strong> competition
-  (US$100,000 prize pool across its two tracks): forecast daily unit sales of 3,049 Walmart products in 10
+  <p class="intro">A full solution to both tracks of the Kaggle <strong>M5 Forecasting</strong> competition, Accuracy and
+  Uncertainty (US$100,000 prize pool across the two): forecast daily unit sales of 3,049 Walmart products in 10
   stores across California, Texas and Wisconsin for the next 28 days. It is scored on the competition's own
   metric and its <strong>private-leaderboard days, which were used once, at the end</strong>. The results are
   then turned into a business question: how much stock does a better forecast save?</p>
@@ -391,6 +391,13 @@
       <div class="legend-inline" id="lvLegend"></div>
       <div class="chart-box"><canvas id="lvChart" aria-label="Grouped bar chart of error by aggregation level"></canvas></div>
       <p class="prose" id="lvNote" style="margin-top:12px"></p>
+    </div>
+    <div class="panel chart-panel">
+      <div class="chart-head"><div><h2>Uncertainty track: probabilistic forecasts (WSPL, lower is better)</h2>
+        <p class="sub">Nine quantiles for all 42,840 series, scored with the second M5 competition's metric on the same private window</p></div></div>
+      <div class="kpi-grid" id="uncKpis"></div>
+      <div class="table-scroll" id="uncTable" style="margin-top:14px"></div>
+      <div class="note" id="uncNote"></div>
     </div>
     <div class="panel chart-panel">
       <div class="chart-head"><div><h2>Score table</h2><p class="sub">Validation = public-leaderboard days (used for all tuning). Evaluation = private leaderboard (scored once).</p></div></div>
@@ -672,6 +679,28 @@ function renderScoreTable(){
     '(to 4 decimals for Naive, sNaive, MA, Croston and SBA) is the proof that this project’s evaluator computes the metric exactly as Kaggle did.</p>';
 }
 
+function renderUncertainty(){
+  const U = DATA.uncertainty;
+  const top = U.top50, rk = U.rank_equivalent;
+  document.getElementById('uncKpis').innerHTML = [
+    ['Private WSPL', fmt(U.private_wspl, 4), U.private_wspl < U.benchmarks.sNaive ? 'good' : ''],
+    ['Kaggle placement equivalent', rk ? '#' + rk : 'outside top 50', rk ? 'good' : ''],
+    ['Winner · 50th place', fmt(top[0], 4) + ' · ' + fmt(top[top.length - 1], 4), ''],
+    ['Benchmarks: sNaive · Naive', fmt(U.benchmarks.sNaive, 3) + ' · ' + fmt(U.benchmarks.Naive, 3), '']
+  ].map(([l,v,c]) => '<div class="kpi"><div class="label">' + l + '</div><div class="value ' + c + '">' + v + '</div></div>').join('');
+  const lv = Object.keys(U.levels);
+  document.getElementById('uncTable').innerHTML = '<table class="cmp"><thead><tr><th>Level</th><th>Method chosen on folds</th>' +
+    '<th>Private WSPL</th></tr></thead><tbody>' + lv.map((k, i) => '<tr><td>' + DATA.levels[i] + '</td><td>' +
+    U.choice[k].chosen.replace('mult', 'pinball-optimal multipliers').replace('nb', 'negative binomial ') + '</td><td>' +
+    fmt(U.levels[k], 4) + '</td></tr>').join('') + '</tbody></table>';
+  const fw = Object.entries(U.fold_wspl).map(([o, v]) => 'd' + (+o + 1) + '–' + (+o + 28) + ': ' + fmt(v, 4)).join(', ');
+  document.getElementById('uncNote').innerHTML = '<b>Method.</b> Quantiles do not add up a hierarchy, so every level gets its own ' +
+    'model, chosen walk-forward on the folds (' + fw + '). Aggregate levels use a multiplier on the point forecast per quantile, ' +
+    'estimated in closed form as the weighted quantile of actual ÷ forecast that minimises the metric. Sparse item-level series use ' +
+    'a negative binomial around the point forecast, the natural distribution for zero-heavy counts. Per-week multipliers were tested ' +
+    'and rejected by the folds. The evaluator reproduces the organisers’ Naive and seasonal-naive uncertainty benchmarks to five decimals.';
+}
+
 function renderAblation(){
   const A = DATA.scaling_ablation, keys = Object.keys(A);
   const cfgs = [...new Set(keys.map(k => k.split('@')[0]))], origins = [...new Set(keys.map(k => k.split('@')[1]))];
@@ -908,19 +937,21 @@ function renderCost(){
 }
 
 function renderCalib(){
-  const c = INV[oursInvKey].calibration;
+  const c = INV[oursInvKey].calibration, hasNB = c[0].nbinom_csl !== undefined;
   document.getElementById('calibTable').innerHTML = '<table class="cmp"><thead><tr><th>Target cycle service</th>' +
-    '<th>Normal z·σ·√(R+L): achieved</th><th>Stock</th><th>Empirical quantile: achieved</th><th>Stock</th></tr></thead><tbody>' +
+    '<th>Normal z·σ·√(R+L)</th><th>Stock</th><th>Empirical quantile</th><th>Stock</th>' +
+    (hasNB ? '<th>Negative binomial</th><th>Stock</th>' : '') + '</tr></thead><tbody>' +
     c.map(x => '<tr><td>' + (x.target * 100).toFixed(0) + '%</td><td>' + (x.normal_csl * 100).toFixed(1) + '%</td><td>' +
-      money(x.normal_inventory) + '</td><td class="hl">' + (x.empirical_csl * 100).toFixed(1) + '%</td><td>' + money(x.empirical_inventory) +
-      '</td></tr>').join('') + '</tbody></table>';
-  const gapN = c.reduce((a, x) => a + Math.abs(x.normal_csl - x.target), 0) / c.length;
-  const gapE = c.reduce((a, x) => a + Math.abs(x.empirical_csl - x.target), 0) / c.length;
+      money(x.normal_inventory) + '</td><td>' + (x.empirical_csl * 100).toFixed(1) + '%</td><td>' + money(x.empirical_inventory) +
+      '</td>' + (hasNB ? '<td>' + (x.nbinom_csl * 100).toFixed(1) + '%</td><td>' + money(x.nbinom_inventory) + '</td>' : '') +
+      '</tr>').join('') + '</tbody></table>';
+  const gap = k => c.reduce((a, x) => a + Math.abs(x[k] - x.target), 0) / c.length;
   document.getElementById('calibNote').innerHTML = '<b>The Gaussian assumption fails on retail data.</b> Item-day demand is ' +
-    'zero-heavy and right-skewed, so a normal safety factor misses its own service target by ' + (gapN * 100).toFixed(1) +
-    ' points on average. Replacing it with empirical quantiles of the forecast’s actual (R+L)-day errors, pooled across items of ' +
-    'similar sales velocity, cuts the miss to ' + (gapE * 100).toFixed(1) + ' points, in line with Trapero, Cardós & Kourentzes ' +
-    '(Omega 2019; IJF 2019). The better-calibrated rule holds more stock: this is the price of the service level actually promised.';
+    'zero-heavy and right-skewed, so the normal rule misses its own service target by ' + (gap('normal_csl') * 100).toFixed(1) +
+    ' points on average. Empirical quantiles of the forecast’s actual (R+L)-day errors, pooled across items of similar sales velocity, ' +
+    'miss by ' + (gap('empirical_csl') * 100).toFixed(1) + ' points (Trapero, Cardós &amp; Kourentzes, Omega 2019; IJF 2019)' +
+    (hasNB ? '; the negative binomial from the Uncertainty-track model misses by ' + (gap('nbinom_csl') * 100).toFixed(1) + ' points' : '') +
+    '. Service targets are held by holding stock: the better-calibrated rules hold more, and that is the honest cost of the promised service level.';
 }
 
 // ---------- method ----------
@@ -981,7 +1012,7 @@ function drawAll(){
 }
 document.getElementById('invTarget').addEventListener('change', drawInventory);
 document.getElementById('genDate').textContent = DATA.generated;
-renderHero(); renderScoreTable(); renderSteps(); renderAblation(); renderMethod();
+renderHero(); renderScoreTable(); renderSteps(); renderAblation(); renderUncertainty(); renderMethod();
 moveInk(document.querySelector('.tab-btn.active'));
 drawAll();
 </script>

@@ -20,16 +20,18 @@ Three questions, each taken from recent research:
    dominate, especially for intermittent items. Here each method gets its cost-minimising
    safety factor under three cost ratios, and the intermittent-demand specialists (SBA, TSB)
    are included on purpose.
-3. Normal vs empirical safety stock. The textbook z * sigma * sqrt(R + L) assumes Gaussian iid
-   errors; Trapero, Cardos & Kourentzes (Omega 2019; IJF 2019) show empirical quantiles of the
-   actual errors set safety stock more reliably. Retail item-days are zero-heavy and skewed, so
-   the Gaussian assumption is tested by the cycle service level each approach actually delivers.
+3. Normal vs empirical vs negative-binomial safety stock. The textbook z * sigma * sqrt(R + L)
+   assumes Gaussian iid errors; Trapero, Cardos & Kourentzes (Omega 2019; IJF 2019) show
+   empirical quantiles of the actual errors set safety stock more reliably. The third rule uses
+   the probabilistic model from the Uncertainty track: demand over R + L days is negative
+   binomial with the forecast as mean and the dispersion the folds chose for item-store series.
+   Each rule is judged by the cycle service level it actually delivers against its target.
 """
 import json
 
 import numpy as np
 import pandas as pd
-from scipy.stats import norm
+from scipy.stats import nbinom, norm
 
 from config import HORIZON, OUTPUTS
 from wrmsse import load_raw
@@ -118,8 +120,22 @@ def empirical_factor(errors_window, sigma, velocity, q):
     return k
 
 
+def nb_safety_stock(fc, r, q):
+    """Safety stock so that (R+L)-day demand ~ NB(mean = forecast sum, size = r * (R+L)) is
+    covered with probability q (a sum of R+L iid NB(r) days is NB(r * (R+L)))."""
+    mu = np.maximum(extend(fc, R + L).sum(axis=1), 1e-6)
+    size = r * (R + L)
+    return np.maximum(nbinom.ppf(q, size, size / (size + mu)) - mu, 0)
+
+
 def main():
     full, calendar, prices = load_raw()
+    unc = OUTPUTS / "uncertainty.json"
+    nb_r = None
+    if unc.exists():
+        chosen = json.loads(unc.read_text())["choice"]["L12"]["chosen"]
+        if chosen.startswith("nb"):
+            nb_r = float(chosen.split("=")[1].rstrip(")"))
     cols = lambda o: [f"d_{d}" for d in range(o + 1, o + HORIZON + 1)]
     act_sigma = full[cols(ORIGIN_SIGMA)].to_numpy(float)
     demand = full[cols(ORIGIN_EVAL)].to_numpy(float)
@@ -157,11 +173,16 @@ def main():
             normal = simulate(demand, fc_eval, norm.ppf(q) * sigma * np.sqrt(R + L), price)
             k_emp = empirical_factor(cum, sigma, velocity, q)
             emp = simulate(demand, fc_eval, np.maximum(k_emp, 0) * sigma * np.sqrt(R + L), price)
-            calib.append({"target": q,
-                          "normal_csl": normal["cycle_service_level"],
-                          "normal_inventory": normal["avg_inventory_value"],
-                          "empirical_csl": emp["cycle_service_level"],
-                          "empirical_inventory": emp["avg_inventory_value"]})
+            row = {"target": q,
+                   "normal_csl": normal["cycle_service_level"],
+                   "normal_inventory": normal["avg_inventory_value"],
+                   "empirical_csl": emp["cycle_service_level"],
+                   "empirical_inventory": emp["avg_inventory_value"]}
+            if nb_r:
+                nb = simulate(demand, fc_eval, nb_safety_stock(fc_eval, nb_r, q), price)
+                row.update({"nbinom_csl": nb["cycle_service_level"],
+                            "nbinom_inventory": nb["avg_inventory_value"]})
+            calib.append(row)
         out["methods"][label] = {
             "wape": wape, "curve": curve, "best_by_ratio": best, "calibration": calib,
             "inventory_at_95": inventory_at_fill(curve, 0.95),
