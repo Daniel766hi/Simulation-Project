@@ -621,20 +621,23 @@ function renderHero(){
 function drawLeaderboard(){
   const rows = [];
   const pick = ['Naive','SES','MA','CRO','TSB','sNaive','ARIMA_bu','ES_bu','ESX','Com_tb'];
+  // Phones get short axis labels; the tooltip always carries the full name.
   DATA.official_benchmarks.filter(b => pick.includes(b.method))
-    .forEach(b => rows.push({label:'Benchmark · ' + b.method, v:b.wrmsse, kind:'base'}));
+    .forEach(b => rows.push({label:'Benchmark · ' + b.method, short:b.method, v:b.wrmsse, kind:'base'}));
   [[1,'Kaggle #1'],[10,'Kaggle #10'],[25,'Kaggle #25'],[50,'Kaggle #50']].forEach(([rk, name]) =>
-    rows.push({label:name + ' · ' + DATA.top50[rk-1].team, v:DATA.top50[rk-1].wrmsse, kind:'ref'}));
+    rows.push({label:name + ' · ' + DATA.top50[rk-1].team, short:name, v:DATA.top50[rk-1].wrmsse, kind:'ref'}));
   ['recursive_store','recursive2_store','mh_store','final'].filter(k => DATA.ours[k])
-    .forEach(k => rows.push({label:'Ours · ' + NAMES[k], v:DATA.ours[k].wrmsse, kind:'ours'}));
+    .forEach(k => rows.push({label:'Ours · ' + NAMES[k], short:{recursive_store:'Ours · Recursive', recursive2_store:'Ours · Recursive 2', mh_store:'Ours · Multi-horizon', final:'Ours · Final'}[k], v:DATA.ours[k].wrmsse, kind:'ours'}));
+  const narrow = window.innerWidth < 640;
   rows.sort((a, b) => a.v - b.v);
   const col = {ours:token('--s-ours'), base:token('--s-mute'), ref:token('--s-ref')};
   make('lbChart', { type:'bar',
-    data:{ labels:rows.map(r => r.label), datasets:[{ data:rows.map(r => r.v),
+    data:{ labels:rows.map(r => narrow ? r.short : r.label), datasets:[{ data:rows.map(r => r.v),
       backgroundColor:rows.map(r => col[r.kind]), borderRadius:4, borderSkipped:'start',
       barPercentage:.78, categoryPercentage:.9 }] },
     options:baseOpts(axes('WRMSSE', ''), { indexAxis:'y',
-      plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:c => ' WRMSSE ' + c.parsed.x.toFixed(4) } } } }) });
+      plugins:{ legend:{display:false}, tooltip:{ callbacks:{ title:i => rows[i[0].dataIndex].label,
+        label:c => ' WRMSSE ' + c.parsed.x.toFixed(4) } } } }) });
   // Chart.js keeps y-axis ticks; recolor our labels via tooltip only (text stays text-coloured)
   const pre = DATA.ours.ensemble_aligned.wrmsse;
   const preRank = DATA.top50.filter(t => t.wrmsse < pre).length + 1;
