@@ -30,6 +30,7 @@ python3 finalize.py                 # ensemble -> alignment -> bias calibration,
 python3 uncertainty.py              # Uncertainty track: quantiles for all 42,840 series
 python3 demand_drivers.py           # price elasticity, SNAP, calendar events
 python3 stockouts.py                # hidden stock-outs: lost revenue and forecast bias
+python3 stockout_correction.py      # targeted correction, tested walk-forward (rejected)
 python3 inventory_sim.py            # forecast accuracy -> inventory cost and service level
 # Robustness backtest: frozen pipeline on three earlier windows (1773, 1801, 1829)
 for origin in 1773 1801 1829; do

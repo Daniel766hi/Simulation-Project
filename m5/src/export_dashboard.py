@@ -178,6 +178,9 @@ def main():
     so = OUTPUTS / "stockouts.json"
     if so.exists():
         data["stockouts"] = json.loads(so.read_text())
+    scor = OUTPUTS / "stockout_correction.json"
+    if scor.exists():
+        data["stockout_correction"] = json.loads(scor.read_text())
     sc = OUTPUTS / "supply_chain.json"
     if sc.exists():
         data["supply_chain"] = json.loads(sc.read_text())
