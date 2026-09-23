@@ -9,7 +9,11 @@ company sales down to single item in single store.
 The project goes past the leaderboard. It asks two further questions a supply-chain team would
 ask: **what drives demand here**, and **what is a better forecast worth in inventory?**
 
-Interactive results: [`../m5.html`](../m5.html) (opens offline, like the other pages in this repo).
+Interactive results: [`../m5.html`](../m5.html) (opens offline, like the other pages in this repo). Its
+**Replenishment simulator** tab replays the private window for 240 real item-stores in the browser:
+change the review period, lead time, safety-stock rule, service target and costs, and compare
+ordering from this project's forecast with ordering from seasonal naive. The browser simulation
+is checked against `inventory_sim.py` and matches it exactly.
 
 ## Results
 
@@ -113,7 +117,8 @@ multipliers for aggregates, a negative binomial for item-level counts.
 | 10b | `validate_wspl.py`, `uncertainty.py` | Uncertainty track: WSPL evaluator checked against the organisers' benchmarks, then nine quantiles for all 42,840 series |
 | 11 | `demand_drivers.py` | Price elasticity (two-way fixed effects), SNAP uplift, calendar-event effects, promotion vs markdown |
 | 12 | `inventory_sim.py` | Replays the private window through a periodic-review policy: service vs stock, total cost under three cost ratios, normal vs empirical safety stock |
-| 13 | `export_dashboard.py` | Embeds every result into `../m5.html` |
+| 13 | `backtest.py` | Replays the frozen pipeline on three earlier windows never used for any choice |
+| 14 | `export_dashboard.py` | Embeds every result into `../m5.html`, including 240 real item-stores for the in-browser replenishment simulator |
 
 `./run_all.sh` runs everything end to end (8–9 hours on a 4-core machine, almost all of it
 LightGBM training). `python3 -m pytest` runs the unit tests in seconds without the data:
