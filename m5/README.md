@@ -11,7 +11,77 @@ ask: **what drives demand here**, and **what is a better forecast worth in inven
 
 Interactive results: [`../m5.html`](../m5.html) (opens offline, like the other pages in this repo).
 
-<!--RESULTS-->
+## Results
+
+All numbers are on the **private leaderboard** (days 1942–1969), scored once, after every
+choice had been fixed on three rolling validation folds.
+
+### Accuracy track (WRMSSE, lower is better)
+
+| Stage | Fold mean | Private LB |
+|---|---|---|
+| Organiser benchmark: seasonal naive | – | 0.8470 |
+| Best organiser benchmark (ES_bu) | – | 0.6710 |
+| Recursive LightGBM, per store | 0.6060 | 0.6602 |
+| Recursive sibling (other seed, 730-day history) | 0.6253 | 0.6961 |
+| Multi-horizon, origin-anchored | 0.6191 | 0.5451 |
+| Ensemble (weights 0 / 0.5 / 0.5, chosen on folds) | 0.5676 | 0.5923 |
+| + top-down alignment (α = 0.5) | 0.5564 | 0.5443 |
+| **+ bias calibration = final** | 0.5519 | **0.5866** |
+
+- **Final: 0.5866**, 30.7% better than seasonal naive and 12.6% better than the best organiser
+  benchmark; outside the published top 50 (50th place: 0.576).
+- **An honest negative result.** The last step, walk-forward bias calibration, improved the
+  folds (every earlier window under-ran the forecast) but hurt the private window, which was flat
+  against the month before. The stage before it scored 0.5443, which would have placed about
+  **#6** of ~5,500 teams. Switching to it now would be choosing on the answer, so the
+  pre-registered result stands. This is the robustness problem Ma & Fildes (2022) describe.
+- **Rankings flip between windows.** Each ensemble member was the best single model in a
+  different fold, and the multi-horizon model, weakest on the public window, was the best single
+  model on the private one. Combining them was worth 5–6% on the folds.
+
+### Uncertainty track (WSPL, lower is better)
+
+| | Private LB |
+|---|---|
+| Organiser benchmark: seasonal naive | 0.2552 |
+| Best organiser benchmark (ARIMA) | 0.2046 |
+| **This project** | **0.1726** |
+| Kaggle winner / 50th place | 0.1542 / 0.1787 |
+
+**0.1726 would place #28 on the published top-50 leaderboard.** The WSPL evaluator reproduces
+the organisers' Naive (0.594881 vs 0.594882) and seasonal-naive (0.255198 vs 0.255203)
+uncertainty benchmarks. The quantile model is chosen per level on the folds: pinball-optimal
+multipliers for aggregates, a negative binomial for item-level counts.
+
+### Inventory impact (private window, all 30,490 item-stores)
+
+| Method | Item-day WAPE | Stock for 95% fill rate | Cheapest total cost, lost sale = 1× / 4× / 20× weekly holding |
+|---|---|---|---|
+| **LightGBM (final)** | 75.6% | **$1.08M** | **$30.0k / $45.2k / $75.3k** |
+| SBA | 77.4% | $1.16M | $30.1k / $47.4k / $78.8k |
+| TSB | 78.3% | $1.34M | $31.7k / $48.5k / $85.2k |
+| Moving average | 78.8% | $1.40M | $32.0k / $49.9k / $87.9k |
+| Seasonal naive | 91.6% | $1.52M | $32.3k / $52.6k / $91.7k |
+
+- **29% less stock** than a seasonal-naive-driven policy for the same 95% fill rate.
+- The gap between methods grows with the cost of a lost sale: at 1× the intermittent-demand
+  method SBA is within 0.2% of LightGBM, at 20× LightGBM is 4% cheaper than SBA and 18% cheaper
+  than seasonal naive. This is consistent with Theodorou, Spiliotis & Assimakopoulos (2025).
+- **Safety stock.** The textbook normal rule misses its own cycle-service target by 2.9 points on
+  average; empirical error quantiles by 2.5; the negative binomial from the Uncertainty model by
+  2.2, and it holds *less* stock than the normal rule at every target.
+
+### Demand drivers
+
+- **Price:** own-price elasticities from −0.35 (HOUSEHOLD_2) to −1.31 (FOODS_1), estimated with
+  item-store and week fixed effects. Weeks with a price cut sell *fewer* units than the preceding
+  full-price weeks: cuts are concentrated on slowing items (clearance). The M5 price field
+  cannot separate a promotion from a markdown, so promotion modelling needs a promotion calendar.
+- **SNAP days** lift FOODS sales by 10% (CA), 15% (TX) and 29% (WI), with little effect on
+  other categories.
+- **Calendar:** Christmas (stores closed, −100%), Thanksgiving (−30%), Labor Day (+27%).
+
 
 ## How it is built
 

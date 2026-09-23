@@ -322,9 +322,11 @@ something spreads.
 
 # 4. M5 Demand Forecasting (`m5.html`, `m5/`)
 
-A full solution to Kaggle's **M5 Forecasting – Accuracy** competition: 28-day forecasts of daily
-unit sales for 30,490 Walmart item-stores, scored on the competition's own WRMSSE metric over
-42,840 series. The Python pipeline lives in `m5/`; `m5.html` is the results dashboard, with
+A full solution to both tracks of Kaggle's **M5 Forecasting** competition: 28-day forecasts of
+daily unit sales for 30,490 Walmart item-stores, scored on the competition's own metrics over
+42,840 series. Private-leaderboard results: **0.5866 WRMSSE** (Accuracy, 31% better than seasonal
+naive) and **0.1726 WSPL** (Uncertainty, about #28 of the published top 50). The forecasts cut the
+stock needed for a 95% fill rate by 29% in an inventory simulation. The Python pipeline lives in `m5/`; `m5.html` is the results dashboard, with
 leaderboard comparison, a forecast explorer, demand-driver analysis (price elasticity, SNAP
 days, calendar events) and an inventory simulation that turns forecast accuracy into stock and
 service level. Full write-up, results and reproduction steps: [`m5/README.md`](m5/README.md).
