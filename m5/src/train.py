@@ -15,6 +15,7 @@ sales file so they can be scored or blended directly.
 """
 import argparse
 import json
+import shutil
 import time
 import warnings
 
@@ -211,7 +212,10 @@ def main():
     if args.no_scaling:
         OPTIONS.update({"scale": False, "decay_half_life": 0, "drop_enc": False})
     OUTPUTS.mkdir(exist_ok=True)
-    log_file = open(OUTPUTS / f"log_{name}.txt", "w")
+    log_file = open(OUTPUTS / f"log_{name}.txt", "a")
+    # Per-store checkpoints, so a run interrupted by a container restart resumes where it stopped.
+    ckpt = OUTPUTS / "checkpoints" / name
+    ckpt.mkdir(parents=True, exist_ok=True)
 
     def log(msg):
         print(msg, flush=True)
@@ -221,12 +225,20 @@ def main():
     log(f"{name}: train <= d_{last_train}, {args.rounds} rounds, params {params}")
     preds, imps = {}, []
     for store in stores:
-        preds[store], imp = train_store(store, args.pool, args.kind, last_train, args.rounds,
-                                        params, log)
+        p_file, i_file = ckpt / f"{store}_pred.parquet", ckpt / f"{store}_imp.parquet"
+        if p_file.exists() and i_file.exists():
+            preds[store], imp = pd.read_parquet(p_file), pd.read_parquet(i_file)["imp"]
+            log(f"  {store}: resumed from checkpoint")
+        else:
+            preds[store], imp = train_store(store, args.pool, args.kind, last_train, args.rounds,
+                                            params, log)
+            preds[store].to_parquet(p_file)
+            imp.rename("imp").to_frame().to_parquet(i_file)
         imps.append(imp.rename(store))
     np.save(OUTPUTS / f"preds_{name}.npy", to_matrix(preds, last_train))
     pd.concat(imps, axis=1).to_csv(OUTPUTS / f"importance_{name}.csv")
     log("done")
+    shutil.rmtree(ckpt)
 
 
 if __name__ == "__main__":
