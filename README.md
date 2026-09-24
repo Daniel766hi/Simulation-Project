@@ -1,13 +1,14 @@
 # Simulation Project
 
-Two browser-based simulation models sharing one design system. Both are self-contained: no backend,
-no build step, no network access required.
+Browser-based simulation and forecasting models sharing one design system. Every page is
+self-contained: no backend, no build step, no network access required.
 
 | Page | Model | Paradigm |
 |---|---|---|
 | `index.html` | Mine production, cost and project economics | Discrete-time deterministic + Monte Carlo |
 | `abm.html` | Supply chain bullwhip effect | Agent-based |
 | `bass.html` | Product adoption / Bass diffusion | Agent-based |
+| `m5.html` | Walmart demand forecasting (Kaggle M5) → inventory impact | Machine learning + inventory simulation |
 
 ---
 
@@ -315,3 +316,28 @@ something spreads.
 - **Everyone is identical** apart from position: same contact rate, same persuasion probability.
 - **Contacts are sampled with replacement** each month rather than drawn from a fixed set of
   friends.
+
+
+---
+
+# 4. M5 Demand Forecasting (`m5.html`, `m5/`)
+
+A full solution to both tracks of Kaggle's **M5 Forecasting** competition: 28-day forecasts of
+daily unit sales for 30,490 Walmart item-stores, scored on the competition's own metrics over
+42,840 series. Private-leaderboard results: **0.5866 WRMSSE** (Accuracy, 31% better than seasonal
+naive) and **0.1726 WSPL** (Uncertainty, about #28 of the published top 50). The forecasts cut the
+stock needed for a 95% fill rate by 29% in an inventory simulation. The Python pipeline lives in `m5/`; `m5.html` is the results dashboard, with
+leaderboard comparison, a forecast explorer, demand-driver analysis (price elasticity, SNAP
+days, calendar events) and an inventory simulation that turns forecast accuracy into stock and
+service level. Full write-up, results and reproduction steps: [`m5/README.md`](m5/README.md).
+
+## Deploying the site
+
+The site is static HTML (Chart.js is vendored in `vendor/`), so any static host works.
+`tools/build_static_site.sh` collects the four pages into `public/`.
+
+- **GitHub Pages:** `.github/workflows/pages.yml` publishes `public/` on every push to the
+  default branch. One-time setup: repository Settings → Pages → Source: *GitHub Actions*.
+  The site then lives at `https://daniel766hi.github.io/Simulation-Project/`.
+- **Vercel:** import the repository at vercel.com/new; `vercel.json` sets the build command and
+  output folder, so no settings need changing.
