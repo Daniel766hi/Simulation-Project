@@ -97,6 +97,10 @@ def train_group_mh(grid, label, last_train, rounds, params, log, opts):
         parts.append(block)
     X = pd.concat(parts, ignore_index=True)
     X = X[X["sales"].notna()].reset_index(drop=True)
+    if opts.get("mask_stockouts"):
+        m = stockout_mask(wide, last_train)
+        hit = m[np.searchsorted(items, X["item_id"].to_numpy()), X["d"].to_numpy() - 1]
+        X = X[~hit].reset_index(drop=True)
     # item_id as a 3,049-level categorical lets the model memorise each item's past ratio to its
     # level; out of sample that over-shrinks slow movers, so it is dropped by default.
     drop = {"d", "sales", "_lvl", "_age"} | ({"item_id"} if opts.get("drop_item_id") else set())
