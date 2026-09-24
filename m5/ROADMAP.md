@@ -44,6 +44,19 @@ Steps 1 and 2 matter most: step 1 decides whether the lead is real, step 2 is th
 to widen it. Steps 3–6 are only worth running once step 1 shows how large a gain must be to
 count.
 
+## Tried and rejected before step 1 (three existing windows, no retraining)
+
+| Candidate | Mean WRMSSE |
+|---|---|
+| 50/50 combination (pre-registered, kept) | **0.5986** |
+| Three-way average: winner's recipe, ours, ours with stock-out masking | 0.5998 |
+| 50/50 average, then store × department alignment and store calibration | 0.6168 |
+| The same with the masked pipeline | 0.6192 |
+
+Putting the combination through this pipeline's level control made it worse. The winner's
+half is already close to the right level (total forecast ÷ actual 1.01), so correcting the
+average again overshoots. The plain 50/50 average stays the method under test in step 1.
+
 ## Keeping the lead
 
 - `monitor.py` every month: drift alerts per store and the gate for any change.
