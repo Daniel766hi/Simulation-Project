@@ -41,5 +41,6 @@ for origin in 1773 1801 1829; do
 done
 python3 backtest.py                 # seven-window robustness table + rolling forecasts
 python3 robust_level.py             # walk-forward: does choosing more settings help?
+python3 multilevel.py               # align to one vs several aggregate levels
 python3 supply_chain_sim.py         # two-echelon bullwhip experiment + promotion stress test
 python3 export_dashboard.py         # embed results in ../m5.html

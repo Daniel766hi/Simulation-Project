@@ -89,6 +89,13 @@ choice had been fixed on three rolling validation folds.
   and cannot be proven on the private window, which was already seen, so the reported 0.5866
   stays; the lesson for practice is to keep the number of choices small relative to the number
   of test windows.
+- **One aggregate level is enough** (`multilevel.py`). Aligning to store totals (level 3) or
+  store × category totals (level 8), instead of or on top of store × department (level 9), was
+  tested with every other setting frozen. Mean WRMSSE over the six non-private windows: level 9
+  0.604, level 3 0.609, level 8 0.609, level 9 then level 3 0.611, no alignment 0.614. No
+  alternative beat level 9 in more than 1 of 6 windows, and a second alignment step on top only
+  added noise. The store × department model is detailed enough to carry the department mix and
+  coarse enough to be forecast well.
 
 ### Uncertainty track (WSPL, lower is better)
 
@@ -194,7 +201,8 @@ stores' forecasts up to the DC recovered most of the loss ($706,108).
 | 12 | `inventory_sim.py` | Replays the private window through a periodic-review policy: service vs stock, total cost under three cost ratios, normal vs empirical safety stock |
 | 13 | `backtest.py` | Replays the frozen pipeline on three earlier windows never used for any choice |
 | 14 | `robust_level.py` | Walk-forward test of ensemble weights, alignment strength and bias rules chosen from menus of 675, 9 and 3 settings |
-| 15 | `export_dashboard.py` | Embeds every result into `../m5.html`, including 240 real item-stores for the in-browser replenishment simulator |
+| 15 | `multilevel.py` | Aligns to store, store × category and store × department totals, alone and stacked |
+| 16 | `export_dashboard.py` | Embeds every result into `../m5.html`, including 240 real item-stores for the in-browser replenishment simulator |
 
 `./run_all.sh` runs everything end to end (8–9 hours on a 4-core machine, almost all of it
 LightGBM training). `python3 -m pytest` runs the unit tests in seconds without the data:
