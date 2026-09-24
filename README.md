@@ -330,3 +330,14 @@ stock needed for a 95% fill rate by 29% in an inventory simulation. The Python p
 leaderboard comparison, a forecast explorer, demand-driver analysis (price elasticity, SNAP
 days, calendar events) and an inventory simulation that turns forecast accuracy into stock and
 service level. Full write-up, results and reproduction steps: [`m5/README.md`](m5/README.md).
+
+## Deploying the site
+
+The site is static HTML (Chart.js is vendored in `vendor/`), so any static host works.
+`tools/build_static_site.sh` collects the four pages into `public/`.
+
+- **GitHub Pages:** `.github/workflows/pages.yml` publishes `public/` on every push to the
+  default branch. One-time setup: repository Settings → Pages → Source: *GitHub Actions*.
+  The site then lives at `https://daniel766hi.github.io/Simulation-Project/`.
+- **Vercel:** import the repository at vercel.com/new; `vercel.json` sets the build command and
+  output folder, so no settings need changing.
