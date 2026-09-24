@@ -97,6 +97,16 @@ choice had been fixed on three rolling validation folds.
   added noise. The store × department model is detailed enough to carry the department mix and
   coarse enough to be forecast well.
 
+### Keeping it maintained
+
+`monitor.py` holds the two checks a forecasting team would run every month. The **drift
+monitor** flags a store only when its forecast is more than 5% off in the same direction in two
+windows running; over the seven windows it raised three alerts (WI_2 under-forecast in d1802–1857,
+CA_3 and TX_2 over-forecast in d1858–1913). The **accuracy gate** accepts a candidate only if
+it has the lower mean WRMSSE and wins most windows. Replaying the calibration decision through
+it: dropping calibration would fail (mean 0.604 vs 0.594, 2 of 6 windows), so the frozen
+pipeline stands on the non-private windows too.
+
 ### Uncertainty track (WSPL, lower is better)
 
 | | Private LB |
@@ -202,7 +212,8 @@ stores' forecasts up to the DC recovered most of the loss ($706,108).
 | 13 | `backtest.py` | Replays the frozen pipeline on three earlier windows never used for any choice |
 | 14 | `robust_level.py` | Walk-forward test of ensemble weights, alignment strength and bias rules chosen from menus of 675, 9 and 3 settings |
 | 15 | `multilevel.py` | Aligns to store, store × category and store × department totals, alone and stacked |
-| 16 | `export_dashboard.py` | Embeds every result into `../m5.html`, including 240 real item-stores for the in-browser replenishment simulator |
+| 16 | `monitor.py` | Maintenance: per-store drift alerts (same-direction bias above 5% in two windows running) and an accuracy gate for any candidate change |
+| 17 | `export_dashboard.py` | Embeds every result into `../m5.html`, including 240 real item-stores for the in-browser replenishment simulator |
 
 `./run_all.sh` runs everything end to end (8–9 hours on a 4-core machine, almost all of it
 LightGBM training). `python3 -m pytest` runs the unit tests in seconds without the data:
