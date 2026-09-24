@@ -144,3 +144,19 @@ def test_unlaunched_series_do_not_turn_the_score_into_nan():
     ev = WRMSSEEvaluator(df, prices, cal, n, act)
     s, per_level = ev.score(act + 1.0)
     assert np.isfinite(s) and all(np.isfinite(v) for v in per_level.values())
+
+
+def test_stockout_mask_flags_only_regular_sellers():
+    from train import stockout_mask
+    n = 120
+    wide = np.full((4, n), 2.0, dtype=np.float32)
+    wide[0, 70:80] = 0                       # regular seller, 10-day gap: a stock-out
+    wide[1] = np.where(np.arange(n) % 5 == 0, 1.0, 0.0)   # slow mover: zeros are normal
+    wide[2, 110:] = 0                        # still out of stock at the origin
+    wide[3, :60] = np.nan                    # launched on day 61: nothing before counts
+    wide[3, 61:64] = 0                       # a short gap is not a stock-out
+    m = stockout_mask(wide, n)
+    assert m[0, 70:80].all() and m[0].sum() == 10
+    assert not m[1].any()
+    assert m[2, 110:].all() and m[2].sum() == 10
+    assert not m[3].any()

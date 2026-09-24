@@ -117,6 +117,23 @@ def train_group_mh(grid, label, last_train, rounds, params, log, opts):
     return F[["item_id", "d"]].assign(pred=pred), imp
 
 
+def stockout_mask(wide, last_train):
+    """True on item-days inside a probable stock-out known by last_train: a run of 7+ zero days
+    (at most 55 if it has ended) in an item that sold 1+ unit a day over the 56 days before it.
+    Same rule as stockouts.py; only history up to last_train is used."""
+    from stockouts import LOOKBACK, MAX_RUN, MIN_RATE, MIN_RUN, zero_runs
+    mask = np.zeros(wide.shape, dtype=bool)
+    hist = wide[:, :last_train]
+    for i in range(len(hist)):
+        row = np.nan_to_num(hist[i], nan=-1.0)            # not on sale yet: never a zero run
+        for s, L in zip(*zero_runs(row)):
+            if L < MIN_RUN or s < LOOKBACK or (s + L < last_train and L > MAX_RUN):
+                continue
+            if np.nanmean(hist[i, s - LOOKBACK:s]) >= MIN_RATE:
+                mask[i, s:s + L] = True
+    return mask
+
+
 def train_group(grid, label, kind, last_train, rounds, params, log, opts=None):
     opts = opts or OPTIONS
     if kind == "mh":
@@ -125,6 +142,11 @@ def train_group(grid, label, kind, last_train, rounds, params, log, opts=None):
     train_days = range(last_train - TRAIN_DAYS + 1, last_train + 1)
     X = assemble(grid, items, wide, kind, train_days, last_train)
     X = X[X["sales"].notna()].reset_index(drop=True)
+    if opts.get("mask_stockouts"):
+        # Censored demand: a zero during a stock-out is not a zero demand, so drop those targets.
+        m = stockout_mask(wide, last_train)
+        hit = m[np.searchsorted(items, X["item_id"].to_numpy()), X["d"].to_numpy() - 1]
+        X = X[~hit].reset_index(drop=True)
     X, lvl = scale_frame(X, kind, opts)
     feat_cols = [c for c in X.columns if c not in ("d", "sales")]
     weight = lvl.copy()                               # keep the loss on the unit scale
@@ -201,6 +223,8 @@ def main():
     ap.add_argument("--train-days", type=int, default=TRAIN_DAYS)
     ap.add_argument("--no-scaling", action="store_true",
                     help="first-version settings: no dynamic scaling, no decay, item means kept")
+    ap.add_argument("--mask-stockouts", action="store_true",
+                    help="drop training targets that fall inside a probable stock-out")
     ap.add_argument("--params", default="{}", help="JSON overrides for PARAMS")
     args = ap.parse_args()
 
@@ -211,6 +235,8 @@ def main():
     TRAIN_DAYS = args.train_days
     if args.no_scaling:
         OPTIONS.update({"scale": False, "decay_half_life": 0, "drop_enc": False})
+    if args.mask_stockouts:
+        OPTIONS["mask_stockouts"] = True
     OUTPUTS.mkdir(exist_ok=True)
     log_file = open(OUTPUTS / f"log_{name}.txt", "a")
     # Per-store checkpoints, so a run interrupted by a container restart resumes where it stopped.
