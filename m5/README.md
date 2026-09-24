@@ -129,6 +129,28 @@ models. It compares the recipes at equal compute, not the original full-size run
   errors (scaled vs unscaled, one pool vs three), which is why their average is better than
   either.
 
+### Censored demand, fixed at training time
+
+`stockout_retrain.py` retrains the two weighted ensemble members with every probable stock-out
+day removed from the training targets (`train.py --mask-stockouts`, 2.4% of item-days) and runs
+them through the frozen pipeline on the three untouched windows. The adoption rule (lower mean
+and at least 2 of 3 windows won) was committed before any masked model was scored.
+
+| Window | Unmasked | Masked | Unmasked, before calibration | Masked, before calibration |
+|---|---|---|---|---|
+| d1774–1801 | 0.6324 | **0.6216** | 0.6324 | **0.6216** |
+| d1802–1829 | **0.5910** | 0.6093 | 0.6507 | **0.6166** |
+| d1830–1857 | 0.6257 | **0.6160** | 0.6727 | **0.6419** |
+| **Mean** | 0.6164 | **0.6156** | 0.6519 | **0.6267** |
+
+- Adopted under the pre-registered rule, but only narrowly: 2 of 3 windows, 0.1% on the mean.
+- The fix works where it was aimed. Before calibration it improved every window (3.9% on the
+  mean), and items returning from a stock-out went from 11–13% under-forecast to 2–13% over.
+  Calibration had been partly compensating for the same bias, so most of the gain is absorbed
+  there.
+- It does not stack with the combination: masked pipeline + winner's recipe scored 0.6017,
+  slightly behind the pre-registered combination (0.5986). Exploratory, not pre-registered.
+
 ### Keeping it maintained
 
 `monitor.py` holds the two checks a forecasting team would run every month. The **drift

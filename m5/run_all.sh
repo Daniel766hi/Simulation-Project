@@ -53,6 +53,7 @@ for origin in 1829 1801 1773; do
   done
 done
 python3 winner_comparison.py        # head-to-head + pre-registered 50/50 combination
+python3 stockout_retrain.py         # stock-out masking test (needs the masked runs)
 python3 monitor.py                  # per-store drift alerts
 python3 supply_chain_sim.py         # two-echelon bullwhip experiment + promotion stress test
 python3 export_dashboard.py         # embed results in ../m5.html
