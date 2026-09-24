@@ -42,5 +42,17 @@ done
 python3 backtest.py                 # seven-window robustness table + rolling forecasts
 python3 robust_level.py             # walk-forward: does choosing more settings help?
 python3 multilevel.py               # align to one vs several aggregate levels
+# The M5 winner's recipe at matched compute on the three untouched windows (18 runs, ~18 h).
+WIN='{"min_data_in_leaf":4095,"feature_fraction":0.5,"bagging_fraction":0.5,"bagging_freq":1,"max_bin":100}'
+for origin in 1829 1801 1773; do
+  for kind in recursive direct; do
+    for pool in store store_cat store_dept; do
+      python3 train.py --kind $kind --tag _win --no-scaling --pool $pool --origin $origin \
+        --rounds 900 --params "$WIN"
+    done
+  done
+done
+python3 winner_comparison.py        # head-to-head + pre-registered 50/50 combination
+python3 monitor.py                  # per-store drift alerts
 python3 supply_chain_sim.py         # two-echelon bullwhip experiment + promotion stress test
 python3 export_dashboard.py         # embed results in ../m5.html

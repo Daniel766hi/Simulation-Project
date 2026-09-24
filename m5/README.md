@@ -35,6 +35,9 @@ choice had been fixed on three rolling validation folds.
 
 - **Final: 0.5866**, 30.7% better than seasonal naive and 12.6% better than the best organiser
   benchmark; outside the published top 50 (50th place: 0.576).
+- **Against the winner's recipe** on three untouched windows, re-run at equal compute: this
+  pipeline 0.616 vs 0.626 mean WRMSSE (2 of 3 windows won), and a pre-registered 50/50
+  combination of the two 0.599, better than either (details below).
 - **An honest negative result.** The last step, walk-forward bias calibration, improved the
   folds (every earlier window under-ran the forecast) but hurt the private window, which was flat
   against the month before. The stage before it scored 0.5443, which would have placed about
@@ -96,6 +99,35 @@ choice had been fixed on three rolling validation folds.
   alternative beat level 9 in more than 1 of 6 windows, and a second alignment step on top only
   added noise. The store × department model is detailed enough to carry the department mix and
   coarse enough to be forecast well.
+
+### Head-to-head with the M5 winner's recipe
+
+`winner_comparison.py` re-implements the 1st-place recipe (YeonJun In; code in the organisers'
+M5-methods repository): recursive and non-recursive LightGBM per store, per store × category
+and per store × department, no per-series scaling, averaged with equal weights. Both methods
+were trained from scratch and scored on the three windows that played no part in any choice for
+this project. To fit a 4-core machine the recipe used 255 leaves per tree instead of 2,047 (at
+full size one store took 2,060 s against 266 s) and 900 trees at learning rate 0.05 on the last
+1,000 days instead of 3,000 at 0.015 on the full history: the same compute as this project's
+models. It compares the recipes at equal compute, not the original full-size run.
+
+| Window | Winner's recipe | This pipeline | Combined 50/50 (pre-registered) |
+|---|---|---|---|
+| d1774–1801 | 0.7062 | **0.6324** | 0.6345 |
+| d1802–1829 | **0.5460** | 0.5910 | 0.5484 |
+| d1830–1857 | 0.6272 | 0.6257 | **0.6129** |
+| **Mean** | 0.6264 | 0.6164 | **0.5986** |
+
+- This pipeline beat the winner's recipe by 1.6% on mean WRMSSE and won 2 of 3 windows.
+- The margin comes from the bias calibration step. Before it, this pipeline averaged 0.652,
+  worse than the winner's recipe. None of the winner's six components alone scored better than
+  0.727; their equal-weight average reached 0.626, which shows how much the winner's design
+  relied on averaging.
+- The 50/50 combination of the two was committed to the repository before any result existed.
+  It had the best mean, 2.9% better than this pipeline and 4.4% better than the winner's
+  recipe, and was first or a close second in every window. The two methods make different
+  errors (scaled vs unscaled, one pool vs three), which is why their average is better than
+  either.
 
 ### Keeping it maintained
 
@@ -212,8 +244,9 @@ stores' forecasts up to the DC recovered most of the loss ($706,108).
 | 13 | `backtest.py` | Replays the frozen pipeline on three earlier windows never used for any choice |
 | 14 | `robust_level.py` | Walk-forward test of ensemble weights, alignment strength and bias rules chosen from menus of 675, 9 and 3 settings |
 | 15 | `multilevel.py` | Aligns to store, store × category and store × department totals, alone and stacked |
-| 16 | `monitor.py` | Maintenance: per-store drift alerts (same-direction bias above 5% in two windows running) and an accuracy gate for any candidate change |
-| 17 | `export_dashboard.py` | Embeds every result into `../m5.html`, including 240 real item-stores for the in-browser replenishment simulator |
+| 16 | `winner_comparison.py` | Head-to-head with the M5 winner's recipe on the three untouched windows, plus the pre-registered 50/50 combination |
+| 17 | `monitor.py` | Maintenance: per-store drift alerts (same-direction bias above 5% in two windows running) and an accuracy gate for any candidate change |
+| 18 | `export_dashboard.py` | Embeds every result into `../m5.html`, including 240 real item-stores for the in-browser replenishment simulator |
 
 `./run_all.sh` runs everything end to end (8–9 hours on a 4-core machine, almost all of it
 LightGBM training). `python3 -m pytest` runs the unit tests in seconds without the data:
