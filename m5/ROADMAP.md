@@ -53,9 +53,11 @@ count.
 | 50/50 average, then store × department alignment and store calibration | 0.6168 |
 | The same with the masked pipeline | 0.6192 |
 
-Putting the combination through this pipeline's level control made it worse. The winner's
-half is already close to the right level (total forecast ÷ actual 1.01), so correcting the
-average again overshoots. The plain 50/50 average stays the method under test in step 1.
+Putting the combination through this pipeline's level control made it worse. The two halves
+miss the level in opposite directions: total forecast ÷ actual was 1.048, 0.992 and 1.010 for
+the winner's recipe against 0.976, 0.957 and 0.996 for this pipeline. The plain average
+already cancels most of that error, so correcting it again overshoots. This is also why the
+combination works at all. The plain 50/50 average stays the method under test in step 1.
 
 ## Keeping the lead
 
