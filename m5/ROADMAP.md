@@ -36,6 +36,10 @@ won). Costs are on this 4-core machine.
 | 5 | **Direct quantile models** for the uncertainty track | Winners of that track modelled quantiles directly (Lainder & Wolfinger, IJF 2022); current 0.1726 ≈ #28 | ~6 h per window | WSPL on untouched windows |
 | 6 | **Pretrained time-series model at store × department** as the alignment target (Chronos, Ansari et al. 2024) | A different model family for the level that alignment trusts most | depends on CPU inference speed | Mean and majority of windows |
 
+Step 1 is running: `queue_extended.sh` trains every model for the six new windows, and
+`extended_comparison.py` holds the hypotheses and tests, committed before any new window was
+scored.
+
 Steps 1 and 2 matter most: step 1 decides whether the lead is real, step 2 is the likeliest way
 to widen it. Steps 3–6 are only worth running once step 1 shows how large a gain must be to
 count.
