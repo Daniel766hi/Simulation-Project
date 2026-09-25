@@ -195,7 +195,7 @@
   </div>
 
   <div class="dialog" id="dialog" hidden>
-    <canvas id="portrait" width="21" height="21"></canvas>
+    <canvas id="portrait" width="48" height="48"></canvas>
     <div>
       <div class="who" id="who"></div>
       <div class="line" id="line"></div>
@@ -242,7 +242,7 @@
   "use strict";
   const $ = id => document.getElementById(id);
   const REDUCED = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const TILE = 16, W = 72, H = 54, VIEW_W = 320, VIEW_H = 192;
+  const TILE = 16, W = 130, H = 90, OW = 72, OH = 54, VIEW_W = 320, VIEW_H = 192;
   const wait = ms => new Promise(r => setTimeout(r, REDUCED ? Math.min(ms, 120) : ms));
   const rand = (a, b) => a + Math.random() * (b - a);
   const pick = arr => arr[Math.floor(Math.random() * arr.length)];
@@ -381,6 +381,45 @@
       const lead = [70, -1, 73, 72, 70, -1, 68, -1, 66, 68, 70, -1, 73, -1, 75, -1];
       if (s >= 32) { const m = lead[s % 16]; if (m > 0) Music.tone(hz(m + 12), t, d * 1.2, "square", 0.028, 0.005, 0.1); }
     } },
+    oru: { bpm: 108, play(s, t, d) {
+      const prog = [[48, 55, 60, 64], [45, 52, 57, 60], [41, 48, 53, 57], [43, 50, 55, 59]];
+      const ch = prog[Math.floor(s / 16) % 4];
+      if (s % 8 === 0) Music.tone(hz(ch[0] - 12), t, d * 6, "triangle", 0.1, 0.01, 0.3);
+      if (s % 8 === 4) Music.tone(hz(ch[0] - 5), t, d * 3, "triangle", 0.07, 0.01, 0.2);
+      if (s % 2 === 0) Music.tone(hz(ch[1 + (s / 2) % 3] + 12), t, d, "square", 0.025, 0.005, 0.12);
+      const mel = [76, -1, 79, 77, 76, -1, 74, -1, 72, -1, 74, 76, -1, -1, 72, -1];
+      if (s >= 16) { const m = mel[s % 16]; if (m > 0) Music.tone(hz(m), t, d * 1.5, "triangle", 0.05, 0.01, 0.25); }
+      if (s % 4 === 2) Music.noise(t, 0.03, 0.04, 6000, "highpass");
+    } },
+    marsh: { bpm: 60, play(s, t, d) {
+      if (s % 32 === 0) { Music.tone(hz(33), t, d * 30, "sine", 0.12, 1, 1.5); Music.tone(hz(40), t, d * 30, "triangle", 0.03, 1.5, 1.5); }
+      const notes = [57, 60, 64, 63, 60, 57, 55, 57];
+      if (s % 6 === 0) Music.tone(hz(notes[(s / 6) % 8] + 12), t, d * 4, "sine", 0.04, 0.2, 1.2, null, rand(-10, 10));
+      if (s % 16 === 11) Music.noise(t, d * 6, 0.02, 400, "lowpass");
+      if (s % 64 === 40) { Music.tone(hz(45), t, d * 2, "sine", 0.06, 0.01, 0.4); Music.tone(hz(40), t + d * 2, d * 2, "sine", 0.06, 0.01, 0.6); }
+    } },
+    coast: { bpm: 96, play(s, t, d) {
+      const prog = [[50, 57, 62], [48, 55, 60], [46, 53, 58], [45, 52, 57]];
+      const ch = prog[Math.floor(s / 12) % 4];
+      if (s % 6 === 0) Music.tone(hz(ch[0] - 12), t, d * 4, "triangle", 0.1, 0.01, 0.3);
+      if (s % 6 === 3) Music.tone(hz(ch[1]), t, d * 2, "triangle", 0.05, 0.01, 0.2);
+      const mel = [74, -1, 74, 72, -1, 69, 70, -1, 72, 74, -1, -1];
+      if (s % 48 >= 12) { const m = mel[s % 12]; if (m > 0) Music.tone(hz(m), t, d * 1.6, "square", 0.028, 0.01, 0.2); }
+      if (s % 24 === 0) Music.noise(t, d * 18, 0.05, 700, "lowpass");
+    } },
+    spire: { bpm: 132, play(s, t, d) {
+      const prog = [[49, 56, 61, 64], [47, 54, 59, 63], [45, 52, 57, 61], [44, 51, 56, 60]];
+      const ch = prog[Math.floor(s / 16) % 4];
+      Music.tone(hz(ch[s % 4] + 12 * (1 + (s >> 2) % 2)), t, d * 0.8, "sawtooth", 0.02, 0.003, 0.08);
+      if (s % 8 === 0) Music.kick(t, 0.3);
+      if (s % 16 === 0) Music.tone(hz(ch[0] - 12), t, d * 15, "sawtooth", 0.05, 0.1, 0.5);
+      if (s % 32 === 28) Music.noise(t, d * 8, 0.12, 300, "lowpass");
+    } },
+    deep: { bpm: 50, play(s, t, d) {
+      if (s % 32 === 0) { Music.tone(hz(26), t, d * 31, "sawtooth", 0.035, 1, 2); Music.tone(hz(33), t, d * 31, "sine", 0.08, 1, 2); }
+      if (s % 16 === 8) Music.tone(hz([69, 68, 72, 63][(s >> 4) % 4]), t, d * 10, "sine", 0.03, 1.5, 2, null, rand(-15, 15));
+      if (s % 8 === 3 && Math.random() < 0.5) Music.tone(hz(84 + Math.floor(Math.random() * 6)), t, d, "sine", 0.015, 0.005, 1.5);
+    } },
     ending: { bpm: 66, play(s, t, d) {
       const prog = [[53, 60, 65, 69], [50, 57, 62, 65], [46, 58, 62, 65], [48, 55, 60, 64]];
       const ch = prog[Math.floor(s / 16) % 4];
@@ -392,8 +431,10 @@
 
   // ================================================================== MAP
   const T = { SALT: 0, SAND: 1, GRASS: 2, WATER: 3, PALM: 4, WALL: 5, HOUSE: 7, ROOF: 8, DOOR: 9, PATH: 10,
-              ROCK: 11, BRIDGE: 12, CRYSTAL: 13, DARK: 14, LOCKED: 15, WELL: 16, GATE: 17, LDOOR: 18, CITY: 19, PEDESTAL: 20, BONES: 21, MUD: 22 };
-  const SOLID = new Set([T.WATER, T.PALM, T.WALL, T.HOUSE, T.ROOF, T.ROCK, T.CRYSTAL, T.LOCKED, T.WELL, T.GATE, T.CITY, T.DOOR, T.PEDESTAL]);
+              ROCK: 11, BRIDGE: 12, CRYSTAL: 13, DARK: 14, LOCKED: 15, WELL: 16, GATE: 17, LDOOR: 18, CITY: 19, PEDESTAL: 20, BONES: 21, MUD: 22,
+              COBBLE: 23, SHALLOW: 24, DECK: 25, HULL: 26, ABYSS: 27, CORAL: 28, CLIFF: 29, STONE: 30, SPIRE: 31, SWALL: 32, ROOFB: 33, FOUNTAIN: 34, FLOOR: 35, GDOOR: 36, DEBRIS: 37, STAIRS: 38 };
+  const SOLID = new Set([T.WATER, T.PALM, T.WALL, T.HOUSE, T.ROOF, T.ROCK, T.CRYSTAL, T.LOCKED, T.WELL, T.GATE, T.CITY, T.DOOR, T.PEDESTAL,
+                         T.HULL, T.CORAL, T.CLIFF, T.SWALL, T.ROOFB, T.FOUNTAIN, T.GDOOR, T.DEBRIS]);
   const map = new Uint8Array(W * H);
   const get = (x, y) => (x < 0 || y < 0 || x >= W || y >= H) ? T.ROCK : map[y * W + x];
   const set = (x, y, t) => { if (x >= 0 && y >= 0 && x < W && y < H) map[y * W + x] = t; };
@@ -410,10 +451,11 @@
   }
   function house(x, y, w) { rect(x, y, x + w - 1, y + 1, T.ROOF); rect(x, y + 2, x + w - 1, y + 2, T.HOUSE); set(x + Math.floor(w / 2), y + 2, T.DOOR); }
   function buildMap() {
-    map.fill(T.SALT);
-    outline(0, 0, W - 1, H - 1, T.ROCK); outline(1, 1, W - 2, H - 2, T.ROCK);
-    for (let i = 0; i < 70; i++) { const x = 2 + Math.floor(hash(i, 7) * (W - 4)), y = 2 + Math.floor(hash(i, 11) * (H - 4)); if (hash(i, 3) < .5 && (x < 5 || y < 4 || x > W - 6 || y > H - 5)) set(x, y, T.ROCK); }
-    for (let i = 0; i < 40; i++) { const x = 3 + Math.floor(hash(i, 41) * (W - 6)), y = 3 + Math.floor(hash(i, 43) * 28); if (get(x, y) === T.SALT) set(x, y, T.BONES); }
+    map.fill(T.CLIFF);
+    rect(0, 0, OW - 1, OH - 1, T.SALT);
+    outline(0, 0, OW - 1, OH - 1, T.ROCK); outline(1, 1, OW - 2, OH - 2, T.ROCK);
+    for (let i = 0; i < 70; i++) { const x = 2 + Math.floor(hash(i, 7) * (OW - 4)), y = 2 + Math.floor(hash(i, 11) * (OH - 4)); if (hash(i, 3) < .5 && (x < 5 || y < 4 || x > OW - 6 || y > OH - 5)) set(x, y, T.ROCK); }
+    for (let i = 0; i < 40; i++) { const x = 3 + Math.floor(hash(i, 41) * (OW - 6)), y = 3 + Math.floor(hash(i, 43) * 28); if (get(x, y) === T.SALT) set(x, y, T.BONES); }
     rect(3, 33, 25, 51, T.SAND);
     house(5, 35, 6); house(15, 35, 7); house(4, 44, 5); house(17, 45, 5);
     set(12, 42, T.WELL);
@@ -442,6 +484,75 @@
     for (const [x, y] of [[4, 50], [45, 5], [37, 29], [35, 29], [30, 17], [29, 17], [31, 17], [58, 12], [8, 24], [20, 6], [60, 24], [51, 18], [11, 15], [20, 20], [44, 24],
     [12, 30], [22, 26], [16, 18], [26, 22], [8, 13], [44, 30], [54, 24], [40, 40], [44, 9], [18, 8], [53, 15], [54, 12], [46, 17],
     [6, 30], [27, 24], [44, 40], [60, 34], [28, 16], [45, 12], [66, 22], [3, 41], [56, 14], [57, 15], [64, 20], [65, 21], [67, 21], [66, 20], [66, 21], [65, 23], [67, 23], [7, 11], [6, 11], [8, 11], [6, 12], [7, 12], [8, 12], [7, 10], [20, 14], [38, 36], [14, 10], [58, 28], [10, 6]]) if (SOLID.has(get(x, y))) set(x, y, y > 31 ? T.GRASS : T.SALT);
+    set(12, 51, T.PATH); set(12, 50, T.PATH); set(44, 48, T.SALT); set(44, 49, T.SALT); set(43, 49, T.SALT); set(45, 49, T.SALT);
+    buildAct2();
+  }
+  // ------------------------------------------------------------------ ACT II REGIONS
+  function house2(x, y, w) { rect(x, y, x + w - 1, y + 1, T.ROOFB); rect(x, y + 2, x + w - 1, y + 2, T.HOUSE); set(x + Math.floor(w / 2), y + 2, T.DOOR); }
+  function wreck(x0, y0, w, h, openX) { rect(x0, y0, x0 + w - 1, y0 + h - 1, T.DECK); outline(x0, y0, x0 + w - 1, y0 + h - 1, T.HULL); set(openX, y0 + h - 1, T.DECK); for (let x = x0 + 2; x < x0 + w - 2; x += 3) set(x, y0 + 2, T.HULL); }
+  function carve(points, t, width = 0) {
+    for (let i = 1; i < points.length; i++) {
+      let [x, y] = points[i - 1]; const [tx, ty] = points[i];
+      const paint = (a, b) => { for (let dy = -width; dy <= width; dy++) for (let dx = -width; dx <= width; dx++) set(a + dx, b + dy, t); };
+      while (x !== tx || y !== ty) { paint(x, y); if (x !== tx) x += Math.sign(tx - x); else y += Math.sign(ty - y); }
+      paint(tx, ty);
+    }
+  }
+  function buildAct2() {
+    // Oru, the city behind the gate
+    rect(74, 2, 104, 32, T.COBBLE); outline(74, 2, 104, 32, T.WALL); set(89, 32, T.GATE); set(104, 17, T.PATH);
+    outline(77, 3, 91, 11, T.WALL); rect(78, 4, 90, 10, T.FLOOR); set(84, 11, T.GDOOR);
+    for (const [x, y] of [[80, 6], [88, 6], [80, 9], [88, 9]]) set(x, y, T.WALL);
+    house2(94, 4, 5); house2(99, 4, 4); house2(96, 11, 7); house2(95, 21, 5); house2(98, 26, 5); house2(93, 26, 4);
+    house2(76, 20, 5); house2(76, 25, 6); house2(82, 25, 5); house2(82, 20, 4);
+    rect(84, 13, 94, 19, T.PATH); set(89, 16, T.FOUNTAIN);
+    carve([[89, 31], [89, 13]], T.PATH); carve([[75, 17], [103, 17]], T.PATH); carve([[84, 12], [84, 13]], T.PATH);
+    // the Drowning Marsh: shallow water, grass islands, mud and a village on stilts
+    for (let y = 56; y <= 88; y++) for (let x = 3; x <= 60; x++) {
+      const n = hash(Math.floor(x / 3), Math.floor(y / 3) + 500), m = hash(x, y + 900);
+      set(x, y, n < 0.38 ? T.GRASS : n < 0.52 ? T.MUD : n > 0.93 ? T.WATER : T.SHALLOW);
+      if (m < 0.05 && get(x, y) === T.GRASS) set(x, y, T.PALM);
+    }
+    rect(28, 62, 46, 72, T.DECK); house(30, 63, 5); house(38, 63, 6); house(31, 68, 4); house(40, 68, 5);
+    rect(6, 78, 20, 87, T.MUD); rect(11, 81, 14, 82, T.WATER);
+    carve([[14, 57], [14, 66], [28, 66]], T.DECK); carve([[46, 67], [60, 67], [60, 71]], T.DECK); carve([[37, 72], [37, 80], [14, 80], [14, 79]], T.DECK);
+    carve([[8, 60], [14, 60]], T.GRASS); carve([[52, 60], [52, 66]], T.GRASS); carve([[56, 84], [56, 72]], T.GRASS); carve([[24, 86], [24, 80]], T.GRASS); carve([[40, 80], [40, 75]], T.GRASS);
+    for (let y = 70; y <= 73; y++) set(61, y, T.DEBRIS);
+    // the Wreck Coast: beach, sea, ship hulls, a lighthouse, the Gull and the pier over the whirlpool
+    for (let y = 56; y <= 88; y++) for (let x = 62; x <= 127; x++) {
+      const shore = 80 + Math.round(Math.sin(x * 0.35) * 1.5 + Math.sin(x * 0.11) * 2);
+      set(x, y, (y > shore || x > 124) ? T.WATER : T.SAND);
+    }
+    for (let y = 70; y <= 73; y++) { set(62, y, T.SAND); set(61, y, get(61, y)); }
+    wreck(74, 60, 10, 6, 78); wreck(95, 66, 10, 6, 99); wreck(104, 57, 16, 10, 111);
+    rect(107, 60, 116, 64, T.FLOOR);
+    wreck(78, 72, 8, 5, 81);
+    rect(119, 56, 124, 61, T.STONE); set(122, 57, T.WALL);
+    carve([[116, 76], [116, 86]], T.DECK); carve([[117, 76], [117, 86]], T.DECK);
+    carve([[62, 71], [80, 71], [100, 74], [112, 74]], T.PATH);
+    for (const [x, y] of [[68, 78], [69, 78], [70, 78], [68, 77], [69, 77]]) set(x, y, T.SAND);
+    // the Storm Spire and its mountain road
+    rect(107, 33, 127, 53, T.STONE); outline(106, 32, 128, 54, T.CLIFF);
+    for (let y = 34; y <= 52; y++) for (let x = 108; x <= 126; x++) if (hash(x * 3, y * 7 + 77) < 0.22) set(x, y, T.CLIFF);
+    carve([[108, 50], [114, 50], [114, 44], [120, 44], [120, 38], [118, 38], [118, 33]], T.STONE, 1);
+    carve([[120, 42], [123, 42], [123, 40]], T.STONE);
+    rect(110, 1, 126, 31, T.SPIRE); outline(110, 1, 126, 31, T.SWALL);
+    for (let x = 110; x <= 126; x++) { set(x, 11, T.SWALL); set(x, 21, T.SWALL); }
+    for (const [x, y] of [[125, 23], [111, 13]]) set(x, y, T.STAIRS);
+    for (const [x, y] of [[125, 19], [111, 9]]) set(x, y, T.STAIRS);
+    for (let i = 0; i < 18; i++) { const x = 112 + Math.floor(hash(i, 301) * 13), y = [24, 27, 14, 17, 4, 7][i % 6]; if (Math.abs(x - 118) > 1) set(x, y, T.SWALL); }
+    // the Deep: a drowned palace under the old sea
+    rect(75, 37, 103, 52, T.ABYSS); outline(74, 36, 104, 53, T.CORAL);
+    for (let i = 0; i < 40; i++) { const x = 76 + Math.floor(hash(i, 401) * 27), y = 39 + Math.floor(hash(i, 403) * 12); if (Math.abs(x - 89) > 2) set(x, y, T.CORAL); }
+    carve([[89, 52], [89, 38]], T.ABYSS, 1); rect(86, 37, 92, 40, T.ABYSS);
+  }
+  // Doors, gates and passages that change as the story moves on
+  function applyWorldState() {
+    if (!G) return;
+    if (G.flags.unlocked) set(34, 11, T.DARK);
+    if (G.stage >= 9) for (let y = 70; y <= 73; y++) set(61, y, T.SHALLOW);
+    if (G.flags.guildOpen) set(84, 11, T.FLOOR);
+    miniDirty = true;
   }
 
   const tileCache = new Map();
@@ -477,12 +588,29 @@
       case T.WELL: px(0, 0, 16, 16, "#e6c98f"); px(2, 5, 12, 10, "#857ea5"); px(4, 7, 8, 6, "#2a7fae"); px(2, 2, 2, 8, "#6b3f24"); px(12, 2, 2, 8, "#6b3f24"); px(2, 1, 12, 2, "#a8403a"); break;
       case T.GATE: px(0, 0, 16, 16, "#5e5680"); px(2, 0, 12, 16, "#3a2a1e"); for (let x = 3; x < 14; x += 3) px(x, 0, 1, 16, "#ffcf4a"); break;
       case T.CITY: px(0, 0, 16, 16, "#3b4f9a"); px(2 + v * 2, 3, 4, 13, "#5a70c0"); px(9, 6 - v, 5, 10, "#4a60b0"); px(3 + v * 2, 5, 2, 2, "#ffd98a"); px(10, 8, 2, 2, "#ffd98a"); px(0, 0, 16, 2, "#2a3a78"); break;
+      case T.COBBLE: px(0, 0, 16, 16, "#8a8498"); for (let y = 0; y < 16; y += 4) for (let x = (y / 4 % 2) * 4; x < 16; x += 8) { px(x, y, 7, 3, v === 1 ? "#a09aae" : "#9a94a8"); px(x, y, 7, 1, "#b0aabe"); }
+        if (v === 2) px(9, 6, 2, 2, "#6fbf62"); break;
+      case T.SHALLOW: px(0, 0, 16, 16, "#4f98a4"); px(0, 0, 16, 2, "#5aa8b4"); px(2 + v * 3, 7, 4, 1, "#9ad8e0"); px(9 - v, 12, 3, 1, "#9ad8e0"); if (v === 2) { px(12, 3, 1, 4, "#3a7a3a"); px(13, 4, 1, 3, "#3a7a3a"); } break;
+      case T.DECK: px(0, 0, 16, 16, "#8a5a33"); for (let y = 0; y < 16; y += 4) { px(0, y, 16, 1, "#6b3f24"); px((y * 3) % 16, y + 1, 1, 3, "#6b3f24"); } px(0, 2, 16, 1, "#a8703f"); break;
+      case T.HULL: px(0, 0, 16, 16, "#3a2418"); for (let x = 0; x < 16; x += 4) px(x, 0, 1, 16, "#2a180e"); px(0, 0, 16, 2, "#5a3a24"); px(0, 13, 16, 1, "#6b4a2a"); break;
+      case T.ABYSS: px(0, 0, 16, 16, "#142040"); px(0, 0, 16, 1, "#101a34"); if (v === 1) { px(4, 5, 8, 1, "#24406a"); px(7, 3, 2, 5, "#24406a"); } else { px(10, 11, 2, 2, "#1e3458"); } break;
+      case T.CORAL: px(0, 0, 16, 16, "#142040"); { const c = ["#c8506a", "#e08a4a", "#9a4aa8"][v]; px(3, 6, 3, 10, c); px(9, 3, 3, 13, c); px(1, 8, 4, 2, c); px(11, 6, 4, 2, c); px(6, 10, 4, 2, c); px(9, 3, 1, 13, "#ffb0c0"); } break;
+      case T.CLIFF: px(0, 0, 16, 16, "#2a2438"); px(0, 0, 16, 3, "#3a3450"); px(2 + v * 3, 5, 5, 2, "#433c5c"); px(9 - v, 11, 5, 1, "#1e1a2c"); px(1, 13, 14, 3, "#1e1a2c"); break;
+      case T.STONE: px(0, 0, 16, 16, "#7a7488"); for (let i = 0; i < 6; i++) px(Math.floor(rnd(i) * 15), Math.floor(rnd(i + 4) * 15), 2, 1, i % 2 ? "#6a6478" : "#8a8498"); break;
+      case T.SPIRE: px(0, 0, 16, 16, "#3a4468"); px(0, 0, 16, 1, "#2e3658"); px(0, 0, 1, 16, "#2e3658"); px(7, 6, 2, 1, "#5a6aa8"); px(8, 7, 1, 3, "#5a6aa8"); break;
+      case T.SWALL: px(0, 0, 16, 16, "#1e2440"); px(0, 0, 16, 2, "#2e3660"); for (let y = 4; y < 16; y += 5) px(0, y, 16, 1, "#161a30"); px(6, 7, 3, 3, "#3ee0e8"); px(7, 8, 1, 1, "#e8ffff"); break;
+      case T.ROOFB: px(0, 0, 16, 16, "#3a5aa8"); for (let y = 2; y < 16; y += 4) px(0, y, 16, 1, "#2a4078"); px(0, 0, 16, 1, "#5a7ac8"); break;
+      case T.FOUNTAIN: px(0, 0, 16, 16, "#8a8498"); px(1, 4, 14, 11, "#aba4c8"); px(3, 6, 10, 7, "#2a7fae"); px(7, 1, 2, 8, "#aba4c8"); px(6, 0, 4, 2, "#c8c2e0"); px(4 + v, 8, 3, 1, "#9ad8f0"); break;
+      case T.FLOOR: px(0, 0, 16, 16, "#a07a4a"); for (let y = 0; y < 16; y += 4) px(0, y, 16, 1, "#8a6438"); px(4, 1, 1, 3, "#8a6438"); px(11, 5, 1, 3, "#8a6438"); px(7, 9, 1, 3, "#8a6438"); px(2, 13, 1, 3, "#8a6438"); break;
+      case T.GDOOR: px(0, 0, 16, 16, "#5e5680"); px(2, 1, 12, 15, "#6b4a1a"); px(3, 2, 10, 13, "#c9a227"); px(7, 2, 2, 13, "#8a6a2a"); px(5, 8, 2, 2, "#1b1633"); px(9, 8, 2, 2, "#1b1633"); break;
+      case T.DEBRIS: px(0, 0, 16, 16, "#4f98a4"); px(1, 4, 14, 3, "#6b4a2a"); px(0, 8, 12, 3, "#5a3a20"); px(4, 12, 12, 3, "#6b4a2a"); px(2, 5, 12, 1, "#8a6438"); px(6, 1, 3, 3, "#3a7a3a"); break;
+      case T.STAIRS: px(0, 0, 16, 16, "#3a4468"); for (let i = 0; i < 4; i++) { px(2, 2 + i * 3, 12, 2, "#c8c2e0"); px(2, 4 + i * 3, 12, 1, "#7a7488"); } break;
       case T.PEDESTAL: px(0, 0, 16, 16, "#332e4f"); px(3, 9, 10, 6, "#857ea5"); px(4, 8, 8, 2, "#aba4c8"); px(5, 14, 6, 2, "#5a1020"); break;
     }
     tileCache.set(key, c);
     return c;
   }
-  const VARIANTS = { [T.SALT]: 3, [T.GRASS]: 3, [T.WATER]: 3, [T.WALL]: 3, [T.DARK]: 2, [T.CITY]: 3, [T.SAND]: 2, [T.MUD]: 2 };
+  const VARIANTS = { [T.SALT]: 3, [T.GRASS]: 3, [T.WATER]: 3, [T.WALL]: 3, [T.DARK]: 2, [T.CITY]: 3, [T.SAND]: 2, [T.MUD]: 2, [T.COBBLE]: 3, [T.SHALLOW]: 3, [T.ABYSS]: 2, [T.CLIFF]: 3, [T.STONE]: 2, [T.CORAL]: 3 };
 
   // ================================================================== PARTY
   const HEROES = {
@@ -900,7 +1028,7 @@
     save(); updateHud();
   }
   function restParty() { for (const id of G.members) { const h = G.party[id]; h.hp = h.maxHp; h.sp = h.maxSp; } G.checkpoint = { x: G.px, y: G.py }; Music.sound("heal"); toast("Rested. Everyone is healed. Progress saved."); save(); updateHud(); campScene(); }
-  function advance(stage) { if (G.stage < stage) { G.stage = stage; spawnField(); } save(); }
+  function advance(stage) { if (G.stage < stage) { G.stage = stage; spawnField(); applyWorldState(); } save(); }
 
   // ================================================================== PROPS
   // Hand-placed and scattered scenery. Solid props block movement; placement avoids paths and story spots.
@@ -986,6 +1114,55 @@
   }
   function interlude(title, text) { card("Meanwhile, in Oru", title, text); }
 
+  // ================================================================== WARPS & MAP FOG
+  // Passages between regions. Stepping onto a warp tile moves the party; a closed one explains why.
+  const WARPS = [
+    { x: 61, y: 11, to: [89, 30], req: () => G.stage >= 7 },
+    { x: 89, y: 31, to: [61, 13] },
+    { x: 12, y: 51, to: [14, 58], req: () => G.stage >= 8, msg: "The road south is flooded knee-deep, and the water is still rising. (Chapter VIII)" },
+    { x: 14, y: 57, to: [12, 49] },
+    { x: 104, y: 17, to: [109, 50], req: () => G.stage >= 10, msg: "The east gate is barred. A sign reads: STORM ROAD CLOSED BY ORDER OF THE MAYOR. (Chapter X)" },
+    { x: 108, y: 50, to: [102, 17] },
+    { x: 118, y: 32, to: [118, 29], req: () => G.stage >= 11, msg: "The Spire door is sealed by a storm-ward that crackles against your fingers. (Chapter XI)" },
+    { x: 118, y: 30, to: [118, 34] },
+    { x: 125, y: 23, to: [124, 18] }, { x: 125, y: 19, to: [124, 24] },
+    { x: 111, y: 13, to: [112, 8] }, { x: 111, y: 9, to: [112, 14] },
+    { x: 117, y: 86, to: [89, 50], req: () => G.stage >= 12 && G.flags.bellReady, msg: "A whirlpool churns below the pier. Without Nell's diving bell, you'd drown. (Chapter XII)" },
+    { x: 89, y: 52, to: [117, 84] },
+  ];
+  let warpFade = 0;
+  // Safety net: if the party ever ends up inside something solid (an old save, a push), step to the nearest free spot.
+  function unstick() {
+    if (!blocked(G.px, G.py)) return;
+    for (let r = 4; r <= 96; r += 4) for (let a = 0; a < 16; a++) {
+      const x = G.px + Math.cos(a / 16 * Math.PI * 2) * r, y = G.py + Math.sin(a / 16 * Math.PI * 2) * r;
+      if (!blocked(x, y)) { G.px = x; G.py = y; player.scarf = []; return; }
+    }
+    G.px = G.checkpoint.x; G.py = G.checkpoint.y;
+  }
+  function checkWarp() {
+    const tx = Math.floor(G.px / TILE), ty = Math.floor(G.py / TILE), key = tx + "," + ty;
+    if (player.lastTile === key) return;
+    player.lastTile = key;
+    const w = WARPS.find(w => w.x === tx && w.y === ty);
+    if (!w) return;
+    if (w.req && !w.req()) { if (w.msg) once("warp" + key, () => toast(w.msg)); return; }
+    G.px = w.to[0] * TILE + 8; G.py = w.to[1] * TILE + 8;
+    player.lastTile = w.to[0] + "," + w.to[1]; player.scarf = []; player.dashT = 0;
+    camX = clamp(G.px - VIEW_W / 2, 0, W * TILE - VIEW_W); camY = clamp(G.py - VIEW_H / 2 - 8, 0, H * TILE - VIEW_H);
+    warpFade = 1; Music.sound("dash");
+  }
+  const FOG = 10, FW = Math.ceil(W / FOG), FH = Math.ceil(H / FOG);
+  function reveal() {
+    const cx = Math.floor(G.px / TILE / FOG), cy = Math.floor(G.py / TILE / FOG);
+    let s2 = G.flags.fog || "0".repeat(FW * FH), changed = false;
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      const x = cx + dx, y = cy + dy; if (x < 0 || y < 0 || x >= FW || y >= FH) continue;
+      const i = y * FW + x; if (s2[i] !== "1") { s2 = s2.slice(0, i) + "1" + s2.slice(i + 1); changed = true; }
+    }
+    if (changed) { G.flags.fog = s2; miniDirty = true; }
+  }
+
   // ================================================================== GOALS
   const KEY_CHEST = { x: 40, y: 17 };
   const CHARM = { x: 11 * TILE + 8, y: 15 * TILE + 8 };
@@ -999,7 +1176,13 @@
   const REGIONS = [
     { name: "Kessa", x0: 3, y0: 33, x1: 25, y1: 51, music: "village" }, { name: "The Well of Nine", x0: 31, y0: 22, x1: 41, y1: 30, music: "flats" },
     { name: "The Drowned Grove", x0: 52, y0: 32, x1: 68, y1: 50, music: "grove" }, { name: "The Salt Cathedral", x0: 25, y0: 4, x1: 43, y1: 18, music: "cathedral" },
-    { name: "Gates of Oru", x0: 50, y0: 11, x1: 69, y1: 16, music: "flats" }, { name: "The Glass Flats", x0: 0, y0: 0, x1: W, y1: H, music: "flats" },
+    { name: "Gates of Oru", x0: 50, y0: 11, x1: 69, y1: 16, music: "flats" },
+    { name: "The Guild Hall", x0: 78, y0: 4, x1: 90, y1: 10, music: "oru" }, { name: "Oru", x0: 74, y0: 2, x1: 104, y1: 32, music: "oru" },
+    { name: "Reedholm", x0: 28, y0: 62, x1: 46, y1: 72, music: "marsh" }, { name: "The Bog Heart", x0: 5, y0: 77, x1: 21, y1: 88, music: "marsh" },
+    { name: "The Drowning Marsh", x0: 2, y0: 55, x1: 61, y1: 89, music: "marsh" }, { name: "The Wreck Coast", x0: 62, y0: 55, x1: 128, y1: 89, music: "coast" },
+    { name: "The Storm Spire", x0: 110, y0: 1, x1: 126, y1: 31, music: "spire" }, { name: "The Storm Road", x0: 106, y0: 32, x1: 128, y1: 54, music: "spire" },
+    { name: "The Deep", x0: 74, y0: 36, x1: 104, y1: 53, music: "deep" },
+    { name: "The Glass Flats", x0: 0, y0: 0, x1: W, y1: H, music: "flats" },
   ];
   function goal() {
     const found = G.flags.shards || [];
@@ -1033,6 +1216,17 @@
         return { ch: "Chapter VI · The Drowned Gate", text: "Face Guild Master Hollis at the gate.", x: 61, y: 12 };
     }
     return { ch: "", text: "", x: 12, y: 39 };
+  }
+
+  function areaAt(tx, ty, f) {
+    const t0 = get(tx, ty);
+    if (t0 === T.DARK) return "cathedral";
+    if (tx >= 74 && tx <= 104 && ty <= 32) return t0 === T.FLOOR ? "hall" : "oru";
+    if (tx >= 106 && ty <= 54) return ty <= 31 ? "spireIn" : "spire";
+    if (tx >= 74 && tx <= 104 && ty >= 36 && ty <= 53) return "deep";
+    if (ty >= 55) return tx <= 61 ? "marsh" : "coast";
+    if (t0 === T.GRASS || t0 === T.MUD) return "grove";
+    return f && f.minStage === 6 ? "gate" : "flats";
   }
 
   // ================================================================== OVERWORLD MONSTERS
@@ -1714,7 +1908,10 @@
       spawnField(); save();
     } else if (result === "fled") {
       const f = field.find(x => x.id === opts.fieldId);
-      if (f) { f.cool = 3; const d = Math.hypot(G.px - f.px, G.py - f.py) || 1; G.px += (G.px - f.px) / d * 20; G.py += (G.py - f.py) / d * 20; }
+      if (f) {
+        f.cool = 3; const d = Math.hypot(G.px - f.px, G.py - f.py) || 1;
+        for (let step = 0; step < 10; step++) { const nx = G.px + (G.px - f.px) / d * 2, ny = G.py + (G.py - f.py) / d * 2; if (blocked(nx, ny)) break; G.px = nx; G.py = ny; }
+      }
     } else {
       field = field.filter(x => x.id !== opts.fieldId);
       if (boss === "butcher") { G.flags.butcherDead = true; save(); setTimeout(() => openDialog("maru_after_fight"), 200); }
@@ -1744,11 +1941,11 @@
     if (u.side === "foe") {
       const bossU = battle.foes.find(f => f.boss && !f.dead);
       if (bossU && !u.boss) { const minions = battle.foes.filter(f => !f.boss); const i = minions.indexOf(u), n = minions.length; const xs = n === 1 ? [60] : n === 2 ? [50, 270] : [40, 280, 70, 250]; return { x: xs[i % xs.length], y: 104 + (i >= 2 ? 6 : 0) }; }
-      if (u.boss) return { x: VIEW_W / 2, y: ["voss", "hollis", "wyrm"].includes(u.sprite) ? 122 : 114 };
+      if (u.boss) return { x: VIEW_W / 2, y: ["voss", "hollis", "wyrm"].includes(u.sprite) ? 116 : 108 };
       const n = u.count, w = VIEW_W / (n + 1); return { x: w * (u.slot + 1), y: 98 };
     }
     const i = battle.heroes.indexOf(u), n = battle.heroes.length;
-    return { x: VIEW_W / 2 + (i - (n - 1) / 2) * 40, y: 166 };
+    return { x: VIEW_W / 2 + (i - (n - 1) / 2) * 44, y: 170 };
   }
   function gore(u, n) {
     if (!battle) return;
@@ -1762,8 +1959,8 @@
     }
     if (u.side === "foe") { u.splats = u.splats || []; if (u.splats.length < 8) u.splats.push({ x: rand(-12, 12), y: rand(-40, -8), s: rand(1, 3) }); }
   }
-  function popup(u, value, color, crit) { const p = unitPos(u); popups.push({ x: p.x + rand(-6, 6), y: p.y - (u.side === "foe" ? 44 : 30), text: crit ? `${value}!` : `${value}`, color, life: 1.1, big: crit }); }
-  function popupText(u, text, color) { const p = unitPos(u); popups.push({ x: p.x, y: p.y - (u.side === "foe" ? 52 : 36), text, color, life: 1.2 }); }
+  function popup(u, value, color, crit) { const p = unitPos(u); popups.push({ x: p.x + rand(-6, 6), y: p.y - (u.side === "foe" ? 44 : 40), text: crit ? `${value}!` : `${value}`, color, life: 1.1, big: crit }); }
+  function popupText(u, text, color) { const p = unitPos(u); popups.push({ x: p.x, y: p.y - (u.side === "foe" ? 52 : 46), text, color, life: 1.2 }); }
   function flash(a) { if (battle) battle.flash = a; }
   let toastTimer = 0;
   function toast(text) { $("toast").textContent = text; $("toast").hidden = false; toastTimer = 3; }
@@ -1799,6 +1996,7 @@
       battle.flash = Math.max(0, battle.flash - dt * 2);
     }
     if (shake > 0) shake = Math.max(0, shake - dt * 18);
+    if (warpFade > 0) warpFade = Math.max(0, warpFade - dt * 2.5);
     if (mode !== "play") return;
 
     let mx = (keys["d"] || keys["arrowright"] ? 1 : 0) - (keys["a"] || keys["arrowleft"] ? 1 : 0) + stick.x;
@@ -1812,7 +2010,7 @@
     const dashing = player.dashT > 0;
     if (dashing) { player.dashT -= dt; mx = player.dashX; my = player.dashY; if (player.dashT <= 0 && !REDUCED) burst(G.px, G.py, "#d8d0e6", 4, 30); }
     if (moving) player.dir = Math.abs(mx) > Math.abs(my) ? (mx > 0 ? "right" : "left") : (my > 0 ? "down" : "up");
-    const mud = tileAt(G.px, G.py) === T.MUD;
+    const mud = tileAt(G.px, G.py) === T.MUD || tileAt(G.px, G.py) === T.SHALLOW;
     const speed = (dashing ? DASH_SPEED : player.sprint ? 118 : 64) * (mud ? 0.6 : 1);
     let bx = 0, by = 0;
     for (let sub = 0; sub < 3; sub++) {            // small steps so a dash never skips through a wall
@@ -1837,7 +2035,7 @@
     if (dashing) player.lines.push({ x: G.px + rand(-6, 6), y: G.py - rand(2, 18), dx: player.dashX, dy: player.dashY, life: 0.18 });
     player.lines.forEach(l => l.life -= dt); player.lines = player.lines.filter(l => l.life > 0);
     player.ghosts.forEach(gh => gh.life -= dt); player.ghosts = player.ghosts.filter(gh => gh.life > 0);
-    const neck = { x: G.px + (player.dir === "left" ? 3 : player.dir === "right" ? -3 : 0), y: G.py - 10 };
+    const neck = { x: G.px + (player.dir === "left" ? 3 : player.dir === "right" ? -3 : 0), y: G.py - 19 };
     player.scarf.unshift(neck);
     const sway = Math.sin(time * 5);
     player.scarf = player.scarf.slice(0, 22).map((p, i) => i === 0 ? p : { x: p.x + (moving ? 0 : sway * 0.18), y: p.y + (moving ? 0 : 0.1) });
@@ -1873,6 +2071,7 @@
       const first = region === ""; region = reg.name;
       if (!first) { const bn = $("banner"); $("bannerText").textContent = reg.name; bn.hidden = true; void bn.offsetWidth; bn.hidden = false; clearTimeout(bn._t); bn._t = setTimeout(() => { bn.hidden = true; }, 2800); }
     }
+    unstick(); checkWarp(); reveal();
     // story triggers
     if (G.stage >= 2 && !G.flags.butcherDead && near({ x: 36 * TILE + 8, y: 29 * TILE + 8 }, 30)) once("butcherPrompt", () => openDialog("maru_scene0"));
     if (G.stage >= 3 && G.flags.metRook && !G.flags.motherDead && near(MOTHER_POS, 30)) once("motherPrompt", () => openDialog("mother_scene"));
@@ -1895,7 +2094,7 @@
       const ambush = dashing || player.dashCd > DASH_COOLDOWN - 0.4;   // right after a dash still counts
       if (d < (ambush ? 16 : 12) && f.cool <= 0) {
         const t0 = tileAt(f.px, f.py);
-        startBattle(f.group, { fieldId: f.id, ambush, area: f.dark ? "cathedral" : t0 === T.GRASS || t0 === T.MUD ? "grove" : (f.minStage === 6 ? "gate" : "flats") });
+        startBattle(f.group, { fieldId: f.id, ambush, area: f.area || areaAt(Math.floor(f.px / TILE), Math.floor(f.py / TILE), f) });
         break;
       }
     }
@@ -1918,42 +2117,162 @@
     const n = parseInt(hex.slice(1), 16), f = v => clamp(Math.round(amt > 0 ? v + (255 - v) * amt : v * (1 + amt)), 0, 255);
     return `rgb(${f(n >> 16)},${f((n >> 8) & 255)},${f(n & 255)})`;
   }
+  // ---- characters: taller, shaded, outlined sprites with a real walk cycle
+  const OUT = "#161226";
+  function personStyle(o) {
+    if (o.style) return o.style;
+    if (o.hero) return { hair: "fringe", coat: true, eye: "#3a6ab0" };
+    return ({ hammer: { hair: "bun", sleeveless: true, apron: "#5a3a22", eye: "#4a7a3a" }, blind: { hair: "long", dress: true },
+              bow: { hair: "hood", hood: "#3a4a2e", eye: "#8a6a2a" }, veil: { hair: "veil", dress: true, eye: "#5a4a8a" },
+              spear: { hair: "helm", armor: true, eye: "#3a3a4a" }, staff: { hair: "long", dress: true, eye: "#6a5a4a" },
+              pack: { hair: "bald", beard: true, eye: "#3a2a1a" }, cap: { hair: "cap", eye: "#4a3020" } })[o.extra] || { hair: "tail", eye: "#4a3020" };
+  }
   function drawPerson(g, x, y, o) {
-    const s = o.small ? 0.8 : 1;
     if (o.dead) {
-      const X = Math.round(x), Y = Math.round(y);
-      g.fillStyle = "#1b1633"; g.fillRect(X - 9, Y - 5, 18, 6); g.fillStyle = o.robe; g.fillRect(X - 8, Y - 4, 12, 4); g.fillStyle = o.skin; g.fillRect(X + 4, Y - 4, 4, 4);
-      g.fillStyle = "#3ee0e8"; g.fillRect(X - 2, Y - 5, 3, 1); g.fillStyle = "#7a1a22"; g.fillRect(X - 10, Y, 8, 2); g.fillRect(X - 4, Y + 1, 3, 1);
+      const X = Math.round(x), Y = Math.round(y), P = (a, b, w, h, c) => { g.fillStyle = c; g.fillRect(X + a, Y + b, w, h); };
+      P(-12, -6, 24, 8, OUT); P(-11, -5, 13, 6, o.robe); P(-11, -5, 13, 1, shadeHex(o.robe, 0.15)); P(2, -5, 5, 6, o.skin); P(7, -6, 5, 7, o.hair);
+      P(4, -3, 1, 1, OUT); P(-14, -3, 4, 2, "#2a1e18"); P(-2, -6, 4, 1, "#3ee0e8"); P(-12, 1, 10, 2, "#7a1a22"); P(-6, 2, 4, 1, "#5a0f18");
       return;
     }
-    const bob = o.walking ? Math.round(Math.abs(Math.sin(o.walk * Math.PI * 2))) : Math.round(Math.sin(time * 2 + (o.bob || 0)) * 0.5 + 0.5);
-    const X = Math.round(x), Y = Math.round(y) - bob;
-    const px = (dx, dy, w, h, c) => { g.fillStyle = c; g.fillRect(X + Math.round(dx * s), Y + Math.round(dy * s), Math.max(1, Math.round(w * s)), Math.max(1, Math.round(h * s))); };
-    g.fillStyle = "rgba(20,14,40,.28)"; g.beginPath(); g.ellipse(X, Math.round(y) + 1, 6 * s, 2.2 * s, 0, 0, Math.PI * 2); g.fill();
-    const leg = o.walking ? Math.round(Math.sin(o.walk * Math.PI * 2) * 2) : 0;
-    const dark = "#1b1633";
-    if (o.extra === "bow" && o.dir !== "down") { g.strokeStyle = "#8a5a33"; g.lineWidth = 1; g.beginPath(); g.arc(X - 1, Y - 11, 7 * s, -1.2, 1.2); g.stroke(); }
-    if (o.dir === "left" || o.dir === "right") { px(-2 + leg, -3, 2, 3, dark); px(1 - leg, -3, 2, 3, dark); }
-    else { px(-3, -3 + (leg > 0 ? -1 : 0), 2, 3, dark); px(1, -3 + (leg < 0 ? -1 : 0), 2, 3, dark); }
-    px(-5, -11, 10, 8, dark); px(-4, -11, 8, 8, o.robe); px(-4, -5, 8, 2, shadeHex(o.robe, -0.25));
-    if (o.dir !== "up") px(-1, -10, 2, 6, shadeHex(o.robe, 0.2));
-    const arm = o.walking ? Math.round(Math.sin(o.walk * Math.PI * 2 + Math.PI) * 1.5) : 0;
-    if (o.dir === "down" || o.dir === "up" || !o.dir) { px(-6, -10 + arm, 2, 5, o.robe); px(4, -10 - arm, 2, 5, o.robe); px(-6, -6 + arm, 2, 1, o.skin); px(4, -6 - arm, 2, 1, o.skin); }
-    else px(o.dir === "right" ? -1 + arm : -1 - arm, -9, 2, 5, shadeHex(o.robe, -0.15));
-    px(-5, -19, 10, 9, dark); px(-4, -18, 8, 8, o.hair);
-    const eye = o.glowEyes ? "#9ef0f5" : dark;
-    if (o.dir === "down" || !o.dir) { px(-3, -16, 6, 5, o.skin); px(-2, -14, 1, 1, eye); px(1, -14, 1, 1, eye); }
-    else if (o.dir === "left") { px(-4, -16, 4, 5, o.skin); px(-3, -14, 1, 1, eye); }
-    else if (o.dir === "right") { px(0, -16, 4, 5, o.skin); px(2, -14, 1, 1, eye); }
-    if (o.hero) { px(-1, -20, 2, 2, o.hair); px(-5, -11, 10, 2, "#3ee0e8"); px(-5, -10, 10, 1, "#1fb8c2"); if (o.dir !== "up") { px(4, -17, 1, 9, "#d8dce8"); px(3, -9, 3, 1, "#ffcf4a"); } else { px(2, -18, 1, 12, "#d8dce8"); } }
-    if (o.extra === "staff") { px(6, -18, 1, 17, "#8a5a33"); px(5, -20, 3, 3, "#ffcf4a"); }
-    if (o.extra === "hammer") { px(5, -9, 1, 6, "#6b3f24"); px(4, -11, 4, 3, "#857ea5"); px(-4, -9, 8, 5, "#6b3f24"); }
-    if (o.extra === "blind") px(-4, -15, 8, 2, "#e8e4f0");
-    if (o.extra === "cap") { px(-5, -19, 10, 3, "#b8473a"); px(o.dir === "left" ? -7 : 3, -17, 4, 1, "#b8473a"); }
-    if (o.extra === "spear") { px(7, -24, 1, 22, "#8a5a33"); px(6, -27, 3, 4, "#d8dce8"); px(-4, -11, 8, 3, "#857ea5"); }
-    if (o.extra === "pack") { px(-7, -13, 4, 8, "#8a5533"); px(-7, -13, 4, 1, "#6b3f24"); }
-    if (o.extra === "bow") { px(-4, -11, 8, 1, "#6b3f24"); if (o.dir === "down") { px(5, -16, 1, 12, "#8a5a33"); } px(-6, -14, 2, 6, "#6b3f24"); }
-    if (o.extra === "veil") { px(-5, -19, 10, 3, "#2b2350"); px(-5, -17, 1, 8, "#2b2350"); px(4, -17, 1, 8, "#2b2350"); if (o.dir !== "up") { px(-1, -9, 2, 4, "#c8102e"); px(-2, -8, 4, 1, "#c8102e"); } }
+    const st = personStyle(o), dir = o.dir || "down", side = dir === "left" || dir === "right", back = dir === "up";
+    const phase = o.walking ? o.walk * Math.PI * 2 : 0;
+    const bob = o.walking ? Math.round(Math.abs(Math.sin(phase))) : (Math.sin(time * 1.8 + (o.bob || 0)) > 0.55 ? 1 : 0);
+    const skin = o.skin, skinD = shadeHex(skin, -0.2), skinL = shadeHex(skin, 0.14), hair = o.hair, hairD = shadeHex(hair, -0.35), hairL = shadeHex(hair, 0.2);
+    const cloth = o.robe, clothD = shadeHex(cloth, -0.32), clothL = shadeHex(cloth, 0.16), pants = st.pants || shadeHex(cloth, -0.5), boots = "#2a1e18", belt = "#5a3a22";
+    const eye = o.glowEyes ? "#9ef0f5" : (st.eye || "#3a2a1a");
+    g.save(); g.translate(Math.round(x), Math.round(y));
+    const sc = (o.small ? 0.78 : 1) * (o.scale || 1); if (sc !== 1) g.scale(sc, sc);
+    g.fillStyle = "rgba(20,14,40,.3)"; g.beginPath(); g.ellipse(0, 1, 7, 2.3, 0, 0, Math.PI * 2); g.fill();
+    if (dir === "left") g.scale(-1, 1);
+    const P = (a, b, w, h, c) => { g.fillStyle = c; g.fillRect(a, b, w, h); };
+    const O = (a, b, w, h, c) => { P(a - 1, b - 1, w + 2, h + 2, OUT); P(a, b, w, h, c); };
+    const by = -bob;
+    const sw = Math.sin(phase);
+    // things carried on the back, drawn first when facing away is not the case
+    const backGear = () => {
+      if (o.extra === "pack") { O(-8, -23 + by, 5, 11, "#8a5533"); P(-8, -23 + by, 5, 1, "#a8703f"); P(-7, -18 + by, 3, 1, "#5a3a22"); }
+      if (o.extra === "bow") { O(-6, -22 + by, 3, 9, "#6b3f24"); P(-6, -24 + by, 1, 2, "#e8e2d0"); P(-4, -25 + by, 1, 3, "#e8e2d0"); }
+    };
+    if (!back) backGear();
+    // legs or a long skirt
+    if (st.dress) {
+      O(-5, -11 + by, 10, 10, cloth); P(-6, -3 + by, 12, 2, clothD); P(2, -11 + by, 3, 9, clothD); P(-5, -11 + by, 1, 9, clothL);
+      P(-4 + Math.round(sw), -1, 3, 1, boots); P(1 - Math.round(sw), -1, 3, 1, boots);
+    } else if (side) {
+      const f = Math.round(sw * 2.4), liftF = sw > 0.3 ? -1 : 0, liftB = sw < -0.3 ? -1 : 0;
+      O(-1 - f, -9 + by + liftB, 3, 7, shadeHex(pants, -0.2)); O(-1 - f, -2 + liftB, 4, 2, boots);
+      O(-1 + f, -9 + by + liftF, 3, 7, pants); O(-1 + f, -2 + liftF, 4, 2, boots); P(2 + f, -2 + liftF, 1, 1, "#4a3a2e");
+    } else {
+      const lL = sw > 0.3 ? -1 : 0, lR = sw < -0.3 ? -1 : 0;
+      O(-4, -9 + by + lL, 3, 7, pants); O(-4, -2 + lL, 3, 2, boots);
+      O(1, -9 + by + lR, 3, 7, pants); O(1, -2 + lR, 3, 2, boots);
+      P(-4, -9 + by, 1, 6, shadeHex(pants, 0.12));
+    }
+    // back arm (side view)
+    const armSw = Math.round(Math.sin(phase + Math.PI) * 2);
+    const sleeve = st.sleeveless ? skin : (st.armor ? "#8a90a8" : cloth);
+    if (side) { O(-1 - armSw, -18 + by, 2, 7, shadeHex(sleeve, -0.25)); P(-1 - armSw, -11 + by, 2, 2, skinD); }
+    // torso
+    const tw = side ? 7 : 10, tx = side ? -3 : -5;
+    O(tx, -19 + by, tw, 10, cloth);
+    P(tx + tw - 3, -19 + by, 3, 10, clothD); P(tx, -19 + by, 1, 10, clothL);
+    if (st.coat) { O(tx, -11 + by, tw, 5, cloth); P(tx + tw - 3, -11 + by, 3, 5, clothD); if (!side && !back) P(-1, -10 + by, 2, 4, OUT); P(tx, -7 + by, tw, 1, clothD); }
+    if (st.apron && !back) { P(tx + 1, -17 + by, tw - 2, 10, st.apron); P(tx + 1, -17 + by, tw - 2, 1, shadeHex(st.apron, 0.2)); }
+    if (st.armor) { P(tx - 1, -19 + by, tw + 2, 3, "#9aa0b8"); P(tx - 1, -19 + by, tw + 2, 1, "#d8dce8"); if (!back) { P(tx + 2, -16 + by, tw - 4, 6, "#4a5a8a"); P(-1, -15 + by, 2, 3, "#ffcf4a"); } }
+    if (!st.dress) { P(tx, -11 + by, tw, 1, belt); if (!side && !back) P(-1, -11 + by, 2, 1, "#ffcf4a"); }
+    if (o.extra === "veil" && !back) { P(-1, -17 + by, 2, 5, "#c8102e"); P(-2, -16 + by, 4, 1, "#c8102e"); }
+    if (o.hero) { P(tx - 1, -20 + by, tw + 2, 2, "#3ee0e8"); P(tx - 1, -19 + by, tw + 2, 1, "#1fb8c2"); }
+    // arms (front view both, side view the near one)
+    if (side) { O(-1 + armSw, -18 + by, 2, 7, sleeve); P(-1 + armSw, -11 + by, 2, 2, skin); }
+    else {
+      O(-7, -18 + by + (armSw > 0 ? 1 : 0), 2, 7, sleeve); P(-7, -11 + by + (armSw > 0 ? 1 : 0), 2, 2, skin);
+      O(5, -18 + by + (armSw < 0 ? 1 : 0), 2, 7, sleeve); P(5, -11 + by + (armSw < 0 ? 1 : 0), 2, 2, skinD);
+    }
+    // long hair behind the head
+    if (st.hair === "long" || (st.hair === "tail" && (side || back))) { const len = st.hair === "long" ? 12 : 8; O(side ? -5 : -5, -27 + by, side ? 5 : 10, len, hair); P(side ? -5 : -5, -27 + by, 1, len, hairL); }
+    // neck and head
+    P(-1, -20 + by, 3, 2, skinD);
+    const hw = side ? 7 : 8, hx = side ? -3 : -4;
+    O(hx, -28 + by, hw, 8, skin);
+    if (!back) { P(hx + hw - 2, -28 + by, 2, 8, skinD); P(hx, -23 + by, 1, 2, skinL); }
+    if (back) { P(hx, -28 + by, hw, 8, hair); P(hx + hw - 2, -28 + by, 2, 8, hairD); }
+    else if (side) {
+      P(1, -25 + by, 2, 1, "#f4f0ea"); P(2, -25 + by, 1, 1, eye); P(1, -26 + by, 2, 1, hairD);
+      P(4, -24 + by, 1, 2, skin); P(4, -23 + by, 1, 1, skinD); P(2, -22 + by, 2, 1, "#9a4a4a");
+    } else {
+      P(-3, -25 + by, 2, 1, "#f4f0ea"); P(1, -25 + by, 2, 1, "#f4f0ea"); P(-2, -25 + by, 1, 1, eye); P(1, -25 + by, 1, 1, eye);
+      P(-3, -26 + by, 2, 1, hairD); P(1, -26 + by, 2, 1, hairD); P(0, -24 + by, 1, 1, skinD); P(-1, -22 + by, 2, 1, "#9a4a4a");
+    }
+    // hair and headwear
+    const top = (h = 3) => { O(hx, -29 + by, hw, h, hair); P(hx, -29 + by, hw, 1, hairL); };
+    switch (st.hair) {
+      case "fringe": top(3); if (!back) { P(hx, -26 + by, 2, 3, hair); if (!side) { P(-1, -26 + by, 2, 1, hair); P(2, -26 + by, 2, 2, hair); } else P(-3, -26 + by, 3, 2, hair); } P(-1, -30 + by, 2, 1, hair); break;
+      case "bun": top(3); O(side ? -4 : -2, -32 + by, 4, 3, hair); if (!back && !side) { P(hx, -26 + by, 1, 3, hair); P(hx + hw - 1, -26 + by, 1, 3, hair); } break;
+      case "long": top(3); if (!back && !side) { P(hx - 1, -27 + by, 2, 9, hair); P(hx + hw - 1, -27 + by, 2, 9, hairD); } break;
+      case "tail": top(3); if (!back && !side) P(hx, -26 + by, 1, 2, hair); if (side) O(-6, -26 + by, 2, 6, hair); break;
+      case "hood": { const hc = st.hood || clothD; O(hx - 1, -30 + by, hw + 2, 5, hc); if (!back) { P(hx - 1, -26 + by, 2, 6, hc); if (!side) P(hx + hw - 1, -26 + by, 2, 6, hc); P(hx + 1, -26 + by, hw - 2, 1, skinD); } else P(hx - 1, -26 + by, hw + 2, 7, hc); break; }
+      case "veil": O(hx - 1, -30 + by, hw + 2, 4, "#2b2350"); P(hx - 1, -26 + by, 2, 10, "#2b2350"); if (!side) P(hx + hw - 1, -26 + by, 2, 10, "#2b2350"); if (back) P(hx - 1, -26 + by, hw + 2, 10, "#2b2350"); else P(hx + 1, -27 + by, hw - 2, 1, "#f2eef8"); break;
+      case "helm": O(hx - 1, -30 + by, hw + 2, 5, "#9aa0b8"); P(hx, -30 + by, 3, 1, "#e8ecf8"); if (!back) P(side ? 2 : -1, -26 + by, side ? 1 : 2, 3, "#9aa0b8"); P(side ? -4 : -1, -32 + by, 2, 2, "#c8102e"); break;
+      case "cap": O(hx - 1, -30 + by, hw + 2, 3, "#b8473a"); if (!back) P(side ? 0 : hx - 1, -27 + by, side ? 6 : hw + 2, 1, "#8a2a22"); break;
+      case "bald": P(hx, -28 + by, hw, 1, skinD); if (st.beard && !back) { O(side ? 0 : -3, -23 + by, side ? 4 : 6, 3, hair); } break;
+    }
+    if (o.extra === "blind" && !back) P(hx, -26 + by, hw, 2, "#e8e4f0");
+    if (back) backGear();
+    // held things
+    if (o.hero) { if (back) { P(-4, -27 + by, 1, 15, "#d8dce8"); P(-5, -18 + by, 3, 1, "#ffcf4a"); } else if (side) { P(-4, -12 + by, 9, 1, "#d8dce8"); P(-5, -13 + by, 1, 3, "#ffcf4a"); } else { O(6, -14 + by, 1, 9, "#d8dce8"); P(5, -14 + by, 3, 1, "#ffcf4a"); } }
+    if (o.extra === "hammer" && !back) { P(side ? 1 + armSw : 6, -16 + by, 1, 10, "#6b3f24"); O(side ? -1 + armSw : 4, -19 + by, 5, 4, "#857ea5"); P(side ? -1 + armSw : 4, -19 + by, 5, 1, "#c8c2e0"); }
+    if (o.extra === "staff") { P(side ? 3 : 7, -31 + by, 1, 30, "#8a5a33"); O(side ? 2 : 6, -34 + by, 3, 3, "#ffcf4a"); }
+    if (o.extra === "spear") { P(side ? 3 : 7, -37 + by, 1, 35, "#8a5a33"); O(side ? 2 : 6, -41 + by, 3, 4, "#d8dce8"); if (!back) { O(side ? -5 : -9, -18 + by, 4, 8, "#4a5a8a"); P(side ? -4 : -8, -15 + by, 2, 2, "#ffcf4a"); } }
+    if (o.extra === "bow" && !back) { g.strokeStyle = "#8a5a33"; g.lineWidth = 1; g.beginPath(); g.arc(side ? 3 : 7, -14 + by, 7, -1.3, 1.3); g.stroke(); g.strokeStyle = "rgba(232,226,208,.7)"; g.beginPath(); g.moveTo(side ? 4.5 : 8.5, -21 + by); g.lineTo(side ? 4.5 : 8.5, -7 + by); g.stroke(); }
+    if (o.extra === "blind" && !back) { O(side ? 3 : 6, -12 + by, 3, 4, "#ffcf4a"); P(side ? 3 : 6, -12 + by, 3, 1, "#fff1b0"); }
+    g.restore();
+  }
+  // Dialogue portraits: a shaded bust with a proper face
+  function drawBust(p, look) {
+    const st = personStyle(look), skin = look.skin, skinD = shadeHex(skin, -0.2), skinL = shadeHex(skin, 0.14), hair = look.hair, hairD = shadeHex(hair, -0.35), hairL = shadeHex(hair, 0.22);
+    const cloth = look.robe, clothD = shadeHex(cloth, -0.32), eye = st.eye || "#4a3020";
+    const R = (x, y, w, h, c) => { p.fillStyle = c; p.fillRect(x, y, w, h); };
+    const bg = p.createLinearGradient(0, 0, 0, 48); bg.addColorStop(0, "#2e2660"); bg.addColorStop(1, "#171230"); p.fillStyle = bg; p.fillRect(0, 0, 48, 48);
+    if (st.hair === "long") { R(11, 12, 26, 30, OUT); R(12, 13, 24, 29, hair); R(12, 13, 3, 29, hairL); }
+    if (st.hair === "veil") { R(10, 8, 28, 36, OUT); R(11, 9, 26, 36, "#2b2350"); }
+    if (st.hair === "hood") { R(9, 7, 30, 36, OUT); R(10, 8, 28, 36, st.hood); R(10, 8, 4, 36, shadeHex(st.hood, 0.15)); }
+    // shoulders and clothes
+    R(5, 37, 38, 11, OUT); R(6, 38, 36, 10, st.armor ? "#8a90a8" : cloth); R(30, 38, 12, 10, st.armor ? "#6a7088" : clothD);
+    if (st.armor) { R(12, 40, 24, 8, "#4a5a8a"); R(22, 41, 4, 4, "#ffcf4a"); R(6, 38, 36, 2, "#d8dce8"); }
+    if (st.apron) { R(15, 39, 18, 9, st.apron); R(16, 38, 2, 2, st.apron); R(30, 38, 2, 2, st.apron); }
+    if (st.sleeveless) { R(6, 40, 6, 8, skin); R(36, 40, 6, 8, skinD); }
+    if (look.extra === "veil") { R(22, 40, 4, 8, "#c8102e"); R(19, 42, 10, 3, "#c8102e"); }
+    // neck and face
+    R(19, 30, 10, 9, skinD); R(19, 30, 10, 2, shadeHex(skin, -0.35));
+    R(14, 10, 20, 23, OUT); R(13, 13, 22, 17, OUT); R(16, 32, 16, 2, OUT);
+    R(15, 11, 18, 21, skin); R(14, 14, 20, 15, skin); R(17, 32, 14, 1, skin);
+    R(29, 12, 4, 19, skinD); R(33, 15, 1, 13, skinD); R(16, 23, 3, 3, skinL);
+    R(12, 19, 2, 6, skin); R(34, 19, 2, 6, skinD);
+    if (look.extra === "blind") { R(13, 19, 22, 5, "#e8e4f0"); R(13, 23, 22, 1, "#b8b0c8"); }
+    else {
+      const glow = look.glowEyes;
+      R(17, 20, 6, 3, "#f4f0ea"); R(26, 20, 6, 3, "#f4f0ea");
+      R(19, 20, 3, 3, glow ? "#3ee0e8" : eye); R(27, 20, 3, 3, glow ? "#3ee0e8" : eye);
+      R(20, 21, 1, 1, "#111"); R(28, 21, 1, 1, "#111"); R(19, 20, 1, 1, "#fff"); R(27, 20, 1, 1, "#fff");
+      R(17, 19, 6, 1, "#2b1a1a"); R(26, 19, 6, 1, "#2b1a1a");
+    }
+    R(17, 17, 6, 1, hairD); R(26, 17, 6, 1, hairD);
+    R(24, 22, 2, 5, skinD); R(22, 27, 5, 1, skinD); R(23, 26, 1, 1, skinL);
+    R(21, 29, 7, 1, "#8a3a3a"); R(22, 30, 5, 1, "#c07878");
+    if (st.beard) { R(15, 26, 18, 7, OUT); R(16, 26, 16, 7, hair); R(21, 29, 7, 1, "#6a2a2a"); R(16, 26, 3, 7, hairL); }
+    // hair and headwear
+    switch (st.hair) {
+      case "fringe": R(13, 7, 22, 7, OUT); R(14, 8, 20, 6, hair); R(14, 8, 20, 1, hairL); R(14, 13, 3, 7, hair); R(18, 13, 4, 4, hair); R(23, 13, 3, 3, hair); R(27, 13, 5, 5, hair); R(31, 13, 3, 7, hairD); R(22, 5, 4, 3, hair); break;
+      case "bun": R(13, 7, 22, 6, OUT); R(14, 8, 20, 5, hair); R(14, 8, 20, 1, hairL); R(19, 2, 10, 7, OUT); R(20, 3, 8, 5, hair); R(14, 12, 2, 8, hair); R(32, 12, 2, 8, hairD); break;
+      case "long": R(13, 7, 22, 7, OUT); R(14, 8, 20, 6, hair); R(14, 8, 20, 1, hairL); R(12, 12, 4, 20, hair); R(32, 12, 4, 20, hairD); break;
+      case "tail": R(13, 7, 22, 7, OUT); R(14, 8, 20, 6, hair); R(14, 8, 20, 1, hairL); R(14, 13, 2, 6, hair); R(32, 13, 2, 6, hairD); R(34, 10, 4, 14, hair); break;
+      case "hood": R(12, 8, 24, 6, st.hood); R(12, 13, 3, 18, st.hood); R(33, 13, 3, 18, shadeHex(st.hood, -0.2)); R(15, 13, 18, 2, skinD); break;
+      case "veil": R(12, 9, 24, 6, "#2b2350"); R(14, 14, 20, 2, "#f2eef8"); R(11, 14, 4, 26, "#2b2350"); R(33, 14, 4, 26, "#2b2350"); break;
+      case "helm": R(12, 5, 24, 11, OUT); R(13, 6, 22, 9, "#9aa0b8"); R(13, 6, 22, 2, "#e8ecf8"); R(22, 13, 4, 10, "#9aa0b8"); R(22, 13, 1, 10, "#e8ecf8"); R(12, 14, 3, 12, "#8a90a8"); R(33, 14, 3, 12, "#6a7088"); R(21, 1, 6, 5, "#c8102e"); break;
+      case "cap": R(12, 6, 24, 8, OUT); R(13, 7, 22, 6, "#b8473a"); R(13, 12, 26, 2, "#8a2a22"); R(14, 13, 2, 5, hair); R(32, 13, 2, 5, hair); break;
+      case "bald": R(15, 10, 18, 2, skinL); R(12, 14, 2, 6, hair); R(34, 14, 2, 6, hair); break;
+    }
+    if (look.hero) { R(9, 34, 30, 6, OUT); R(10, 35, 28, 4, "#3ee0e8"); R(10, 38, 28, 1, "#1fb8c2"); R(30, 36, 5, 10, "#3ee0e8"); }
   }
   function drawScarf(g, ox, oy) {
     const pts = player.scarf.slice(0, 10); if (pts.length < 2) return;
@@ -2198,8 +2517,8 @@
         drawPerson(g, n.px - ox, n.py - oy, { dir: n.dir || "down", walking: n.walking, walk: player.walk, bob: n.bob, ...n.look });
         if (n.id === "ada") { g.fillStyle = "#857ea5"; for (let i = 0; i < 4; i++) { g.fillRect(Math.round(n.px - ox) - 9 + i * 2, Math.round(n.py - oy) - 12 + i, 2, 1); g.fillRect(Math.round(n.px - ox) + 7 - i * 2, Math.round(n.py - oy) - 12 + i, 2, 1); } }
         const isNear = !(n.id === "beno" && G.flags.benoFollows) && Math.hypot(n.px - G.px, n.py - G.py) < 22 && mode === "play";
-        if (isNear) drawPrompt(g, n.px - ox, n.py - oy - 26);
-        else if (questMarker(n)) drawMarker(g, n.px - ox, n.py - oy - 26);
+        if (isNear) drawPrompt(g, n.px - ox, n.py - oy - 36);
+        else if (questMarker(n)) drawMarker(g, n.px - ox, n.py - oy - 36);
       } });
     }
     const trail = player.scarf;
@@ -2248,6 +2567,23 @@
       g.drawImage(light, 0, 0);
       g.fillStyle = "rgba(255,160,90,.05)"; g.fillRect(0, 0, VIEW_W, VIEW_H);
     }
+    const here = tileAt(G.px, G.py);
+    if (here === T.ABYSS) {
+      lg.globalCompositeOperation = "source-over"; lg.fillStyle = "rgba(2,8,24,0.92)"; lg.fillRect(0, 0, VIEW_W, VIEW_H);
+      lg.globalCompositeOperation = "destination-out";
+      const cx = G.px - ox, cy = G.py - oy - 8, r = 64 + Math.sin(time * 3) * 3, gr = lg.createRadialGradient(cx, cy, 6, cx, cy, r);
+      gr.addColorStop(0, "rgba(0,0,0,1)"); gr.addColorStop(1, "rgba(0,0,0,0)"); lg.fillStyle = gr; lg.fillRect(cx - r, cy - r, r * 2, r * 2);
+      for (const f of field) { const a = lg.createRadialGradient(f.px - ox, f.py - oy - 10, 1, f.px - ox, f.py - oy - 10, 14); a.addColorStop(0, "rgba(0,0,0,.8)"); a.addColorStop(1, "rgba(0,0,0,0)"); lg.fillStyle = a; lg.fillRect(f.px - ox - 14, f.py - oy - 24, 28, 28); }
+      g.drawImage(light, 0, 0); g.fillStyle = "rgba(40,120,200,.08)"; g.fillRect(0, 0, VIEW_W, VIEW_H);
+    } else if (here === T.SPIRE) {
+      g.fillStyle = "rgba(10,14,40,.45)"; g.fillRect(0, 0, VIEW_W, VIEW_H);
+      if ((time % 5) < 0.12 && !REDUCED) { g.fillStyle = "rgba(220,240,255,.35)"; g.fillRect(0, 0, VIEW_W, VIEW_H); }
+    }
+    if (G.stage >= 7 && ![T.DARK, T.ABYSS, T.SPIRE, T.FLOOR].includes(here)) {
+      g.fillStyle = "rgba(20,30,60,.22)"; g.fillRect(0, 0, VIEW_W, VIEW_H);
+      if (!REDUCED) { g.fillStyle = "rgba(180,200,240,.5)"; for (let i = 0; i < 70; i++) { const x = (hash(i, 7) * (VIEW_W + 60) - time * 40) % (VIEW_W + 60), y = (hash(i, 9) * VIEW_H + time * 220) % VIEW_H; g.fillRect(Math.round((x + VIEW_W + 60) % (VIEW_W + 60)), Math.round(y), 1, 5); } }
+    }
+    if (warpFade > 0) { g.fillStyle = `rgba(6,4,16,${warpFade})`; g.fillRect(0, 0, VIEW_W, VIEW_H); }
     if (mode === "play") drawCompass(g, ox, oy);
     const vg = g.createRadialGradient(VIEW_W / 2, VIEW_H / 2, VIEW_H * 0.45, VIEW_W / 2, VIEW_H / 2, VIEW_W * 0.7);
     vg.addColorStop(0, "rgba(18,15,36,0)"); vg.addColorStop(1, "rgba(18,15,36,.5)");
@@ -2350,10 +2686,10 @@
       g.save(); if (dead) g.globalAlpha = 0.4;
       const sh = h.shake ? rand(-h.shake, h.shake) * .4 : 0;
       drawPerson(g, p.x + sh, p.y + lunge, { ...HEROES[h.id].look, dir: "up", walking: false });
-      if (h.hurt > 0 && Math.floor(h.hurt * 30) % 2 === 0) { g.globalAlpha = .6; g.fillStyle = "#ff2d2d"; g.fillRect(p.x - 6, p.y - 20 + lunge, 12, 20); }
+      if (h.hurt > 0 && Math.floor(h.hurt * 30) % 2 === 0) { g.globalAlpha = .6; g.fillStyle = "#ff2d2d"; g.fillRect(p.x - 6, p.y - 29 + lunge, 12, 29); }
       g.restore();
-      if (B.current === h) { g.fillStyle = "#ffcf4a"; g.beginPath(); g.moveTo(p.x - 3, p.y - 26); g.lineTo(p.x + 3, p.y - 26); g.lineTo(p.x, p.y - 22); g.fill(); }
-      if (B.hoverTarget === h) { g.strokeStyle = "#6bff9a"; g.strokeRect(p.x - 8.5, p.y - 22.5, 17, 24); }
+      if (B.current === h) { g.fillStyle = "#ffcf4a"; g.beginPath(); g.moveTo(p.x - 3, p.y - 36); g.lineTo(p.x + 3, p.y - 36); g.lineTo(p.x, p.y - 32); g.fill(); }
+      if (B.hoverTarget === h) { g.strokeStyle = "#6bff9a"; g.strokeRect(p.x - 8.5, p.y - 31.5, 17, 33); }
       if (h.st.guard) { g.strokeStyle = "rgba(111,192,208,.8)"; g.beginPath(); g.arc(p.x, p.y - 10, 13, 0, Math.PI * 2); g.stroke(); }
       if (h.st.veil) { g.strokeStyle = "rgba(62,224,232,.7)"; g.setLineDash([2, 2]); g.beginPath(); g.arc(p.x, p.y - 10, 11, 0, Math.PI * 2); g.stroke(); g.setLineDash([]); }
       if (h.st.strong) { g.fillStyle = "rgba(255,160,60,.7)"; g.fillRect(p.x - 1, p.y - 30 - Math.round(time * 20) % 6, 2, 3); }
@@ -2401,20 +2737,44 @@
     g.font = "7px 'Pixelify Sans', monospace"; g.textAlign = "center";
     g.fillStyle = "#1b1633"; g.fillText(`${dist}m`, Math.round(x) + 1, Math.round(ly) + 1); g.fillStyle = "#ffcf4a"; g.fillText(`${dist}m`, Math.round(x), Math.round(ly));
   }
-  const MINI = { [T.SALT]: "#e3dde9", [T.BONES]: "#e3dde9", [T.SAND]: "#e6c98f", [T.GRASS]: "#4f9a57", [T.MUD]: "#4a4a3a", [T.WATER]: "#2a7fae", [T.PALM]: "#2a6f40", [T.WALL]: "#5e5680", [T.DARK]: "#332e4f", [T.HOUSE]: "#d9a86c", [T.ROOF]: "#a8403a", [T.DOOR]: "#6b3f24", [T.PATH]: "#d3c1a3", [T.ROCK]: "#857ea5", [T.BRIDGE]: "#9a6a3e", [T.CRYSTAL]: "#9ef0f5", [T.LOCKED]: "#ffcf4a", [T.WELL]: "#2a7fae", [T.GATE]: "#ffcf4a", [T.LDOOR]: "#8a1020", [T.CITY]: "#3b4f9a", [T.PEDESTAL]: "#aba4c8" };
+  const MINI = { [T.SALT]: "#e3dde9", [T.BONES]: "#e3dde9", [T.SAND]: "#e6c98f", [T.GRASS]: "#4f9a57", [T.MUD]: "#4a4a3a", [T.WATER]: "#2a7fae", [T.PALM]: "#2a6f40", [T.WALL]: "#5e5680", [T.DARK]: "#332e4f", [T.HOUSE]: "#d9a86c", [T.ROOF]: "#a8403a", [T.DOOR]: "#6b3f24", [T.PATH]: "#d3c1a3", [T.ROCK]: "#857ea5", [T.BRIDGE]: "#9a6a3e", [T.CRYSTAL]: "#9ef0f5", [T.LOCKED]: "#ffcf4a", [T.WELL]: "#2a7fae", [T.GATE]: "#ffcf4a", [T.LDOOR]: "#8a1020", [T.CITY]: "#3b4f9a", [T.PEDESTAL]: "#aba4c8",
+    [T.COBBLE]: "#9a94a8", [T.SHALLOW]: "#5aa0a8", [T.DECK]: "#9a6a3e", [T.HULL]: "#4a3020", [T.ABYSS]: "#1a2a4a", [T.CORAL]: "#c8506a", [T.CLIFF]: "#2a2438", [T.STONE]: "#7a7488",
+    [T.SPIRE]: "#3a4468", [T.SWALL]: "#1e2440", [T.ROOFB]: "#3a5aa8", [T.FOUNTAIN]: "#6fb8e8", [T.FLOOR]: "#b08a5a", [T.GDOOR]: "#ffcf4a", [T.DEBRIS]: "#6b4a2a", [T.STAIRS]: "#c8c2e0" };
   let miniBase = null, miniDirty = true;
+  // Local minimap: a 72x54-tile window around the party over a fogged map of the whole world
+  const miniOff = document.createElement("canvas"); miniOff.width = W; miniOff.height = H;
   function drawMinimap() {
     const c = $("minimap"); c.hidden = false;
-    const m = c.getContext("2d");
-    if (!miniBase || miniDirty) { miniBase = m.createImageData(W, H); for (let i = 0; i < W * H; i++) { const n = parseInt((MINI[map[i]] || "#000000").slice(1), 16); miniBase.data.set([n >> 16, (n >> 8) & 255, n & 255, 255], i * 4); } miniDirty = false; }
-    m.putImageData(miniBase, 0, 0);
-    m.fillStyle = "#c8102e"; for (const f of field) m.fillRect(Math.floor(f.px / TILE), Math.floor(f.py / TILE), 1, 1);
-    const t = goal(); if (t.text && Math.floor(time * 3) % 2) { m.fillStyle = "#ffcf4a"; m.fillRect(t.x - 1, t.y - 1, 3, 3); }
-    m.fillStyle = "#3ee0e8"; m.fillRect(Math.floor(G.px / TILE) - 1, Math.floor(G.py / TILE) - 1, 3, 3); m.fillStyle = "#fff"; m.fillRect(Math.floor(G.px / TILE), Math.floor(G.py / TILE), 1, 1);
+    const m = c.getContext("2d"), o = miniOff.getContext("2d");
+    if (!miniBase || miniDirty) {
+      miniBase = o.createImageData(W, H);
+      for (let i = 0; i < W * H; i++) { const n = parseInt((MINI[map[i]] || "#000000").slice(1), 16); miniBase.data.set([n >> 16, (n >> 8) & 255, n & 255, 255], i * 4); }
+      o.putImageData(miniBase, 0, 0);
+      const fog = G.flags.fog || ""; o.fillStyle = "#0c0a18";
+      for (let y = 0; y < FH; y++) for (let x = 0; x < FW; x++) if (fog[y * FW + x] !== "1") o.fillRect(x * FOG, y * FOG, FOG, FOG);
+      miniDirty = false;
+    }
+    const px = Math.floor(G.px / TILE), py = Math.floor(G.py / TILE);
+    const vx = clamp(px - 36, 0, W - 72), vy = clamp(py - 27, 0, H - 54);
+    m.fillStyle = "#0c0a18"; m.fillRect(0, 0, 72, 54);
+    m.drawImage(miniOff, vx, vy, 72, 54, 0, 0, 72, 54);
+    const fog = G.flags.fog || "";
+    m.fillStyle = "#ffffff"; for (const w of WARPS) if (fog[Math.floor(w.y / FOG) * FW + Math.floor(w.x / FOG)] === "1" && (!w.req || w.req())) m.fillRect(w.x - vx, w.y - vy, 1, 1);
+    m.fillStyle = "#c8102e"; for (const f of field) m.fillRect(Math.floor(f.px / TILE) - vx, Math.floor(f.py / TILE) - vy, 1, 1);
+    const t = goal();
+    if (t.text && Math.floor(time * 3) % 2) {
+      const gx = t.x - vx, gy = t.y - vy; m.fillStyle = "#ffcf4a";
+      if (gx >= 0 && gy >= 0 && gx < 72 && gy < 54) m.fillRect(gx - 1, gy - 1, 3, 3);
+      else m.fillRect(clamp(gx, 0, 70), clamp(gy, 0, 52), 2, 2);
+    }
+    m.fillStyle = "#3ee0e8"; m.fillRect(px - vx - 1, py - vy - 1, 3, 3); m.fillStyle = "#fff"; m.fillRect(px - vx, py - vy, 1, 1);
   }
   function drawPortrait(npc, who) {
     const c = $("portrait"), p = c.getContext("2d");
+    p.setTransform(1, 0, 0, 1, 0, 0);
+    if (npc && !npc.look.dead) { drawBust(p, npc.look); return; }
     p.fillStyle = "#231d45"; p.fillRect(0, 0, c.width, c.height);
+    p.setTransform(48 / 21, 0, 0, 48 / 21, 0, 0);
     const R = (x, y, w, h, col) => { p.fillStyle = col; p.fillRect(x, y, w, h); };
     if (who === "voss") { R(5, 5, 11, 11, "#d8c8b8"); R(7, 9, 2, 1, "#9ef0f5"); R(12, 9, 2, 1, "#9ef0f5"); R(4, 1, 2, 4, "#9ef0f5"); R(14, 0, 2, 5, "#9ef0f5"); R(7, 13, 7, 2, "#5a0f18"); R(3, 16, 15, 5, "#2e2a58"); R(8, 17, 5, 3, "#ffcf4a"); return; }
     if (who === "butcher") { R(5, 4, 11, 12, "#c99a7a"); R(5, 4, 11, 3, "#3a2a1e"); R(7, 9, 2, 1, "#ff2d2d"); R(12, 9, 2, 1, "#ff2d2d"); R(8, 13, 5, 2, "#5a0f18"); R(3, 16, 15, 5, "#d8d0c0"); R(6, 17, 3, 2, "#8a1020"); return; }
@@ -2423,7 +2783,6 @@
     if (who === "hollis") { R(5, 3, 11, 10, "#b8c8c8"); R(5, 3, 11, 2, "#2a5a3a"); R(7, 6, 2, 1, "#9ef0f5"); R(12, 6, 2, 1, "#9ef0f5"); R(6, 9, 9, 3, "#5a0f18"); for (let i = 0; i < 5; i++) R(6 + i * 2, 9, 1, 1, "#f2ead8"); R(2, 13, 17, 8, "#c9a227"); R(9, 14, 3, 6, "#ffcf4a"); return; }
     if (!npc) { p.fillStyle = dlg && dlg.text.startsWith("A memory") ? "#9ef0f5" : "#ffcf4a"; p.fillRect(8, 4, 5, 10); p.fillRect(8, 16, 5, 2); return; }
     if (npc.look.dead) { drawPerson(p, 10.5, 14, npc.look); return; }
-    drawPerson(p, 10.5, 30, { dir: "down", ...npc.look, small: false });
   }
 
   // ================================================================== DRAWING: PROPS & AMBIENCE
@@ -2603,7 +2962,8 @@
   if (saved && saved.stage > 0) {
     Object.assign(G, saved);
     if (!G.active || !G.active.length) G.active = G.members.slice(0, 4);
-    if (G.flags.unlocked) set(34, 11, T.DARK);
+    if (!G.flags.fog) { let f = ""; for (let y = 0; y < FH; y++) for (let x = 0; x < FW; x++) f += x * FOG < OW && y * FOG < OH ? "1" : "0"; G.flags.fog = f; }
+    applyWorldState();
     miniDirty = true; spawnField();
     camX = G.px - VIEW_W / 2; camY = G.py - VIEW_H / 2;
     $("startBtn").textContent = "Continue"; $("newBtn").hidden = false;
@@ -2621,7 +2981,13 @@
   window.__saltRoad = { battle: (grp, opts) => startBattle(grp, opts || {}), state: () => G, mode: () => mode, reach: () => {
     const seen = new Set(), q = [[12, 47]]; seen.add("12,47");
     const pass = (x, y) => { const t = get(x, y); return (!SOLID.has(t) || t === T.LOCKED || t === T.DOOR) && !propSolid.has(x + "," + y); };
-    while (q.length) { const [x, y] = q.pop(); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const k = (x + dx) + "," + (y + dy); if (!seen.has(k) && pass(x + dx, y + dy)) { seen.add(k); q.push([x + dx, y + dy]); } } }
+    const worldPass = (x, y) => pass(x, y) || [T.GDOOR, T.DEBRIS].includes(get(x, y));
+    while (q.length) {
+      const [x, y] = q.pop();
+      const w = WARPS.find(w => w.x === x && w.y === y);
+      if (w) { const k = w.to[0] + "," + w.to[1]; if (!seen.has(k)) { seen.add(k); q.push([w.to[0], w.to[1]]); } }
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const k = (x + dx) + "," + (y + dy); if (!seen.has(k) && worldPass(x + dx, y + dy)) { seen.add(k); q.push([x + dx, y + dy]); } }
+    }
     const spots = { ...Object.fromEntries(NPCS.map(n => [n.id, [n.x, n.y]])), ...Object.fromEntries(CHESTS.map(c => ["chest_" + c.id, [c.x, c.y]])), ...Object.fromEntries(LORE.map(l => ["lore" + l.id, [l.x, l.y]])),
       ...Object.fromEntries(SHARDS.map(c => ["shard" + c.id, [c.x, c.y]])), key: [40, 17], charm: [11, 15], mother: [62, 43], voss: [34, 8], hollis: [61, 12], bell: [34, 6], gaterest: [56, 15], groverest: [60, 44], wyrm: [7, 11] };
     return Object.entries(spots).filter(([, [x, y]]) => ![[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => seen.has((x + dx) + "," + (y + dy)))).map(([k]) => k);
