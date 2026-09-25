@@ -55,7 +55,7 @@
   .dialog { position: absolute; left: 10px; right: 10px; bottom: 10px; display: grid; grid-template-columns: 84px 1fr; gap: 12px; background: var(--panel); border: 2px solid var(--edge); border-radius: 10px; padding: 12px; z-index: 5; }
   .dialog canvas { width: 84px; height: 84px; image-rendering: pixelated; border-radius: 6px; background: #231d45; }
   .dialog .who { font-weight: 700; color: var(--scarf); font-size: 15px; margin-bottom: 4px; }
-  .dialog .line { font-size: 16px; line-height: 1.4; min-height: 2.8em; }
+  .dialog .line { font-size: 16px; line-height: 1.4; min-height: 2.8em; white-space: pre-line; }
   .opts { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
   .opts button, .menu button, .roster button { text-align: left; font: 500 15px var(--font); color: var(--text); background: rgba(255,255,255,.05); border: 1px solid var(--edge); border-radius: 6px; padding: 7px 10px; cursor: pointer; }
   .opts button:hover, .opts button.sel, .menu button:hover, .menu button.sel { background: rgba(62,224,232,.16); border-color: var(--scarf); }
@@ -110,6 +110,11 @@
   .roster button b { display: flex; justify-content: space-between; }
   .roster button small { font-size: 11px; color: var(--muted); line-height: 1.35; }
   .roster .tag { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--gold); }
+  .journal h3 { margin: 14px 0 6px; font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--scarf); }
+  .journal p, .journal li { color: var(--text); font-size: 14px; line-height: 1.45; }
+  .journal p.dim, .journal li.dim { color: var(--muted); }
+  .journal ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
+  .journal .done { color: #6bff9a; }
   .roster .close { margin-top: 12px; width: 100%; text-align: center; }
 
   .screen { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; padding: 24px; background: radial-gradient(circle at 50% 40%, rgba(60,20,40,.78), rgba(10,8,22,.96)); border-radius: 10px; z-index: 8; }
@@ -149,7 +154,7 @@
     <div class="goal" id="goal"><b id="chapter">Goal</b><span id="goalText"></span></div>
   </div>
   <canvas id="minimap" width="72" height="54" aria-label="Minimap"></canvas>
-  <div class="corner" id="corner"><button id="partyBtn" type="button">Party (P)</button><button id="musicBtn" type="button">♪ Music on</button></div>
+  <div class="corner" id="corner"><button id="partyBtn" type="button">Party (P)</button><button id="journalBtn" type="button">Journal (J)</button><button id="musicBtn" type="button">♪ Music on</button></div>
   <div class="toast" id="toast" hidden></div>
   <div class="banner" id="banner" hidden><small>Entering</small><span id="bannerText"></span></div>
 
@@ -164,6 +169,14 @@
       <p>Choose up to four companions to fight. Everyone else follows and earns half the experience.</p>
       <div class="list" id="rosterList"></div>
       <button class="close" id="rosterClose" type="button">Done</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="journalUI" hidden>
+    <div class="roster journal">
+      <h2>Courier's Journal</h2>
+      <div id="journalBody"></div>
+      <button class="close" id="journalClose" type="button">Close (J)</button>
     </div>
   </div>
 
@@ -201,6 +214,7 @@
   <span><kbd>E</kbd> talk, rest, confirm</span>
   <span><kbd>Q</kbd> back</span>
   <span><kbd>P</kbd> party</span>
+  <span><kbd>J</kbd> journal</span>
   <span><kbd>M</kbd> map</span>
   <span><kbd>N</kbd> music</span>
 </div>
@@ -408,7 +422,8 @@
     for (const [x, y] of [[66, 48], [66, 34], [65, 48], [66, 47], [65, 34], [66, 44], [65, 44], [67, 44], [61, 43], [62, 43], [63, 43], [61, 44], [62, 44], [63, 44], [64, 44]])
       if (SOLID.has(get(x, y))) set(x, y, T.GRASS);
     for (const [x, y] of [[4, 50], [45, 5], [37, 29], [35, 29], [30, 17], [29, 17], [31, 17], [58, 12], [8, 24], [20, 6], [60, 24], [51, 18], [11, 15], [20, 20], [44, 24],
-    [12, 30], [22, 26], [16, 18], [26, 22], [8, 13], [44, 30], [54, 24], [40, 40], [44, 9], [18, 8], [53, 15], [54, 12], [46, 17]]) if (SOLID.has(get(x, y))) set(x, y, y > 31 ? T.GRASS : T.SALT);
+    [12, 30], [22, 26], [16, 18], [26, 22], [8, 13], [44, 30], [54, 24], [40, 40], [44, 9], [18, 8], [53, 15], [54, 12], [46, 17],
+    [6, 30], [27, 24], [44, 40], [60, 34], [28, 16], [45, 12], [66, 22], [3, 41], [56, 14], [57, 15], [64, 20], [65, 21], [67, 21], [66, 20], [66, 21], [65, 23], [67, 23]]) if (SOLID.has(get(x, y))) set(x, y, y > 31 ? T.GRASS : T.SALT);
   }
 
   const tileCache = new Map();
@@ -660,7 +675,8 @@
     rook_wait: say("rook", "South bank of the pond. I'll be right behind you."),
     mother_scene: say(null, "The mud heaves. Something the size of a cart unfolds from the bank: a pale, glistening sac covered in small round mouths, and in the middle of it, half-digested, the faces of the palm-farmers.", "mother_scene2"),
     mother_scene2: { who: "rook", text: "There she is. Don't let her drink. Go!", choices: [{ t: "Attack the Mother of Leeches.", go: null, act: () => startBattle(["mother"], { boss: "mother", area: "grove" }) }] },
-    rook_join: say("rook", "The ring. Still warm. And the farmers are crawling out of the mud, alive, most of them. Here: it's yours. So is my bow.", null, () => { joinParty("rook"); G.keyItems.signet = true; advance(4); card("Chapter IV", "The Salt Cathedral", "With Voss's signet in hand, the blood-seal on the Cathedral door will open. Inside, something is singing without a tongue, and the dead are listening."); }),
+    rook_join: say("rook", "The ring. Still warm. And the farmers are crawling out of the mud, alive, most of them. Here: it's yours. So is my bow.", null, () => { joinParty("rook"); G.keyItems.signet = true; advance(4); card("Chapter IV", "The Salt Cathedral", "With Voss's signet in hand, the blood-seal on the Cathedral door will open. Inside, something is singing without a tongue, and the dead are listening.");
+      interlude("The Flooded Gatehouse", "Hollis wades into the black water under the gatehouse, gold coat and all. Something vast and patient opens its mouths around him. When he comes out, he is smiling far too widely, and his guards will not meet his eyes."); }),
     grove_rest: say(null, "The farmers share their fire and dry bread with you. Everyone is fully healed, and your progress is saved.", null, () => restParty()),
 
     // ---- Chapter IV
@@ -695,7 +711,34 @@
     memory_0: say(null, "A memory flickers in the shard: Voss beside the Kessa well at midnight, taking a heavy purse from a fat man in a gold Guild coat. \"Oru stays shut,\" says the fat man. \"The Guild keeps the high ground. Hollis remembers his friends.\""),
     memory_1: say(null, "A memory flickers in the shard: Voss limping between the palms with a bell wrapped in sacking. A boy in a red cap watches from the reeds. Behind Voss, the black pond begins to bubble."),
     memory_2: say(null, "A memory flickers in the shard: Voss kneeling in the Cathedral, bringing a hammer down on a crystal heart. Where the shards land, the dead in the salt begin to twitch."),
-    voss_dying: say("voss", "(Voss, collapsing into salt, laughs through a broken jaw.) You think this was mine? Hollis... the Guild Master... he paid for all of it. He's at the gate of Oru now. The rains will drown your village, and he'll drown... everything... else...", null, () => { advance(6); card("Chapter VI", "The Drowned Gate", "Voss is a pillar of salt. The Bell is yours. But the gates of Oru are held by Guild Master Hollis, who has spent the Guild's fortune on a drowning rite. Captain Ren is waiting at the gate, and so is something that used to be a man."); }),
+    voss_dying: say("voss", "(Voss, collapsing into salt, laughs through a broken jaw.) You think this was mine? Hollis... the Guild Master... he paid for all of it. He's at the gate of Oru now. The rains will drown your village, and he'll drown... everything... else...", null, () => { advance(6);
+      interlude("The Drowned Guard", "Captain Ren watches Hollis's personal guard march into the moat, one by one, at their master's command. They do not come up. At midnight they climb out again, grey and dripping, and take their posts. Ren takes off his Guild badge and throws it into the water."); card("Chapter VI", "The Drowned Gate", "Voss is a pillar of salt. The Bell is yours. But the gates of Oru are held by Guild Master Hollis, who has spent the Guild's fortune on a drowning rite. Captain Ren is waiting at the gate, and so is something that used to be a man."); }),
+
+    // ---- camp scenes
+    camp1_0: say("ilse", "(By the fire, Ilse turns her hammer over and over.) Four months, Sable. I learned to hold a spoon again before a hammer. My apprentice fed me like a baby.", "camp1_1"),
+    camp1_1: say("sable", "You never told anyone who did it.", "camp1_2"),
+    camp1_2: say("ilse", "Who would I tell? The Guild owns the magistrate. But now I have a courier. Couriers deliver everything, don't they? Even the truth.", "camp1_3"),
+    camp1_3: say("sable", "Especially the truth. It's the heaviest package, and it always gets there."),
+    camp2_0: say("maru", "(Maru tilts her head at the sky.) Rain in nineteen days. Heavy rain. The kind that remembers the sea.", "camp2_1"),
+    camp2_1: say("ilse", "You can hear that?", "camp2_2"),
+    camp2_2: say("maru", "I can hear everything the sky is planning. I heard my mother's boat go down when I was six, a whole day before it happened. Nobody listened. So I stopped talking and started singing.", "camp2_3"),
+    camp2_3: say("maru", "The lantern I carry holds one of her memories. When we reach the Cathedral, the Warden will want it. Memories are the only food a Warden eats."),
+    camp3_0: say("rook", "(Rook has not touched his food.) I should say it before the Cathedral. I didn't only watch, that night on the Flats. I held the torch. So Voss could see which drivers were still moving.", "camp3_1"),
+    camp3_1: say("ilse", "...", "camp3_2"),
+    camp3_2: say("ilse", "My hands healed, archer. Yours will take longer. Eat your food. You'll need them to hold a bow.", "camp3_3"),
+    camp3_3: say("rook", "(Quietly.) Thank you, smith."),
+    camp4_0: say("ada", "(Ada hums while she stitches Rook's sleeve.) The Choir used to sing so the dead would sleep deeply. Not because the dead are evil. Because waking up is cruel when you're only bones.", "camp4_1"),
+    camp4_1: say("maru", "And the ones Voss woke?", "camp4_2"),
+    camp4_2: say("ada", "Hungry, and frightened, and they don't know why. When we fight them, I pray over every one. It's the only kindness left to give.", "camp4_3"),
+    camp4_3: say("sable", "Then pray loudly, Sister. There are a lot of them."),
+    camp5_0: say("ren", "(The campfire hisses under the first drops of rain.) Tomorrow the gate. I wanted to say something inspiring. I've got nothing.", "camp5_1"),
+    camp5_1: say("ilse", "A smith, a blind singer, a deserter, a nun, a crooked captain and a courier. Nobody would write a song about us.", "camp5_2"),
+    camp5_2: say("maru", "I would. I already have the chorus.", "camp5_3"),
+    camp5_3: say("rook", "Does it rhyme 'Hollis' with 'polish'? Because I'd like to see his teeth on the floor.", "camp5_4"),
+    camp5_4: say("ada", "Rook.", "camp5_5"),
+    camp5_5: say("sable", "Tomorrow we deliver the Bell. The last package. Sleep, everyone. I'll keep watch."),
+    gate_rest: say(null, "You rest by the soldiers' fire under the gate wall. Everyone is fully healed, and your progress is saved.", null, () => restParty()),
+    __sign: say(null, ""),
 
     // ---- Chapter VI
     ren_0: say("ren", "Halt. The gates of Oru open for the Rain Bell and nothing else. And whatever is walking the salt at night, it isn't getting in either."),
@@ -735,7 +778,7 @@
     }
     return null;
   }
-  const SPEAKERS = { butcher: "The Well Butcher", voss: "Magister Voss", warden: "The Warden", choirmaster: "The Choirmaster", hollis: "Guild Master Hollis" };
+  const SPEAKERS = { sable: "Sable", butcher: "The Well Butcher", voss: "Magister Voss", warden: "The Warden", choirmaster: "The Choirmaster", hollis: "Guild Master Hollis" };
 
   const FORGE = {
     atk: { name: "Salt-tempered blades", per: "+2 attack", cost: [20, 45, 80, 130], stat: "atk", amount: 2 },
@@ -766,11 +809,96 @@
     if (G.active.length < 4) G.active.push(id);
     toast(`${HEROES[id].name} joins the party!${G.active.includes(id) ? "" : " Press P to change who fights."}`);
     Music.sound("item");
-    if (id === "ilse") { advance(2); card("Chapter II", "The Butcher of the Well", "Ilse shoulders her hammer. North of Kessa the salt is scattered with bones, and something at the Well of Nine has been hanging travellers from the palms."); }
+    if (id === "ilse") { advance(2); card("Chapter II", "The Butcher of the Well", "Ilse shoulders her hammer. North of Kessa the salt is scattered with bones, and something at the Well of Nine has been hanging travellers from the palms.");
+      interlude("The Counting House", "Guild Master Hollis counts coins by candlelight. A clerk reports that the Kessa courier has left the village. Hollis does not look up. \"Couriers get lost on the salt all the time,\" he says. \"Send the Butcher a bonus.\""); }
     save(); updateHud();
   }
-  function restParty() { for (const id of G.members) { const h = G.party[id]; h.hp = h.maxHp; h.sp = h.maxSp; } G.checkpoint = { x: G.px, y: G.py }; Music.sound("heal"); toast("Rested. Everyone is healed. Progress saved."); save(); updateHud(); }
+  function restParty() { for (const id of G.members) { const h = G.party[id]; h.hp = h.maxHp; h.sp = h.maxSp; } G.checkpoint = { x: G.px, y: G.py }; Music.sound("heal"); toast("Rested. Everyone is healed. Progress saved."); save(); updateHud(); campScene(); }
   function advance(stage) { if (G.stage < stage) { G.stage = stage; spawnField(); } save(); }
+
+  // ================================================================== PROPS
+  // Hand-placed and scattered scenery. Solid props block movement; placement avoids paths and story spots.
+  const PROPS = [];
+  const propSolid = new Set();
+  const PROP_SOLID = new Set(["stall", "cart", "deadtree", "pillar", "statue", "barrel", "cairn", "tower", "campfire", "crate"]);
+  function addProp(type, x, y, extra = {}) { PROPS.push({ type, x, y, px: x * TILE + 8, py: y * TILE + 8, seed: hash(x * 3 + 1, y * 5 + 2), ...extra }); if (PROP_SOLID.has(type)) propSolid.add(x + "," + y); }
+  function buildProps() {
+    PROPS.length = 0; propSolid.clear();
+    // Kessa: lamps along the streets, a market by Odo, crates and barrels by the houses
+    for (const [x, y] of [[9, 38], [14, 41], [10, 46], [16, 48], [20, 41], [24, 46], [12, 36], [6, 42]]) addProp("lamp", x, y);
+    addProp("stall", 24, 42, { color: "#c8102e" }); addProp("stall", 20, 44, { color: "#3b4f9a" }); addProp("stall", 24, 40, { color: "#c9a227" });
+    for (const [x, y, t] of [[4, 38, "barrel"], [11, 38, "crate"], [22, 38, "barrel"], [23, 38, "crate"], [3, 47, "barrel"], [9, 47, "crate"], [22, 48, "barrel"]]) addProp(t, x, y);
+    addProp("sign", 12, 32, { text: "A salt-bleached signpost. North: THE WELL OF NINE. North-west: nothing but bones. Someone has added in charcoal: DON'T." });
+    addProp("sign", 42, 21, { text: "A signpost. North-east: THE GATES OF ORU. South-east: THE DROWNED GROVE (the word GROVE is crossed out and replaced with HUNGRY)." });
+    addProp("sign", 47, 30, { text: "A palm-wood sign nailed to a post: KEEP OUT. POND IS SICK. ASK FOR BENO." });
+    addProp("sign", 51, 15, { text: "A Guild notice, freshly painted: THE GATES OF ORU ARE CLOSED THIS SEASON BY ORDER OF GUILD MASTER HOLLIS. TRESPASSERS WILL BE DROWNED." });
+    // the flats: wrecked carts, dead trees, salt pillars, the courier's cairn and a ruined watchtower
+    for (const [x, y] of [[14, 24], [30, 33], [50, 26], [8, 20]]) addProp("cart", x, y);
+    addProp("cairn", 66, 22); for (const [x, y] of [[64, 20], [65, 21], [67, 21], [66, 20], [65, 23], [67, 23]]) addProp("grave", x, y);
+    addProp("tower", 5, 9);
+    addProp("campfire", 56, 14); addProp("campfire", 60, 45);
+    const busy = (x, y) => [...NPCS.map(n => [n.x, n.y]), ...CHESTS.map(c => [c.x, c.y]), ...LORE.map(l => [l.x, l.y]), ...SHARDS.map(c => [c.x, c.y]), ...FIELD.map(f => [f.x, f.y]),
+      [11, 15], [34, 20], [36, 29], [62, 43], [61, 12], [58, 12], [40, 17], [12, 42]].some(([a, b]) => Math.abs(a - x) + Math.abs(b - y) < 3);
+    const nearPath = (x, y) => { for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ([T.PATH, T.BRIDGE, T.DOOR, T.LDOOR, T.GATE].includes(get(x + dx, y + dy))) return true; return false; };
+    for (let y = 3; y < H - 3; y++) for (let x = 3; x < W - 3; x++) {
+      const t = get(x, y), r = hash(x * 7 + 3, y * 11 + 5);
+      if (busy(x, y) || nearPath(x, y) || propSolid.has(x + "," + y)) continue;
+      if ((t === T.SALT || t === T.BONES) && y < 31 && !(x >= 23 && x <= 45 && y <= 20) && !(x >= 50 && y <= 16)) {
+        if (r < 0.018) addProp("deadtree", x, y); else if (r < 0.034) addProp("pillar", x, y); else if (r < 0.05) addProp("skulls", x, y);
+      } else if (t === T.GRASS && x >= 52) {
+        const byWater = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => get(x + dx, y + dy) === T.WATER);
+        if (byWater && r < 0.7) addProp("reeds", x, y); else if (r < 0.05) addProp("mushrooms", x, y);
+      } else if (t === T.DARK) {
+        if (r < 0.03 && y !== 11 && (x === 25 || x === 43 || y === 4 || y === 18)) addProp("statue", x, y);
+        else if (r < 0.06) addProp("candles", x, y); else if (r < 0.08) addProp("chains", x, y);
+      } else if (t === T.SAND && r < 0.02) addProp("flowers", x, y);
+    }
+    for (let x = 53; x <= 68; x += 3) addProp("banner", x, 10, { flat: true });
+  }
+  const propAt = (x, y) => propSolid.has(Math.floor(x / TILE) + "," + Math.floor(y / TILE));
+
+  // ================================================================== LORE TABLETS
+  const LORE = [
+    { id: 0, x: 6, y: 30, title: "The First Rain", text: "Before Kessa, the Flats were a sea. When it dried, the drowned did not leave. They wait under the salt for water, and they are very patient." },
+    { id: 1, x: 27, y: 24, title: "The Nine Sisters", text: "The Well of Nine was dug by nine sisters. Each gave one year of her voice to make the water sweet. The ninth sister kept singing anyway, and became the first Storm-singer." },
+    { id: 2, x: 44, y: 40, title: "A Torn Ledger", text: "Guild ledger, torn out: \"Oru gate, dry season. Sold: high-ground plots, 400. Sold: rain insurance, 1,200. Bell tithe: paid by Hollis, personally, in cash.\"" },
+    { id: 3, x: 60, y: 34, title: "A Farmer's Carving", text: "Carved into a palm: \"Mother came up when the pond went black. She sings like my mum used to. That is how she gets you. Don't listen. DON'T LISTEN.\"" },
+    { id: 4, x: 28, y: 16, title: "The Hymnal Margin", text: "Written in a Choir hymnal: \"Sleep, sleep, the salt is deep. The Bell will ring and you will keep.\" The last line is scratched out. Rewritten in red: \"The Bell will ring and you will WAKE.\"" },
+    { id: 5, x: 45, y: 12, title: "The Warden's Oath", text: "An inscription by the river: \"I am the Warden. I remember every rain. If ever I forget, ring the Bell three times beside me, and remind me who I am.\"" },
+    { id: 6, x: 66, y: 24, title: "The Courier's Cairn", text: "Every courier who died on the salt has a stone here. The newest stone has no name yet. Someone has scratched a little scarf into it." },
+    { id: 7, x: 3, y: 41, title: "Nadia's Marker", text: "An old boundary stone: \"Kessa was founded by the people the Guild left below the waterline. We ring the Bell for everyone, or it is not a bell. It is a lock.\"" },
+  ];
+  function readLore(l) {
+    G.flags.lore = G.flags.lore || [];
+    const fresh = !G.flags.lore.includes(l.id);
+    if (fresh) { G.flags.lore.push(l.id); G.coins += 4; burst(l.x * TILE + 8, l.y * TILE, "#9ef0f5", 16); Music.sound("item"); }
+    D.__lore = say(null, `SALT TABLET · ${l.title.toUpperCase()}\n${l.text}${fresh ? `\n(Tablet ${G.flags.lore.length}/8 recorded in your journal. +4 coin.)` : ""}`, null, () => {
+      if (fresh && G.flags.lore.length === LORE.length && !G.flags.loreBonus) {
+        G.flags.loreBonus = true; for (const id of G.members) { G.party[id].maxSp += 2; G.party[id].sp += 2; }
+        toast("All eight tablets read. The salt remembers you: +2 max SP for the whole party."); Music.sound("victory");
+      }
+      save(); updateHud();
+    });
+    openDialog("__lore");
+  }
+
+  // ================================================================== CAMP SCENES
+  // Conversations that play when the party rests, once each, as the story moves on.
+  const CAMPS = [
+    { id: "camp1", when: () => G.members.includes("ilse") && G.stage >= 2, node: "camp1_0" },
+    { id: "camp2", when: () => G.members.includes("maru") && G.stage >= 3, node: "camp2_0" },
+    { id: "camp3", when: () => G.members.includes("rook") && G.stage >= 4, node: "camp3_0" },
+    { id: "camp4", when: () => G.members.includes("ada") && G.stage >= 5, node: "camp4_0" },
+    { id: "camp5", when: () => G.members.includes("ren") && G.stage >= 6, node: "camp5_0" },
+  ];
+  function campScene() {
+    const c = CAMPS.find(c => !(G.flags.camps || []).includes(c.id) && c.when());
+    if (!c) return false;
+    G.flags.camps = [...(G.flags.camps || []), c.id]; save();
+    setTimeout(() => openDialog(c.node), 350);
+    return true;
+  }
+  function interlude(title, text) { card("Meanwhile, in Oru", title, text); }
 
   // ================================================================== GOALS
   const KEY_CHEST = { x: 40, y: 17 };
@@ -850,6 +978,7 @@
     Music.init();
     if (k === "n") { toggleMusic(); return; }
     if (mode === "card") { if (k === "e" || k === "enter" || k === " ") $("cardBtn").click(); return; }
+    if (mode === "journal") { if (k === "j" || k === "escape" || k === "q" || k === "e") closeJournal(); return; }
     if (mode === "roster") { if (k === "p" || k === "escape" || k === "q" || k === "e") closeRoster(); return; }
     if (mode === "dialog") {
       if (k === "e" || k === " " || k === "enter") dialogAdvance();
@@ -865,6 +994,7 @@
     if (k === "m") showMap = !showMap;
     if (k === "shift") dash();
     if (k === "p") openRoster();
+    if (k === "j") openJournal();
   });
   addEventListener("keyup", e => { keys[e.key.toLowerCase()] = false; });
   addEventListener("blur", () => { for (const k in keys) keys[k] = false; });
@@ -915,6 +1045,36 @@
   }
   $("rosterClose").addEventListener("click", closeRoster);
 
+  // ================================================================== JOURNAL
+  const CHAPTER_LOG = [
+    [1, "Prologue", "The Rain Bell was cut from its tower. Elder Nadia asked me to carry one last delivery: bring it home before the rains."],
+    [2, "I · The Stolen Bell", "Ilse the smith joined me. She saw a Guild coat with a limp on the tower stairs the night the Bell vanished."],
+    [3, "II · The Butcher of the Well", "We killed the Well Butcher and saved Maru. She heard Magister Voss carry the Bell into the Salt Cathedral. His blood-seal needs his signet ring."],
+    [4, "III · The Drowned Grove", "Rook, Voss's deserter archer, helped us cut the ring out of the Mother of Leeches. The farmers crawled out of the mud alive."],
+    [5, "IV · The Salt Cathedral", "Sister Ada joined us. We silenced the Choirmaster and opened the rain-drop door. Voss waits upstairs with the Bell in his chest."],
+    [6, "V · The Salt-Flayed", "Voss is salt. With his last breath he named his paymaster: Guild Master Hollis, waiting at the gates of Oru."],
+    [7, "VI · The Drowned Gate", "Captain Ren stands with us. One last delivery."],
+  ];
+  function openJournal() { mode = "journal"; renderJournal(); $("journalUI").hidden = false; Music.sound("click"); }
+  function closeJournal() { $("journalUI").hidden = true; mode = "play"; }
+  function renderJournal() {
+    const esc = t => t.replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]);
+    const story = CHAPTER_LOG.filter(([st]) => G.stage >= st - 1 && (st > 1 || G.stage >= 1)).map(([, t, x]) => `<p><b>${t}.</b> ${x}</p>`).join("") || `<p class="dim">Nothing yet. Talk to Elder Nadia.</p>`;
+    const lore = G.flags.lore || [], chests = Object.keys(G.flags.chests || {}).length, shards = (G.flags.shards || []).length, camps = (G.flags.camps || []).length;
+    const q = [
+      [G.flags.charmReturned, G.flags.benoQuest || G.flags.charmReturned, "Find Beno's charm, lost on the salt north-west of Kessa, and return it to him."],
+      [G.flags.wardenFree, G.flags.shardQuest, `Recover the Warden's three memory shards (${shards}/3) and free it.`],
+      [lore.length === LORE.length, true, `Read the salt tablets scattered across the Flats (${lore.length}/8). Reading all eight strengthens the party.`],
+      [chests === CHESTS.length, true, `Treasure chests found: ${chests}/${CHESTS.length}.`],
+      [camps === CAMPS.length, true, `Campfire talks: ${camps}/${CAMPS.length}. Rest with your companions as the story moves on.`],
+      [forgeTier("atk") + forgeTier("def") === 8, true, `The forge in Odo's shop: blades ${forgeTier("atk")}/4, leathers ${forgeTier("def")}/4.`],
+    ].filter(([, show]) => show).map(([done, , t]) => `<li class="${done ? "done" : ""}">${done ? "✓ " : ""}${t}</li>`).join("");
+    const tabs = LORE.filter(l => lore.includes(l.id)).map(l => `<li><b>${esc(l.title)}.</b> ${esc(l.text)}</li>`).join("") || `<li class="dim">None yet. Look for glowing stones.</li>`;
+    $("journalBody").innerHTML = `<h3>The story so far</h3>${story}<h3>Tasks</h3><ul>${q}</ul><h3>Salt tablets</h3><ul>${tabs}</ul>`;
+  }
+  $("journalClose").addEventListener("click", closeJournal);
+  $("journalBtn").addEventListener("click", () => { if (mode === "play") openJournal(); });
+
   // ================================================================== OVERWORLD LOGIC
   const tileAt = (x, y) => get(Math.floor(x / TILE), Math.floor(y / TILE));
   const sealOpen = () => G.keyItems.lantern && G.keyItems.signet;
@@ -923,6 +1083,7 @@
       const t = tileAt(x + dx, y + dy);
       if (SOLID.has(t)) return t;
       if (t === T.LDOOR && !sealOpen()) return t;
+      if (propAt(x + dx, y + dy)) return T.ROCK;
     }
     return 0;
   }
@@ -944,6 +1105,9 @@
     for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0], [0, 0]]) if (get(tx + dx, ty + dy) === T.WELL) { openDialog("well_rest"); return true; }
     if (near({ x: 36 * TILE + 8, y: 28 * TILE + 8 }, 30) && G.flags.butcherDead) { openDialog("pool_rest"); return true; }
     if (near({ x: 60 * TILE + 8, y: 44 * TILE + 8 }, 30) && G.flags.motherDead) { openDialog("grove_rest"); return true; }
+    if (near({ x: 56 * TILE + 8, y: 14 * TILE + 8 }, 28) && G.stage >= 6) { openDialog("gate_rest"); return true; }
+    for (const l of LORE) if (near({ x: l.x * TILE + 8, y: l.y * TILE + 8 }, 20)) { readLore(l); return true; }
+    for (const pr of PROPS) if (pr.type === "sign" && near({ x: pr.px, y: pr.py }, 20)) { D.__sign = say(null, pr.text); openDialog("__sign"); return true; }
     if (near(VOSS_POS, 34) && G.flags.unlocked && !G.flags.vossDead) { openDialog(G.flags.shardQuest && (G.flags.shards || []).length >= 3 && !G.flags.wardenFree ? "warden_free" : G.flags.metVoss ? "voss_return" : "voss_0"); G.flags.metVoss = true; return true; }
     if (G.flags.vossDead && !G.keyItems.bell && near({ x: 34 * TILE + 8, y: 6 * TILE + 8 }, 26)) {
       G.keyItems.bell = true; toast("You take the Rain Bell. It is still warm."); Music.sound("item"); burst(G.px, G.py - 8, "#ffcf4a", 30); save(); updateHud();
@@ -961,7 +1125,7 @@
     renderDialog();
   }
   function renderDialog() {
-    const npc = NPCS.find(n => n.id === dlg.who);
+    const npc = NPCS.find(n => n.id === dlg.who) || (dlg.who === "sable" ? { id: "sable", name: "Sable", look: HEROES.sable.look } : null);
     $("who").textContent = npc ? npc.name : SPEAKERS[dlg.who] || (dlg.text.startsWith("A memory") ? "Memory shard" : "");
     $("line").textContent = dlg.text.slice(0, Math.floor(typed));
     const done = typed >= dlg.text.length;
@@ -1034,7 +1198,7 @@
     const seen = {}; foes.forEach(f => { if (counts[f.id] > 1) { seen[f.id] = (seen[f.id] || 0) + 1; f.name += " " + "ABC"[seen[f.id] - 1]; } });
     const heroes = (G.active.length ? G.active : G.members.slice(0, 4)).map(heroUnit);
     battle = { foes, heroes, round: 0, queue: [], current: null, over: false, opts, flash: 1, fury: 0, warden: opts.boss === "voss" && G.flags.wardenFree };
-    addFury(0);
+    addFury(0); $("banner").hidden = true;
     $("battleUI").hidden = false; $("hud").hidden = true; $("minimap").hidden = true; $("corner").hidden = true;
     shake = 4;
     const boss = opts.boss && MONSTERS[opts.boss];
@@ -1823,7 +1987,17 @@
       let v = Math.floor(hash(tx, ty) * nv);
       if (t === T.WATER) v = (v + Math.floor(time * 2)) % 3;
       g.drawImage(tileCanvas(t, v), tx * TILE - ox, ty * TILE - oy);
+      const up = get(tx, ty - 1), X = tx * TILE - ox, Y = ty * TILE - oy;
+      if (!SOLID.has(t) && [T.WALL, T.HOUSE, T.ROCK, T.CRYSTAL, T.CITY, T.GATE].includes(up)) { g.fillStyle = "rgba(20,14,40,.28)"; g.fillRect(X, Y, TILE, 4); g.fillStyle = "rgba(20,14,40,.14)"; g.fillRect(X, Y + 4, TILE, 3); }
+      if (t === T.WATER) {
+        const wave = Math.floor(time * 3 + tx) % 3;
+        if (up !== T.WATER && up !== T.BRIDGE) { g.fillStyle = "rgba(230,250,255,.75)"; g.fillRect(X, Y, TILE, 1); g.fillStyle = "rgba(230,250,255,.35)"; g.fillRect(X + wave * 4, Y + 2, 5, 1); }
+        if (get(tx - 1, ty) !== T.WATER && get(tx - 1, ty) !== T.BRIDGE) { g.fillStyle = "rgba(230,250,255,.5)"; g.fillRect(X, Y, 1, TILE); }
+        if (get(tx + 1, ty) !== T.WATER && get(tx + 1, ty) !== T.BRIDGE) { g.fillStyle = "rgba(230,250,255,.5)"; g.fillRect(X + TILE - 1, Y, 1, TILE); }
+      }
     }
+    for (const pr of PROPS) if (pr.flat && Math.abs(pr.px - ox - VIEW_W / 2) < VIEW_W && Math.abs(pr.py - oy - VIEW_H / 2) < VIEW_H) drawProp(g, pr, pr.px - ox, pr.py - oy);
+    for (const l of LORE) if (Math.abs(l.x * TILE - ox - VIEW_W / 2) < VIEW_W) drawTablet(g, l.x * TILE + 8 - ox, l.y * TILE + 8 - oy, !(G.flags.lore || []).includes(l.id));
     // the grove pond runs dark until the Mother dies
     if (!G.flags.motherDead) { g.fillStyle = "rgba(40,10,30,.55)"; g.fillRect(58 * TILE - ox, 38 * TILE - oy, 6 * TILE, 5 * TILE); }
     if (!G.keyItems.key && !G.flags.unlocked) drawChest(g, KEY_CHEST.x * TILE + 8 - ox, KEY_CHEST.y * TILE + 8 - oy);
@@ -1857,6 +2031,7 @@
     }
     if (G.stage >= 6 && !G.flags.hollisDead) actors.push({ y: HOLLIS_POS.y, draw: () => drawMiniBoss(g, HOLLIS_POS.x - ox, HOLLIS_POS.y - oy, "hollis") });
     for (const f of field) actors.push({ y: f.py, draw: () => drawFieldMonster(g, f, f.px - ox, f.py - oy) });
+    for (const pr of PROPS) if (!pr.flat && Math.abs(pr.px - ox - VIEW_W / 2) < VIEW_W / 2 + 40 && Math.abs(pr.py - oy - VIEW_H / 2) < VIEW_H / 2 + 40) actors.push({ y: pr.py, draw: () => drawProp(g, pr, pr.px - ox, pr.py - oy) });
     actors.push({ y: G.py, draw: () => {
       for (const gh of player.ghosts) {
         g.globalAlpha = Math.min(1, gh.life * (gh.dash ? 2.6 : 2));
@@ -1868,6 +2043,8 @@
     } });
     actors.sort((a, b) => a.y - b.y).forEach(a => a.draw());
     for (const p of particles) if (p.world) { g.fillStyle = p.color; g.globalAlpha = Math.min(1, p.life * 2); g.fillRect(Math.round(p.x - ox), Math.round(p.y - oy), p.size, p.size); }
+    g.globalAlpha = 1;
+    drawAmbient(g, ox, oy);
     g.globalAlpha = 1;
 
     if (tileAt(G.px, G.py) === T.DARK) {
@@ -1881,6 +2058,7 @@
       if (G.flags.unlocked && !G.flags.vossDead) glow(VOSS_POS.x - ox, VOSS_POS.y - oy - 14, 34, .85);
       if (!G.flags.choirDead && G.stage >= 4) glow((KEY_CHEST.x - 1) * TILE + 8 - ox, KEY_CHEST.y * TILE - 14 - oy, 26, .8);
       if (G.stage >= 4 && !G.members.includes("ada")) glow(30 * TILE + 8 - ox, 17 * TILE - oy, 14, .6);
+      for (const pr of PROPS) if (pr.type === "candles") glow(pr.px - ox, pr.py - oy - 6, 16 + Math.sin(time * 7 + pr.seed * 9) * 1.5, .7);
       g.drawImage(light, 0, 0);
       g.fillStyle = "rgba(255,160,90,.05)"; g.fillRect(0, 0, VIEW_W, VIEW_H);
     }
@@ -2054,6 +2232,87 @@
     drawPerson(p, 10.5, 30, { dir: "down", ...npc.look, small: false });
   }
 
+  // ================================================================== DRAWING: PROPS & AMBIENCE
+  function drawProp(g, pr, x, y) {
+    x = Math.round(x); y = Math.round(y);
+    const R = (dx, dy, w, h, c) => { g.fillStyle = c; g.fillRect(x + dx, y + dy, w, h); };
+    const sh = (w = 7) => { g.fillStyle = "rgba(20,14,40,.28)"; g.beginPath(); g.ellipse(x, y + 6, w, 2.4, 0, 0, Math.PI * 2); g.fill(); };
+    const k = pr.seed, t = time;
+    switch (pr.type) {
+      case "lamp": {
+        sh(4); R(-1, -14, 2, 20, "#3a2a1e"); R(-3, -18, 6, 5, "#1b1633"); R(-2, -17, 4, 3, "#ffcf4a");
+        const a = 0.18 + Math.sin(t * 6 + k * 20) * 0.03, gr = g.createRadialGradient(x, y - 15, 1, x, y - 15, 22);
+        gr.addColorStop(0, `rgba(255,200,110,${a * 2})`); gr.addColorStop(1, "rgba(255,200,110,0)"); g.fillStyle = gr; g.fillRect(x - 22, y - 37, 44, 44); break; }
+      case "stall": sh(9); R(-8, -4, 16, 10, "#8a5533"); R(-8, -4, 16, 2, "#6b3f24"); R(-9, -16, 1, 20, "#6b3f24"); R(8, -16, 1, 20, "#6b3f24");
+        for (let i = 0; i < 6; i++) R(-9 + i * 3, -18, 3, 5, i % 2 ? "#f2ead8" : pr.color); R(-6, -6, 3, 2, "#ff8a5c"); R(-1, -6, 3, 2, "#6fbf62"); R(4, -6, 3, 2, "#ffcf4a"); break;
+      case "barrel": sh(5); R(-4, -6, 8, 12, "#1b1633"); R(-3, -5, 6, 10, "#8a5533"); R(-3, -3, 6, 1, "#5e5680"); R(-3, 2, 6, 1, "#5e5680"); break;
+      case "crate": sh(6); R(-5, -6, 10, 11, "#1b1633"); R(-4, -5, 8, 9, "#b98a52"); R(-4, -5, 8, 1, "#d9a86c"); R(-4, -1, 8, 1, "#8a5533"); R(-1, -5, 1, 9, "#8a5533"); break;
+      case "sign": sh(4); R(-1, -8, 2, 14, "#6b3f24"); R(-7, -13, 14, 7, "#1b1633"); R(-6, -12, 12, 5, "#b98a52"); R(-4, -10, 8, 1, "#6b3f24");
+        if (Math.hypot(pr.px - G.px, pr.py - G.py) < 20 && mode === "play") drawPrompt(g, x, y - 18); break;
+      case "cart": sh(10); R(-9, -8, 18, 7, "#1b1633"); R(-8, -7, 16, 5, "#8a5533"); R(-8, -7, 16, 1, "#b98a52"); R(-7, -2, 5, 5, "#1b1633"); R(-6, -1, 3, 3, "#6b3f24"); R(4, 0, 6, 2, "#6b3f24"); R(9, -10, 1, 6, "#6b3f24"); R(-5, -10, 7, 3, "#d8d0c0"); R(6, 2, 3, 1, "#7a1a22"); break;
+      case "deadtree": sh(6); R(-1, -16, 3, 22, "#4a3a2e"); R(-6, -14, 5, 1, "#4a3a2e"); R(-6, -18, 1, 4, "#4a3a2e"); R(2, -11, 6, 1, "#4a3a2e"); R(7, -15, 1, 4, "#4a3a2e"); R(0, -20, 1, 4, "#4a3a2e");
+        if (k > 0.6) { R(4, -10, 1, 5, "#857ea5"); R(3, -5, 3, 3, "#d8d0c0"); } break;
+      case "pillar": sh(5); g.fillStyle = "#1b1633"; g.beginPath(); g.moveTo(x - 5, y + 5); g.lineTo(x - 3, y - 16); g.lineTo(x + 1, y - 22); g.lineTo(x + 5, y - 12); g.lineTo(x + 5, y + 5); g.fill();
+        g.fillStyle = "#e8ffff"; g.beginPath(); g.moveTo(x - 4, y + 4); g.lineTo(x - 2, y - 15); g.lineTo(x + 1, y - 20); g.lineTo(x + 4, y - 12); g.lineTo(x + 4, y + 4); g.fill(); R(-1, -14, 1, 14, "#b8f4f8"); R(2, -10, 1, 12, "#cfeff5"); break;
+      case "skulls": R(-5, 1, 4, 3, "#f6f2e8"); R(-4, 2, 1, 1, "#3a2a2a"); R(1, 2, 4, 3, "#f6f2e8"); R(3, 3, 1, 1, "#3a2a2a"); R(-2, 0, 5, 2, "#e8e2d8"); break;
+      case "reeds": for (let i = 0; i < 3; i++) { const sw = Math.round(Math.sin(t * 2 + k * 10 + i) * 1.2); R(-4 + i * 3 + sw, -8 + (i % 2) * 2, 1, 10 - (i % 2) * 2, "#3a7a3a"); R(-4 + i * 3 + sw, -9 + (i % 2) * 2, 1, 3, "#8a5a33"); } break;
+      case "mushrooms": R(-3, 1, 1, 3, "#e8e2d8"); R(-5, -1, 5, 2, "#c8102e"); R(-4, -1, 1, 1, "#fff"); R(2, 2, 1, 2, "#e8e2d8"); R(1, 1, 3, 1, "#9a3f7a"); break;
+      case "flowers": R(-3, 1, 2, 2, "#ff8ab0"); R(2, 3, 2, 2, "#ffd24a"); R(0, -1, 2, 2, "#b08aff"); break;
+      case "statue": sh(7); R(-6, -24, 12, 30, "#1b1633"); R(-5, -23, 10, 28, "#5e5680"); R(-4, -28, 8, 7, "#1b1633"); R(-3, -27, 6, 6, "#7c74a2"); R(-2, -25, 1, 1, "#1b1633"); R(1, -25, 1, 1, "#1b1633"); R(-2, -22, 1, 4, "#9ef0f5"); R(-5, -14, 10, 2, "#433d63"); R(-7, 4, 14, 2, "#433d63"); break;
+      case "candles": for (const [dx, h] of [[-4, 6], [0, 9], [4, 5]]) { R(dx, 4 - h, 2, h, "#f2e6b0"); const fl = Math.round(Math.sin(t * 9 + dx + k * 5)); R(dx, 1 - h + fl, 2, 2, "#ffcf4a"); R(dx, 2 - h, 1, 1, "#fff1b0"); } R(-5, 4, 11, 1, "#7a1a22"); break;
+      case "chains": for (let i = 0; i < 6; i++) R(Math.round(Math.sin(t + k * 6) * (i / 3)), -24 + i * 4, 2, 3, i % 2 ? "#857ea5" : "#5e5680"); R(-1, 0, 4, 3, "#857ea5"); break;
+      case "grave": R(-3, -6, 7, 10, "#1b1633"); R(-2, -5, 5, 8, "#aba4c8"); R(-2, -5, 5, 1, "#c8c2e0"); R(0, -4, 1, 4, "#5e5680"); R(-1, -3, 3, 1, "#5e5680"); break;
+      case "cairn": sh(9); R(-8, -2, 16, 8, "#857ea5"); R(-6, -8, 12, 7, "#aba4c8"); R(-4, -13, 8, 6, "#857ea5"); R(-2, -17, 4, 5, "#c8c2e0");
+        R(-4, -14 + Math.round(Math.sin(t * 3) * 1), 9, 2, "#3ee0e8"); R(4, -13 + Math.round(Math.sin(t * 3 + 1)), 3, 5, "#1fb8c2"); break;
+      case "tower": sh(12); R(-10, -34, 20, 40, "#1b1633"); R(-9, -33, 18, 38, "#857ea5"); for (let i = 0; i < 4; i++) R(-9, -28 + i * 9, 18, 1, "#5e5680");
+        R(-11, -38, 4, 5, "#857ea5"); R(-3, -38, 5, 5, "#857ea5"); R(6, -38, 5, 5, "#857ea5"); R(-3, -24, 5, 7, "#120f24"); R(-2, -2, 4, 8, "#120f24"); R(4, -36, 4, 10, "#a8403a"); R(4, -36, 1, 16, "#3a2a1e"); break;
+      case "campfire": { sh(8); R(-6, 2, 12, 3, "#4a3a2e"); R(-5, 0, 3, 3, "#6b3f24"); R(2, 0, 3, 3, "#6b3f24");
+        const f = Math.sin(t * 12 + k * 7);
+        g.fillStyle = "#c8102e"; g.beginPath(); g.moveTo(x - 5, y + 2); g.lineTo(x, y - 9 - f * 2); g.lineTo(x + 5, y + 2); g.fill();
+        g.fillStyle = "#ffcf4a"; g.beginPath(); g.moveTo(x - 3, y + 2); g.lineTo(x + f, y - 5); g.lineTo(x + 3, y + 2); g.fill();
+        const gr = g.createRadialGradient(x, y - 2, 1, x, y - 2, 30); gr.addColorStop(0, "rgba(255,150,60,.35)"); gr.addColorStop(1, "rgba(255,150,60,0)"); g.fillStyle = gr; g.fillRect(x - 30, y - 32, 60, 60);
+        if (Math.random() < 0.08 && !REDUCED) particles.push({ x: pr.px + rand(-2, 2), y: pr.py - 6, vx: rand(-6, 6), vy: -rand(20, 40), life: rand(0.4, 0.9), color: "#ffb14a", size: 1, world: true });
+        break; }
+      case "banner": { const w = Math.round(Math.sin(t * 2 + k * 8) * 1); R(-1, -14, 2, 4, "#3a2a1e"); R(-4, -11, 8, 12 + w, "#c9a227"); R(-4, -11, 8, 2, "#8a6a2a"); R(-2, -6, 4, 4, "#1b1633"); R(-1, -5, 2, 2, "#c8102e"); break; }
+    }
+  }
+  function drawTablet(g, x, y, fresh) {
+    x = Math.round(x); y = Math.round(y);
+    if (fresh) { const gr = g.createRadialGradient(x, y - 4, 1, x, y - 4, 14); gr.addColorStop(0, `rgba(158,240,245,${0.35 + Math.sin(time * 3) * 0.1})`); gr.addColorStop(1, "rgba(158,240,245,0)"); g.fillStyle = gr; g.fillRect(x - 14, y - 18, 28, 28); }
+    g.fillStyle = "rgba(20,14,40,.28)"; g.beginPath(); g.ellipse(x, y + 5, 6, 2, 0, 0, Math.PI * 2); g.fill();
+    g.fillStyle = "#1b1633"; g.fillRect(x - 5, y - 9, 10, 14); g.fillStyle = fresh ? "#c8c2e0" : "#857ea5"; g.fillRect(x - 4, y - 8, 8, 12); g.fillRect(x - 3, y - 10, 6, 2);
+    g.fillStyle = fresh ? "#3ee0e8" : "#5e5680"; for (let i = 0; i < 3; i++) g.fillRect(x - 2, y - 6 + i * 3, 4, 1);
+    if (Math.hypot(x + camX - G.px, y + camY - G.py) < 20 && mode === "play") drawPrompt(g, x, y - 16);
+  }
+  function drawAmbient(g, ox, oy) {
+    if (REDUCED) return;
+    const tx = Math.floor(G.px / TILE), ty = Math.floor(G.py / TILE), t0 = get(tx, ty);
+    const reg = REGIONS.find(r => tx >= r.x0 && tx <= r.x1 && ty >= r.y0 && ty <= r.y1);
+    const name = t0 === T.DARK ? "cathedral" : reg ? reg.name : "";
+    for (let i = 0; i < 28; i++) {
+      const h1 = hash(i, 91), h2 = hash(i, 93);
+      if (name === "The Drowned Grove") {
+        const x = (h1 * VIEW_W + Math.sin(time * .7 + i) * 14) % VIEW_W, y = (h2 * VIEW_H + Math.cos(time * .5 + i * 2) * 10) % VIEW_H;
+        const a = Math.max(0, Math.sin(time * 2 + i * 1.7)); g.fillStyle = `rgba(200,255,120,${a * .9})`; g.fillRect(Math.round(x), Math.round(y), 1, 1);
+        g.fillStyle = `rgba(200,255,120,${a * .25})`; g.fillRect(Math.round(x) - 1, Math.round(y) - 1, 3, 3);
+      } else if (name === "cathedral") {
+        const x = (h1 * VIEW_W + time * 3 * (h2 - .5)) % VIEW_W, y = VIEW_H - ((h2 * VIEW_H + time * (6 + h1 * 6)) % VIEW_H);
+        g.fillStyle = i % 3 ? "rgba(255,180,90,.5)" : "rgba(158,240,245,.45)"; g.fillRect(Math.round(x), Math.round(y), 1, 1);
+      } else if (name === "Gates of Oru" && G.stage >= 6) {
+        const x = (h1 * (VIEW_W + 40) - time * 30) % (VIEW_W + 40), y = (h2 * VIEW_H + time * 190) % VIEW_H;
+        g.fillStyle = "rgba(170,200,240,.55)"; g.fillRect(Math.round((x + VIEW_W + 40) % (VIEW_W + 40)), Math.round(y), 1, 4);
+      } else if (name === "Kessa") {
+        if (i > 8) break;
+        const x = (h1 * VIEW_W + Math.sin(time * .4 + i) * 20) % VIEW_W, y = (h2 * VIEW_H - time * 4) % VIEW_H;
+        g.fillStyle = "rgba(255,240,200,.25)"; g.fillRect(Math.round(x), Math.round((y + VIEW_H) % VIEW_H), 1, 1);
+      } else {
+        const x = (h1 * VIEW_W + time * (40 + h2 * 50)) % (VIEW_W + 30) - 15, y = h2 * VIEW_H + Math.sin(time + i) * 3;
+        g.fillStyle = "rgba(255,255,255,.55)"; g.fillRect(Math.round(x), Math.round(y), 3 + Math.round(h1 * 4), 1);
+      }
+    }
+    if (G.stage >= 6 && name === "Gates of Oru") { g.fillStyle = "rgba(20,40,80,.18)"; g.fillRect(0, 0, VIEW_W, VIEW_H); }
+  }
+
   // ================================================================== HUD
   function updateHud() {
     if (!G) return;
@@ -2111,7 +2370,7 @@
     if (G.stage === 0 && !G.flags.intro) { G.flags.intro = true; card("Prologue", "The Stolen Bell", "The night the Rain Bell was cut from its tower, the jackals on the salt stopped eating carrion and started hunting. Elder Nadia is waiting for you by the village well. Follow the gold arrow."); }
   }
   function newGame(persist = true) {
-    G = freshGame(); buildMap(); miniDirty = true; region = ""; spawnField(); particles = []; popups = [];
+    G = freshGame(); buildMap(); buildProps(); miniDirty = true; region = ""; spawnField(); particles = []; popups = [];
     player.scarf = []; player.ghosts = []; camX = G.px - VIEW_W / 2; camY = G.py - VIEW_H / 2;
     const b = NPCS.find(n => n.id === "beno"); b.px = b.x * TILE + 8; b.py = b.y * TILE + 8; b.walking = false;
     if (persist) save();
@@ -2124,7 +2383,9 @@
     const bits = [G.flags.wardenFree ? "The Warden keeps the Cathedral again, and on still nights the salt hums a lullaby." : "The Cathedral stands empty. Nobody goes there anymore.",
                   G.flags.benoFollows ? "Beno rides on Ilse's shoulders the whole way, pointing out every puddle." : "",
                   G.members.includes("rook") ? "Rook burns his Guild coat on the gatehouse steps." : "",
-                  G.members.includes("ada") ? "Sister Ada teaches the Kessa children a new hymn, one for waking the living." : ""].filter(Boolean).join(" ");
+                  G.members.includes("ada") ? "Sister Ada teaches the Kessa children a new hymn, one for waking the living." : "",
+                  G.flags.loreBonus ? "The words of the eight salt tablets are carved above Kessa's schoolhouse door, so nobody forgets what the salt remembers." : "",
+                  (G.flags.camps || []).length >= 5 ? "Maru finishes her song about six unlikely friends. It rhymes 'Hollis' with 'polish', and everybody sings it." : ""].filter(Boolean).join(" ");
     $("cardKicker").textContent = "Ending";
     $("cardTitle").textContent = good ? "The Gates Open" : "The Salt Throne";
     $("cardText").textContent = good
@@ -2159,7 +2420,14 @@
   }
   requestAnimationFrame(loop);
   // For quick checks from a browser console, e.g. window.__saltRoad.battle(["ghoul","jackal"])
-  window.__saltRoad = { battle: (grp, opts) => startBattle(grp, opts || {}), state: () => G, mode: () => mode, tp: (x, y) => { G.px = x * TILE + 8; G.py = y * TILE + 8; } };
+  window.__saltRoad = { battle: (grp, opts) => startBattle(grp, opts || {}), state: () => G, mode: () => mode, reach: () => {
+    const seen = new Set(), q = [[12, 47]]; seen.add("12,47");
+    const pass = (x, y) => { const t = get(x, y); return (!SOLID.has(t) || t === T.LOCKED || t === T.DOOR) && !propSolid.has(x + "," + y); };
+    while (q.length) { const [x, y] = q.pop(); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const k = (x + dx) + "," + (y + dy); if (!seen.has(k) && pass(x + dx, y + dy)) { seen.add(k); q.push([x + dx, y + dy]); } } }
+    const spots = { ...Object.fromEntries(NPCS.map(n => [n.id, [n.x, n.y]])), ...Object.fromEntries(CHESTS.map(c => ["chest_" + c.id, [c.x, c.y]])), ...Object.fromEntries(LORE.map(l => ["lore" + l.id, [l.x, l.y]])),
+      ...Object.fromEntries(SHARDS.map(c => ["shard" + c.id, [c.x, c.y]])), key: [40, 17], charm: [11, 15], mother: [62, 43], voss: [34, 8], hollis: [61, 12], bell: [34, 6], gaterest: [56, 15], groverest: [60, 44] };
+    return Object.entries(spots).filter(([, [x, y]]) => ![[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => seen.has((x + dx) + "," + (y + dy)))).map(([k]) => k);
+  }, props: () => PROPS.length, clearField: () => { field = []; }, tp: (x, y) => { G.px = x * TILE + 8; G.py = y * TILE + 8; } };
 })();
 </script>
 </body>
