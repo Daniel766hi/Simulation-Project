@@ -125,6 +125,19 @@
   .screen .big:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
   .screen .ghost { font: 500 14px var(--font); color: var(--muted); background: transparent; border: 1px solid var(--edge); border-radius: 8px; padding: 7px 14px; cursor: pointer; }
 
+  .splash { position: absolute; left: 0; right: 0; top: 34%; text-align: center; pointer-events: none; z-index: 6; padding: 14px 0; background: linear-gradient(90deg, transparent, rgba(60,0,15,.85) 20%, rgba(60,0,15,.85) 80%, transparent); animation: splash 2.4s ease forwards; }
+  .splash small { display: block; font-size: 12px; letter-spacing: .4em; text-transform: uppercase; color: #ffb14a; }
+  .splash span { font-size: clamp(22px, 4vw, 38px); font-weight: 700; color: #fff; text-shadow: 0 3px 0 #3a0a14, 0 0 22px rgba(200,16,46,.8); }
+  @keyframes splash { 0% { opacity: 0; transform: scaleY(0); } 12% { opacity: 1; transform: scaleY(1); } 80% { opacity: 1; } 100% { opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .splash { animation: none; opacity: 0; } }
+  .diff { display: flex; gap: 6px; }
+  .diff button { font: 600 14px var(--font); color: var(--muted); background: transparent; border: 1px solid var(--edge); border-radius: 6px; padding: 6px 14px; cursor: pointer; }
+  .diff button.on { color: #120f24; background: var(--gold); border-color: var(--gold); }
+  .diff button:focus-visible { outline: 2px solid var(--scarf); }
+  .screen p.diffNote { font-size: 13px; min-height: 1.4em; }
+  .rcard { display: flex; flex-direction: column; gap: 4px; }
+  .rcard .relic { font-size: 12px; padding: 5px 9px; }
+  .rcard .relic b { color: var(--gold); font-weight: 600; }
   .help { width: 100%; max-width: 1000px; display: flex; flex-wrap: wrap; gap: 6px 16px; justify-content: center; margin-top: 10px; font-size: 13px; color: var(--muted); }
   .help kbd { font: 500 12px var(--font); color: var(--text); background: #231d45; border: 1px solid var(--edge); border-bottom-width: 2px; border-radius: 4px; padding: 1px 6px; }
   .touch { display: none; width: 100%; max-width: 1000px; justify-content: space-between; align-items: center; margin-top: 10px; gap: 12px; }
@@ -156,6 +169,7 @@
   <canvas id="minimap" width="72" height="54" aria-label="Minimap"></canvas>
   <div class="corner" id="corner"><button id="partyBtn" type="button">Party (P)</button><button id="journalBtn" type="button">Journal (J)</button><button id="musicBtn" type="button">♪ Music on</button></div>
   <div class="toast" id="toast" hidden></div>
+  <div class="splash" id="splash" hidden><small id="splashSub"></small><span id="splashName"></span></div>
   <div class="banner" id="banner" hidden><small>Entering</small><span id="bannerText"></span></div>
 
   <div id="battleUI" hidden>
@@ -194,6 +208,10 @@
     <h2>A dark adventure in six chapters</h2>
     <h1>The Salt Road</h1>
     <p>Twelve dry days a year, the Glass Flats can be crossed. This year the Rain Bell was stolen, and without it the rains will drown Kessa. Things are walking on the salt that should be dead. You are Sable, the last courier.</p>
+    <div class="diff" id="diffRow" role="group" aria-label="Difficulty">
+      <button type="button" data-d="story">Story</button><button type="button" data-d="normal">Normal</button><button type="button" data-d="hard">Hard</button>
+    </div>
+    <p class="diffNote" id="diffNote"></p>
     <button class="big" id="startBtn">Begin</button>
     <button class="ghost" id="newBtn" hidden>Start over</button>
   </div>
@@ -558,6 +576,37 @@
       moves: [{ name: "Toll of Salt", w: 2, power: 0.8, all: true, stunChance: 0.2 }, { name: "Flay", w: 3, power: 1.5, bleed: [4, 3] }, { name: "Crystal Carapace", w: 1, guard: true, heal: 12 }, { name: "The Bell Screams", w: 0, power: 1.15, all: true, phase2: true }] },
     hollis: { name: "Guild Master Hollis, the Tide-Eater", hp: 420, atk: 16, def: 6, spd: 7, xp: 0, coin: [0, 0], sprite: "hollis", boss: true, music: "final",
       moves: [{ name: "Riptide", w: 3, power: 0.9, all: true }, { name: "Devour", w: 3, power: 1.6, drain: 0.5 }, { name: "Anchor Chain", w: 2, power: 1.0, stunChance: 0.45 }, { name: "Drown", w: 1, bleedAll: [3, 3] }, { name: "Call the Drowned", w: 0, summon: true }, { name: "The Tide Rises", w: 0, power: 1.2, all: true, phase3: true }] },
+  };
+
+  // ================================================================== RELICS
+  // Bosses drop relics. Each can be worn by one hero (party screen). Bonuses apply in battle.
+  const RELICS = {
+    hook: { name: "Butcher's Hook", from: "butcher", desc: "+3 attack. Plain attacks make the target bleed 2 for 2 turns.", atk: 3, bleedHit: true },
+    pearl: { name: "Mother's Pearl", from: "mother", desc: "Regenerate 4 health at the start of each turn.", regen: 4 },
+    baton: { name: "Choirmaster's Baton", from: "choirmaster", desc: "+2 extra SP each turn, +1 speed.", spRegen: 2, spd: 1 },
+    shard: { name: "Voss's Salt Heart", from: "voss", desc: "+3 defence. Immune to stun.", def: 3, noStun: true },
+    fang: { name: "Wyrm Fang", from: "wyrm", desc: "+15% critical chance, +2 speed.", crit: 0.15, spd: 2 },
+  };
+  const relicOf = u => u.side === "hero" && G.equip && G.equip[u.id] ? RELICS[G.equip[u.id]] : null;
+  const rstat = (u, k) => { const r = relicOf(u); return r && r[k] ? r[k] : 0; };
+  function grantRelic(boss) {
+    const id = Object.keys(RELICS).find(k => RELICS[k].from === boss);
+    if (!id || (G.relics || []).includes(id)) return;
+    G.relics = [...(G.relics || []), id]; save();
+    setTimeout(() => toast(`Relic found: ${RELICS[id].name}. Equip it from the party screen (P).`), 900);
+  }
+  const DIFFS = { story: { hp: 0.75, dmg: 0.7, note: "Story: gentler monsters. For enjoying the tale." }, normal: { hp: 1, dmg: 1, note: "Normal: hard but fair. Guard, heal and plan." }, hard: { hp: 1.25, dmg: 1.2, note: "Hard: monsters hit harder and last longer. For veterans." } };
+  let difficulty = "normal";
+  try { difficulty = localStorage.getItem("salt-road-diff") || "normal"; } catch { /* storage unavailable */ }
+  if (!DIFFS[difficulty]) difficulty = "normal";
+  const BESTIARY = {
+    jackal: "They followed the caravans for scraps. Now they lead them.", ghoul: "A driver who died of thirst, still walking toward water.",
+    leech: "Brine leeches swell in the salt pools and wait for anything warm.", spawn: "The Mother's young. They never stop being hungry.",
+    choir: "The Choir's youngest, singing a song they no longer understand.", wraith: "What is left when the salt dries a soul out completely.",
+    crawler: "Ribcages of drowned oxen, walking sideways on borrowed legs.", drowned: "Hollis's guards, who marched into the moat and came back.",
+    butcher: "Voss's hangman at the Well of Nine.", mother: "Something old from the bottom of the grove pond.", choirmaster: "Sold his choir's voices to Voss.",
+    voss: "Magister of the Guild. Cut the Bell loose and paid for it with his skin.", wyrm: "Older than the Guild, older than Kessa. It sleeps under the watchtower.",
+    hollis: "Guild Master. He bargained with the thing under the gatehouse and lost.",
   };
 
   // ================================================================== STATE
@@ -1072,6 +1121,7 @@
     const list = $("rosterList"); list.innerHTML = "";
     for (const id of G.members) {
       const h = G.party[id], def = HEROES[id], on = G.active.includes(id);
+      const wrap = document.createElement("div"); wrap.className = "rcard";
       const b = document.createElement("button"); b.type = "button"; b.className = on ? "on" : "";
       b.innerHTML = `<b><span>${h.name}</span><span class="tag">${on ? "Fighting" : "Resting"}</span></b>
         <small>${def.role} · Lv ${h.level} · HP ${h.hp}/${h.maxHp} · SP ${h.maxSp} · ATK ${h.atk} · DEF ${h.def} · SPD ${h.spd}</small>
@@ -1081,7 +1131,21 @@
         else if (G.active.length < 4) G.active.push(id); else toast("Four fighters at most. Rest someone first.");
         Music.sound("click"); renderRoster();
       });
-      list.appendChild(b);
+      wrap.appendChild(b);
+      if ((G.relics || []).length) {
+        G.equip = G.equip || {};
+        const cur = G.equip[id], rb = document.createElement("button"); rb.type = "button"; rb.className = "relic";
+        rb.innerHTML = cur ? `Relic: <b>${RELICS[cur].name}</b> <small>${RELICS[cur].desc}</small>` : `Relic: none <small>(tap to equip)</small>`;
+        rb.addEventListener("click", () => {
+          const taken = new Set(Object.entries(G.equip).filter(([h]) => h !== id).map(([, r]) => r));
+          const opts = [null, ...G.relics.filter(r => !taken.has(r))];
+          const next = opts[(opts.indexOf(cur || null) + 1) % opts.length];
+          if (next) G.equip[id] = next; else delete G.equip[id];
+          Music.sound("click"); renderRoster();
+        });
+        wrap.appendChild(rb);
+      }
+      list.appendChild(wrap);
     }
   }
   $("rosterClose").addEventListener("click", closeRoster);
@@ -1112,7 +1176,10 @@
       [forgeTier("atk") + forgeTier("def") === 8, true, `The forge in Odo's shop: blades ${forgeTier("atk")}/4, leathers ${forgeTier("def")}/4.`],
     ].filter(([, show]) => show).map(([done, , t]) => `<li class="${done ? "done" : ""}">${done ? "✓ " : ""}${t}</li>`).join("");
     const tabs = LORE.filter(l => lore.includes(l.id)).map(l => `<li><b>${esc(l.title)}.</b> ${esc(l.text)}</li>`).join("") || `<li class="dim">None yet. Look for glowing stones.</li>`;
-    $("journalBody").innerHTML = `<h3>The story so far</h3>${story}<h3>Tasks</h3><ul>${q}</ul><h3>Salt tablets</h3><ul>${tabs}</ul>`;
+    const kills = G.flags.kills || {};
+    const beasts = Object.keys(BESTIARY).filter(k => kills[k]).map(k => `<li><b>${esc(MONSTERS[k].name)}</b> ×${kills[k]}. ${esc(BESTIARY[k])}</li>`).join("") || `<li class="dim">No monsters defeated yet.</li>`;
+    const rel = (G.relics || []).map(r => `<li><b>${RELICS[r].name}</b>: ${RELICS[r].desc}${Object.entries(G.equip || {}).find(([, x]) => x === r) ? ` <span class="done">(worn by ${G.party[Object.entries(G.equip).find(([, x]) => x === r)[0]].name})</span>` : ""}</li>`).join("") || `<li class="dim">Bosses drop relics. None yet.</li>`;
+    $("journalBody").innerHTML = `<h3>The story so far</h3>${story}<h3>Tasks</h3><ul>${q}</ul><h3>Relics</h3><ul>${rel}</ul><h3>Bestiary (${Object.keys(BESTIARY).filter(k => kills[k]).length}/${Object.keys(BESTIARY).length})</h3><ul>${beasts}</ul><h3>Salt tablets</h3><ul>${tabs}</ul><p class="dim">Difficulty: ${difficulty[0].toUpperCase() + difficulty.slice(1)} (change it on the title screen).</p>`;
   }
   $("journalClose").addEventListener("click", closeJournal);
   $("journalBtn").addEventListener("click", () => { if (mode === "play") openJournal(); });
@@ -1225,7 +1292,8 @@
   let battle = null;
   function unitFromMonster(id, i, n) {
     const m = MONSTERS[id];
-    return { side: "foe", id, name: m.name, sprite: m.sprite, maxHp: m.hp, hp: m.hp, atk: m.atk, def: m.def, spd: m.spd, boss: !!m.boss,
+    const hpx = Math.round(m.hp * DIFFS[difficulty].hp);
+    return { side: "foe", id, name: m.name, sprite: m.sprite, maxHp: hpx, hp: hpx, atk: m.atk, def: m.def, spd: m.spd, boss: !!m.boss,
              st: {}, intent: null, slot: i, count: n, hurt: 0, shake: 0, dead: false, deathT: 0 };
   }
   function heroUnit(id) { const h = G.party[id]; return { side: "hero", id, ref: h, name: h.name, st: {}, hurt: 0 }; }
@@ -1241,6 +1309,11 @@
     const heroes = (G.active.length ? G.active : G.members.slice(0, 4)).map(heroUnit);
     battle = { foes, heroes, round: 0, queue: [], current: null, over: false, opts, flash: 1, fury: 0, warden: opts.boss === "voss" && G.flags.wardenFree };
     addFury(0); $("banner").hidden = true;
+    if (opts.boss) {
+      const m = MONSTERS[opts.boss], parts = m.name.split(", ");
+      $("splashName").textContent = parts[0]; $("splashSub").textContent = parts[1] || (opts.boss === "wyrm" ? "Optional boss" : "Boss");
+      const sp = $("splash"); sp.hidden = true; void sp.offsetWidth; sp.hidden = false; clearTimeout(sp._t); sp._t = setTimeout(() => { sp.hidden = true; }, 2400);
+    }
     $("battleUI").hidden = false; $("hud").hidden = true; $("minimap").hidden = true; $("corner").hidden = true;
     shake = 4;
     const boss = opts.boss && MONSTERS[opts.boss];
@@ -1289,7 +1362,7 @@
     for (const mv of pool) { r -= mv.w; if (r <= 0) return { ...mv }; }
     return { ...pool[0] };
   }
-  function foeAtk(f) { return f.atk * (f.st.weak ? 0.7 : 1) * (f.phase2 ? 1.15 : 1) * (f.phase3 ? 1.25 : 1); }
+  function foeAtk(f) { return f.atk * DIFFS[difficulty].dmg * (f.st.weak ? 0.7 : 1) * (f.phase2 ? 1.15 : 1) * (f.phase3 ? 1.25 : 1); }
   function intentLabel(f) {
     const mv = f.intent; if (!mv) return "";
     if (f.st.stun) return "stunned";
@@ -1312,7 +1385,7 @@
       await wait(500); if (battle !== token) return;
       const lead = battle.heroes.find(h => h.id === "sable") || battle.heroes[0];
       lead.lunge = 1; flash(0.5); shake = 6; Music.sound("crit");
-      const hits = battle.foes.map(f => { const d = damage(f, Math.max(3, Math.round(lead.ref.atk * 0.8 - f.def * 0.3))); gore(f, 14); return d; });
+      const hits = battle.foes.map(f => { const d = damage(f, Math.max(3, Math.round((lead.ref.atk + rstat(lead, "atk")) * 0.8 - f.def * 0.3))); gore(f, 14); return d; });
       blog(`Ambush! ${lead.name} dashes through the pack (${hits.join(", ")}). Your party moves first.`);
       renderCards(); await wait(1100);
       if (battle !== token || checkEnd()) return;
@@ -1338,9 +1411,12 @@
           if (!alive(u) || u.dead) { if (checkEnd()) return; continue; }
         }
         for (const k of ["weak", "strong", "brk"]) if (u.st[k] && --u.st[k] <= 0) delete u.st[k];
+        if (u.st.stun && rstat(u, "noStun")) { delete u.st.stun; popupText(u, "resisted", "#9ef0f5"); }
         if (u.st.stun) { delete u.st.stun; blog(`${u.name} is stunned and loses the turn.`); await wait(650); continue; }
         if (u.side === "hero") {
-          u.ref.sp = Math.min(u.ref.maxSp, u.ref.sp + 2); renderCards();
+          u.ref.sp = Math.min(u.ref.maxSp, u.ref.sp + 2 + rstat(u, "spRegen"));
+          const rg = rstat(u, "regen"); if (rg && u.ref.hp < u.ref.maxHp) { u.ref.hp = Math.min(u.ref.maxHp, u.ref.hp + rg); popupText(u, `+${rg}`, "#6bff9a"); }
+          renderCards();
           const act = await heroChoose(u);
           if (act === "fled" || battle !== token) return;
           await doHero(u, act);
@@ -1356,7 +1432,7 @@
       }
     }
   }
-  const spdOf = u => u.side === "hero" ? u.ref.spd : u.spd;
+  const spdOf = u => u.side === "hero" ? u.ref.spd + rstat(u, "spd") : u.spd;
 
   // ---- hero turn: menu driven
   let resolveChoice = null, menuState = null;
@@ -1448,10 +1524,10 @@
   }
   function attackRoll(att, target, power, o = {}) {
     if (target.st.veil) { delete target.st.veil; popupText(target, "dodged", "#9ef0f5"); Music.sound("miss"); return { dodged: true, dmg: 0 }; }
-    const atk = att.side === "hero" ? att.ref.atk * (att.st.weak ? 0.7 : 1) * (att.st.strong ? 1.3 : 1) : foeAtk(att);
-    const def = (target.side === "hero" ? target.ref.def : target.def) * (target.st.brk ? 0.3 : 1);
+    const atk = att.side === "hero" ? (att.ref.atk + rstat(att, "atk")) * (att.st.weak ? 0.7 : 1) * (att.st.strong ? 1.3 : 1) : foeAtk(att);
+    const def = (target.side === "hero" ? target.ref.def + rstat(target, "def") : target.def) * (target.st.brk ? 0.3 : 1);
     let dmg = Math.max(1, Math.round((atk * power - def * 0.6) * rand(0.9, 1.1)));
-    const crit = !o.noCrit && (Math.random() < 0.1 || target.st.mark);
+    const crit = !o.noCrit && (Math.random() < 0.1 + rstat(att, "crit") || target.st.mark);
     if (target.st.mark) delete target.st.mark;
     if (crit) dmg = Math.round(dmg * 1.6);
     const dealt = damage(target, dmg, { crit, noFury: o.noFury });
@@ -1479,6 +1555,7 @@
     if (act.kind === "guard") { u.st.guard = true; u.st.guardSource = u.id; u.ref.sp = Math.min(u.ref.maxSp, u.ref.sp + 3); blog(`${name} braces.`); await wait(500); return; }
     if (act.kind === "attack") {
       const r = attackRoll(u, act.unit, 1.0);
+      if (!r.dodged && rstat(u, "bleedHit") && !act.unit.dead && !act.unit.st.bleed) act.unit.st.bleed = { dmg: 2, turns: 2 };
       blog(r.dodged ? `${act.unit.name} dodges.` : `${name} strikes ${act.unit.name} for ${r.dmg}${r.crit ? ". Critical!" : "."}`);
       await wait(700); return;
     }
@@ -1587,6 +1664,9 @@
   }
   function victory() {
     if (!battle) return;
+    G.flags.kills = G.flags.kills || {};
+    for (const f of battle.foes) G.flags.kills[f.id] = (G.flags.kills[f.id] || 0) + 1;
+    if (battle.opts.boss) grantRelic(battle.opts.boss);
     const xp = battle.foes.reduce((s, f) => s + MONSTERS[f.id].xp, 0);
     const coins = battle.foes.reduce((s, f) => s + Math.round(rand(...MONSTERS[f.id].coin)), 0);
     G.coins += coins;
@@ -2511,6 +2591,9 @@
     $("cardBtn").onclick = () => { delete $("cardBtn").dataset.ending; $("cardBtn").onclick = null; $("cardBtn").textContent = "Continue"; $("card").hidden = true; newGame(); startGame(); };
     try { localStorage.removeItem(SAVE_KEY); } catch { /* storage unavailable */ }
   }
+  function renderDiff() { for (const b of $("diffRow").children) b.classList.toggle("on", b.dataset.d === difficulty); $("diffNote").textContent = DIFFS[difficulty].note; }
+  for (const b of $("diffRow").children) b.addEventListener("click", () => { difficulty = b.dataset.d; try { localStorage.setItem("salt-road-diff", difficulty); } catch { /* storage unavailable */ } renderDiff(); });
+  renderDiff();
   $("startBtn").addEventListener("click", startGame);
   $("newBtn").addEventListener("click", () => { newGame(); startGame(); });
 
