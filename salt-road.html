@@ -187,11 +187,11 @@
 </div>
 <div class="touch" id="touch">
   <div class="stick" id="stick" aria-label="Move"><i id="knob"></i></div>
-  <div class="btns"><button id="bB" aria-label="Sprint">RUN</button><button class="a" id="bA" aria-label="Talk or confirm">ACT</button></div>
+  <div class="btns"><button id="bB" aria-label="Dash, hold to run">DASH</button><button class="a" id="bA" aria-label="Talk or confirm">ACT</button></div>
 </div>
 <div class="help" id="help">
   <span><kbd>WASD</kbd> / <kbd>←↑↓→</kbd> move</span>
-  <span><kbd>Shift</kbd> sprint</span>
+  <span><kbd>Shift</kbd> dash (hold to run)</span>
   <span><kbd>E</kbd> talk, rest, confirm</span>
   <span><kbd>Q</kbd> back</span>
   <span><kbd>P</kbd> party</span>
@@ -269,6 +269,7 @@
       if (kind === "click") this.tone(1200, t, 0.01, "square", 0.04, 0.002, 0.03, S);
       if (kind === "miss") this.noise(t, 0.15, 0.2, 4000, "highpass", S);
       if (kind === "step") this.noise(t, 0.04, 0.05, 700, "lowpass", S);
+      if (kind === "dash") { this.noise(t, 0.22, 0.3, 1800, "bandpass", S); this.tone(260, t, 0.06, "sine", 0.06, 0.005, 0.12, S); this.tone(520, t + 0.03, 0.05, "sine", 0.04, 0.005, 0.1, S); }
       if (kind === "item") [784, 988, 1175, 1568].forEach((f, i) => this.tone(f, t + i * 0.06, 0.06, "triangle", 0.1, 0.005, 0.15, S));
       if (kind === "bleed") this.noise(t, 0.25, 0.25, 300, "lowpass", S);
       if (kind === "encounter") { [220, 262, 330, 440].forEach((f, i) => this.tone(f, t + i * 0.05, 0.05, "sawtooth", 0.06, 0.005, 0.1, S)); this.noise(t, 0.4, 0.2, 600, "lowpass", S); }
@@ -536,7 +537,7 @@
       px: START.x, py: START.y, checkpoint: { ...START }, defeated: [],
     };
   }
-  const player = { dir: "down", walk: 0, moving: false, scarf: [], ghosts: [], sprint: false, stepT: 0 };
+  const player = { dir: "down", walk: 0, moving: false, scarf: [], ghosts: [], sprint: false, stepT: 0, dashT: 0, dashCd: 0, dashX: 0, dashY: 1, lines: [] };
   let mode = "title";        // title | play | dialog | battle | card | roster
   let camX = 0, camY = 0, shake = 0, time = 0, showMap = true;
   let particles = [], popups = [];
@@ -833,6 +834,7 @@
     if (mode !== "play") return;
     if (k === "e" || k === "enter" || k === " ") interact();
     if (k === "m") showMap = !showMap;
+    if (k === "shift") dash();
     if (k === "p") openRoster();
   });
   addEventListener("keyup", e => { keys[e.key.toLowerCase()] = false; });
@@ -853,7 +855,9 @@
   const stickEnd = () => { stickId = null; stick.x = stick.y = 0; knob.style.transform = ""; };
   stickEl.addEventListener("pointerup", stickEnd); stickEl.addEventListener("pointercancel", stickEnd);
   $("bA").addEventListener("pointerdown", e => { e.preventDefault(); Music.init(); if (mode === "dialog") dialogAdvance(); else if (mode === "play") interact(); else if (mode === "title") startGame(); else if (mode === "card") $("cardBtn").click(); });
-  $("bB").addEventListener("pointerdown", e => { e.preventDefault(); player.sprintTouch = !player.sprintTouch; $("bB").style.borderColor = player.sprintTouch ? "var(--gold)" : ""; });
+  $("bB").addEventListener("pointerdown", e => { e.preventDefault(); Music.init(); player.sprintTouch = true; if (mode === "play") dash(); $("bB").style.borderColor = "var(--gold)"; });
+  const runEnd = () => { player.sprintTouch = false; $("bB").style.borderColor = ""; };
+  $("bB").addEventListener("pointerup", runEnd); $("bB").addEventListener("pointercancel", runEnd); $("bB").addEventListener("pointerleave", runEnd);
   function toggleMusic() { Music.init(); Music.toggle(); $("musicBtn").textContent = Music.on ? "♪ Music on" : "♪ Music off"; }
   $("musicBtn").addEventListener("click", toggleMusic);
   $("musicBtn").textContent = Music.on ? "♪ Music on" : "♪ Music off";
@@ -1062,11 +1066,21 @@
 
   async function runBattle() {
     const token = battle;
+    if (battle.opts.ambush) {
+      await wait(500); if (battle !== token) return;
+      const lead = battle.heroes.find(h => h.id === "sable") || battle.heroes[0];
+      lead.lunge = 1; flash(0.5); shake = 6; Music.sound("crit");
+      const hits = battle.foes.map(f => { const d = damage(f, Math.max(3, Math.round(lead.ref.atk * 0.8 - f.def * 0.3))); gore(f, 14); return d; });
+      blog(`Ambush! ${lead.name} dashes through the pack (${hits.join(", ")}). Your party moves first.`);
+      renderCards(); await wait(1100);
+      if (battle !== token || checkEnd()) return;
+    }
     while (battle === token && !battle.over) {
       battle.round++;
       for (const f of battle.foes) if (!f.dead) f.intent = chooseIntent(f);
       const units = [...battle.heroes.filter(alive), ...battle.foes.filter(f => !f.dead)];
       battle.queue = units.sort((a, b) => spdOf(b) - spdOf(a) + rand(-1.5, 1.5));
+      if (battle.opts.ambush && battle.round === 1) battle.queue.sort((a, b) => (a.side === "hero" ? 0 : 1) - (b.side === "hero" ? 0 : 1));
       renderTurnbar();
       for (const u of [...battle.queue]) {
         if (battle !== token || battle.over) return;
@@ -1401,6 +1415,21 @@
   let toastTimer = 0;
   function toast(text) { $("toast").textContent = text; $("toast").hidden = false; toastTimer = 3; }
 
+  // ================================================================== DASH
+  // Shift (or RUN on touch) bursts forward. Dashing into a monster ambushes it: a free hit on every foe and the party acts first.
+  const DASH_TIME = 0.2, DASH_SPEED = 270, DASH_COOLDOWN = 0.6;
+  function dash() {
+    if (mode !== "play" || player.dashCd > 0) return;
+    let mx = (keys["d"] || keys["arrowright"] ? 1 : 0) - (keys["a"] || keys["arrowleft"] ? 1 : 0) + stick.x;
+    let my = (keys["s"] || keys["arrowdown"] ? 1 : 0) - (keys["w"] || keys["arrowup"] ? 1 : 0) + stick.y;
+    if (Math.hypot(mx, my) < 0.1) { mx = player.dir === "left" ? -1 : player.dir === "right" ? 1 : 0; my = player.dir === "up" ? -1 : player.dir === "down" ? 1 : 0; }
+    const l = Math.hypot(mx, my) || 1;
+    player.dashX = mx / l; player.dashY = my / l; player.dashT = DASH_TIME; player.dashCd = DASH_COOLDOWN;
+    shake = Math.max(shake, 1.5);
+    Music.sound("dash");
+    for (let i = 0; i < (REDUCED ? 3 : 10); i++) particles.push({ x: G.px + rand(-4, 4), y: G.py + rand(-1, 2), vx: -player.dashX * rand(20, 60) + rand(-20, 20), vy: -player.dashY * rand(20, 60) - rand(5, 25), life: rand(0.3, 0.6), color: pick(["#d8d0e6", "#c3b8d8", "#ffffff"]), size: 2, world: true });
+  }
+
   // ================================================================== UPDATE
   let hudTimer = 0;
   const onceFlags = {};          // short cooldowns for prompts; kept out of the save on purpose
@@ -1423,16 +1452,23 @@
     let my = (keys["s"] || keys["arrowdown"] ? 1 : 0) - (keys["w"] || keys["arrowup"] ? 1 : 0) + stick.y;
     const len = Math.hypot(mx, my);
     if (len > 1) { mx /= len; my /= len; }
-    const moving = len > 0.1;
+    const moving = len > 0.1 || player.dashT > 0;
     player.moving = moving;
     player.sprint = keys["shift"] || player.sprintTouch;
+    player.dashCd = Math.max(0, player.dashCd - dt);
+    const dashing = player.dashT > 0;
+    if (dashing) { player.dashT -= dt; mx = player.dashX; my = player.dashY; if (player.dashT <= 0 && !REDUCED) burst(G.px, G.py, "#d8d0e6", 4, 30); }
     if (moving) player.dir = Math.abs(mx) > Math.abs(my) ? (mx > 0 ? "right" : "left") : (my > 0 ? "down" : "up");
     const mud = tileAt(G.px, G.py) === T.MUD;
-    const speed = (player.sprint ? 104 : 64) * (mud ? 0.6 : 1);
-    const nx = G.px + mx * speed * dt, ny = G.py + my * speed * dt;
-    const bx = blocked(nx, G.py), by = blocked(G.px, ny);
-    if (!bx) G.px = nx;
-    if (!by) G.py = ny;
+    const speed = (dashing ? DASH_SPEED : player.sprint ? 118 : 64) * (mud ? 0.6 : 1);
+    let bx = 0, by = 0;
+    for (let sub = 0; sub < 3; sub++) {            // small steps so a dash never skips through a wall
+      const nx = G.px + mx * speed * dt / 3, ny = G.py + my * speed * dt / 3;
+      const bx1 = blocked(nx, G.py); if (!bx1) G.px = nx; else bx = bx1;
+      const by1 = blocked(G.px, ny); if (!by1) G.py = ny; else by = by1;
+    }
+    if (dashing && (bx || by) && !player.bonked) { player.bonked = true; shake = Math.max(shake, 3); Music.sound("hit"); player.dashT = 0; }
+    if (!dashing) player.bonked = false;
     for (const b of [bx, by]) {
       if (b === T.LDOOR && !sealOpen()) once("saidDark", () => openDialog(G.keyItems.lantern ? "sign_seal" : "sign_dark"));
       if (b === T.LOCKED) {
@@ -1442,7 +1478,11 @@
       }
     }
     if (moving) { player.walk += dt * (player.sprint ? 4.6 : 3.2); player.stepT -= dt; if (player.stepT <= 0) { player.stepT = player.sprint ? 0.22 : 0.32; Music.sound("step"); } }
-    if (player.sprint && moving && Math.random() < dt * 20) player.ghosts.push({ x: G.px, y: G.py, dir: player.dir, life: 0.2 });
+    if (dashing) player.ghosts.push({ x: G.px, y: G.py, dir: player.dir, life: 0.28, dash: true });
+    else if (player.sprint && moving && Math.random() < dt * 14) player.ghosts.push({ x: G.px, y: G.py, dir: player.dir, life: 0.18 });
+    if (player.sprint && moving && !dashing && Math.random() < dt * 18) particles.push({ x: G.px + rand(-3, 3), y: G.py + 1, vx: -mx * 20 + rand(-8, 8), vy: -rand(4, 14), life: rand(0.25, 0.45), color: "#cbc3da", size: 1, world: true });
+    if (dashing) player.lines.push({ x: G.px + rand(-6, 6), y: G.py - rand(2, 18), dx: player.dashX, dy: player.dashY, life: 0.18 });
+    player.lines.forEach(l => l.life -= dt); player.lines = player.lines.filter(l => l.life > 0);
     player.ghosts.forEach(gh => gh.life -= dt); player.ghosts = player.ghosts.filter(gh => gh.life > 0);
     const neck = { x: G.px + (player.dir === "left" ? 3 : player.dir === "right" ? -3 : 0), y: G.py - 10 };
     player.scarf.unshift(neck);
@@ -1498,9 +1538,10 @@
       const bad = t => SOLID.has(t) || t === T.LDOOR || (f.dark ? t !== T.DARK : t === T.DARK);
       if (!bad(tileAt(ex, f.py))) f.px = ex;
       if (!bad(tileAt(f.px, ey))) f.py = ey;
-      if (d < 12 && f.cool <= 0) {
+      const ambush = dashing || player.dashCd > DASH_COOLDOWN - 0.4;   // right after a dash still counts
+      if (d < (ambush ? 16 : 12) && f.cool <= 0) {
         const t0 = tileAt(f.px, f.py);
-        startBattle(f.group, { fieldId: f.id, area: f.dark ? "cathedral" : t0 === T.GRASS || t0 === T.MUD ? "grove" : (f.minStage === 6 ? "gate" : "flats") });
+        startBattle(f.group, { fieldId: f.id, ambush, area: f.dark ? "cathedral" : t0 === T.GRASS || t0 === T.MUD ? "grove" : (f.minStage === 6 ? "gate" : "flats") });
         break;
       }
     }
@@ -1771,7 +1812,12 @@
     if (G.stage >= 6 && !G.flags.hollisDead) actors.push({ y: HOLLIS_POS.y, draw: () => drawMiniBoss(g, HOLLIS_POS.x - ox, HOLLIS_POS.y - oy, "hollis") });
     for (const f of field) actors.push({ y: f.py, draw: () => drawFieldMonster(g, f, f.px - ox, f.py - oy) });
     actors.push({ y: G.py, draw: () => {
-      for (const gh of player.ghosts) { g.globalAlpha = gh.life * 2; drawPerson(g, gh.x - ox, gh.y - oy, heroLook(gh.dir, false)); }
+      for (const gh of player.ghosts) {
+        g.globalAlpha = Math.min(1, gh.life * (gh.dash ? 2.6 : 2));
+        drawPerson(g, gh.x - ox, gh.y - oy, gh.dash ? { ...heroLook(gh.dir, false), robe: "#3ee0e8", hair: "#1fb8c2", skin: "#9ef0f5" } : heroLook(gh.dir, false));
+      }
+      g.globalAlpha = 1; g.strokeStyle = "rgba(255,255,255,.8)"; g.lineWidth = 1;
+      for (const l of player.lines) { g.globalAlpha = l.life * 5; g.beginPath(); g.moveTo(Math.round(l.x - ox), Math.round(l.y - oy)); g.lineTo(Math.round(l.x - ox - l.dx * 14), Math.round(l.y - oy - l.dy * 14)); g.stroke(); }
       g.globalAlpha = 1; drawScarf(g, ox, oy); drawPerson(g, G.px - ox, G.py - oy, heroLook(player.dir, true));
     } });
     actors.sort((a, b) => a.y - b.y).forEach(a => a.draw());
