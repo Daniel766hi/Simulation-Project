@@ -9,6 +9,7 @@ self-contained: no backend, no build step, no network access required.
 | `abm.html` | Supply chain bullwhip effect | Agent-based |
 | `bass.html` | Product adoption / Bass diffusion | Agent-based |
 | `m5.html` | Walmart demand forecasting (Kaggle M5) → inventory impact | Machine learning + inventory simulation |
+| `tetris.html` | Line Clear, a Tetris-style block game | Game (canvas) |
 
 ---
 
