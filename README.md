@@ -10,7 +10,7 @@ self-contained: no backend, no build step, no network access required.
 | `bass.html` | Product adoption / Bass diffusion | Agent-based |
 | `m5.html` | Walmart demand forecasting (Kaggle M5) → inventory impact | Machine learning + inventory simulation |
 | `tetris.html` | Line Clear, a Tetris-style block game | Game (canvas) |
-| `salt-road.html` | The Salt Road, a top-down adventure RPG: quests, NPCs, dialogue choices, a boss and two endings | Game (canvas) |
+| `salt-road.html` | The Salt Road, a dark adventure RPG: explore, recruit a party, turn-based battles, four chapters, two endings | Game (canvas) |
 
 ---
 
