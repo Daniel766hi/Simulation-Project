@@ -53,6 +53,12 @@ for origin in 1829 1801 1773; do
   done
 done
 python3 winner_comparison.py        # head-to-head + pre-registered 50/50 combination
+for origin in 1829 1801 1773; do     # the two weighted members, stock-out days masked
+  python3 train.py --kind recursive --tag 2m --train-days 730 --params "$V2" --pool store \
+    --origin "$origin" --rounds 800 --mask-stockouts
+  python3 train.py --kind mh --tag m --pool store --origin "$origin" --rounds 800 --mask-stockouts
+done
+python3 stockout_retrain.py         # pre-registered adoption rule for stock-out masking
 python3 monitor.py                  # per-store drift alerts
 python3 supply_chain_sim.py         # two-echelon bullwhip experiment + promotion stress test
 python3 export_dashboard.py         # embed results in ../m5.html

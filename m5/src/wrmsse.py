@@ -114,12 +114,22 @@ class WRMSSEEvaluator:
         return float(np.mean(list(per_level.values()))), per_level
 
 
-def load_raw():
-    sales = pd.read_csv(RAW / "sales_train_evaluation.csv")
-    test = pd.read_csv(RAW / "sales_test_evaluation.csv")
-    calendar = pd.read_csv(RAW / "calendar.csv")
+def _calendar(raw):
+    calendar = pd.read_csv(raw / "calendar.csv")
     if "d" not in calendar:              # the redistributed calendar drops Kaggle's d column
         calendar.insert(0, "d", [f"d_{i}" for i in range(1, len(calendar) + 1)])
+    return calendar
+
+
+def load_raw():
+    sales = pd.read_csv(RAW / "sales_train_evaluation.csv")
+    if not (RAW / "sales_test_evaluation.csv").exists():
+        # Kaggle ships sales only up to d_1941; the last 28 days are what is being forecast.
+        future = pd.DataFrame(np.nan, index=sales.index,
+                              columns=[f"d_{d}" for d in range(1942, 1970)])
+        return pd.concat([sales, future], axis=1), _calendar(RAW), pd.read_csv(RAW / "sell_prices.csv")
+    test = pd.read_csv(RAW / "sales_test_evaluation.csv")
+    calendar = _calendar(RAW)
     prices = pd.read_csv(RAW / "sell_prices.csv")
     assert (sales["item_id"].values == test["item_id"].values).all()
     assert (sales["store_id"].values == test["store_id"].values).all()
