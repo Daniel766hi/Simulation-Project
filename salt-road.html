@@ -56,6 +56,10 @@
   .dialog button:focus-visible { outline: 2px solid var(--gold); }
   .dialog .next { font-size: 12px; color: var(--muted); text-align: right; margin-top: 4px; }
 
+  .banner { position: absolute; left: 50%; top: 13%; transform: translateX(-50%); text-align: center; pointer-events: none; animation: banner 2.8s ease forwards; }
+  .banner small { display: block; font-size: 12px; letter-spacing: .3em; color: var(--scarf); text-transform: uppercase; }
+  .banner span { font-size: clamp(20px, 3.4vw, 30px); font-weight: 700; letter-spacing: .08em; text-shadow: 0 3px 0 #2b2350, 0 0 18px rgba(0,0,0,.6); }
+  @keyframes banner { 0% { opacity: 0; transform: translate(-50%, 8px); } 15%, 75% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; } }
   .toast { position: absolute; left: 50%; top: 22%; transform: translateX(-50%); background: var(--panel); border: 1px solid var(--edge); border-radius: 8px; padding: 8px 14px; font-size: 16px; text-align: center; max-width: 80%; pointer-events: none; }
   .screen { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; padding: 20px; background: radial-gradient(circle at 50% 40%, rgba(40,30,90,.72), rgba(10,8,22,.94)); border-radius: 10px; }
   .screen h1 { margin: 0; font-size: clamp(34px, 7vw, 64px); font-weight: 700; letter-spacing: .02em; color: var(--text); text-shadow: 0 4px 0 #2b2350, 0 0 30px rgba(62,224,232,.4); }
@@ -92,6 +96,7 @@
   </div>
   <canvas id="minimap" width="72" height="54" aria-label="Minimap"></canvas>
   <div class="toast" id="toast" hidden></div>
+  <div class="banner" id="banner" hidden><small>Entering</small><span id="bannerText"></span></div>
   <div class="dialog" id="dialog" hidden>
     <canvas id="portrait" width="21" height="21"></canvas>
     <div>
@@ -182,6 +187,7 @@
     path([[36, 21], [46, 21], [46, 14], [47, 14]]);
     path([[50, 14], [61, 14], [61, 11]]);
     path([[41, 28], [47, 28], [47, 32], [52, 32], [55, 35]]);
+    for (const [x, y] of [[66, 48], [66, 34], [65, 48], [66, 47], [65, 34]]) set(x, y, T.GRASS);
   }
 
   // Pre-render each tile (with a few variants) into a small atlas.
@@ -315,6 +321,20 @@
     end_ring: say("ren", "Then ring it loud.", null, () => ending("ring")),
     end_sell: say("ren", "...Your call. I'll pretend I didn't see this.", null, () => ending("sell")),
 
+    warden_0: say("warden", "WHO CARRIES MEMORY-LIGHT INTO MY HALL?", "warden_1"),
+    warden_1: say("warden", "I am the Warden of this place. A Guild thief carried the Bell here, broke my crystal heart into three memory shards, and scattered them across the Flats. Without them I cannot remember who the Bell belongs to.", "warden_2"),
+    warden_2: { who: "warden", text: "Find my three shards and I will give up the Bell. Or try to take it from me.", choices: [
+      { t: "\"I'll find your memories.\"", go: "warden_quest" },
+      { t: "\"Give me the Bell, or I'll take it.\"", go: "warden_fight" },
+    ] },
+    warden_quest: say("warden", "One lies where the village sleeps. One where palms drink. One where the river meets the salt, in the north. Your lantern will lead you.", null, () => { G.flags.wardenChoice = "shards"; G.flags.shards = G.flags.shards || []; toast("New quest: find the three memory shards"); save(); }),
+    warden_fight: say("warden", "THEN LET THE SALT JUDGE YOU.", null, () => { G.flags.wardenChoice = "fight"; const e = enemies.find(x => x.kind === "warden"); if (e) { e.state = "walk"; e.timer = 2; } shake = 6; save(); }),
+    warden_wait: say("warden", "I feel my memories out on the salt. Follow your lantern's pull."),
+    warden_done: say("warden", "My memories... yes. I remember the rains, and the people who rang this Bell every year. It was never mine to keep. Take it, courier. Ring it well.", null, () => { freeWarden(); }),
+    memory_0: say(null, "A memory flickers in the shard: a man in a Guild coat, counting coins beside the Kessa well at midnight. \"Oru stays shut, the Guild keeps the high ground, and the salt pays double next year.\""),
+    memory_1: say(null, "A memory flickers in the shard: the same man running between the palms with a bell wrapped in sacking. A boy in a red cap watches him from the reeds."),
+    memory_2: say(null, "A memory flickers in the shard: the thief kneeling in the Cathedral, bringing a hammer down on a crystal heart. Three bright pieces fly out across the salt."),
+    beno_saw: say("beno", "The Guild man with the bell? I saw him run through the palms! He dropped something shiny near the far corner of the grove."),
     tam_0: say("tam", "The flats are crawling with salt mites this year. They're slow, but they bite."),
     odo_0: say("odo", "I sell nothing, I buy nothing, I just like watching couriers run past. Good luck, Sable!"),
     sign_dark: say(null, "It's pitch black inside. You'll need a light. Maru the storm-singer at the Well of Nine might have one."),
@@ -329,7 +349,8 @@
         if (G.inv.lantern) return "maru_after";
         if (G.flags.maruTask) return G.flags.maruMitesLeft === 0 ? "maru_done" : "maru_task";
         return "maru_0";
-      case "beno": if (G.flags.charmReturned) return "beno_after"; if (G.inv.charm) return "beno_give"; return G.flags.benoQuest ? "beno_wait" : "beno_0";
+      case "beno": if (G.flags.wardenChoice === "shards" && !(G.flags.shards || []).includes(1)) return "beno_saw";
+        if (G.flags.charmReturned) return "beno_after"; if (G.inv.charm) return "beno_give"; return G.flags.benoQuest ? "beno_wait" : "beno_0";
       case "ren": return G.inv.bell ? "ren_bell" : "ren_0";
       case "tam": return "tam_0";
       case "odo": return "odo_0";
@@ -354,7 +375,15 @@
       if (!inside && !G.inv.key && !G.flags.unlocked) return { text: "Enter the Salt Cathedral to the north.", x: 34, y: 20 };
       if (!G.inv.key && !G.flags.unlocked) return { text: "Find the key somewhere in the lower hall.", x: KEY_CHEST.x, y: KEY_CHEST.y };
       if (!G.flags.unlocked) return { text: "Unlock the rain-drop door.", x: 34, y: 12 };
-      if (!G.bossDead) return { text: "Defeat whatever took the Rain Bell.", x: 34, y: 7 };
+      if (!G.bossDead && G.flags.wardenChoice === "shards") {
+        const found = G.flags.shards || [];
+        if (found.length >= 3) return { text: "Bring the memory shards back to the Warden.", x: 34, y: 7 };
+        const left = SHARDS.filter(sh => !found.includes(sh.id));
+        const near = left.reduce((a, b) => Math.hypot(a.x * TILE - G.px, a.y * TILE - G.py) < Math.hypot(b.x * TILE - G.px, b.y * TILE - G.py) ? a : b);
+        return { text: `Find the Warden's memory shards (${found.length}/3).`, x: near.x, y: near.y };
+      }
+      if (!G.bossDead && G.flags.wardenChoice === "fight") return { text: "Defeat the Hollow Warden. Hit it while it rests after a charge.", x: 34, y: 7 };
+      if (!G.bossDead) return { text: "Climb to the upper hall.", x: 34, y: 8 };
       return { text: "Take the Rain Bell from the pedestal (E).", x: 34, y: 6 };
     }
     if (G.inv.bell) return { text: "Bring the Rain Bell to Captain Ren at the gates of Oru.", x: 61, y: 12 };
@@ -363,7 +392,7 @@
 
   // ------------------------------------------------------------------ enemies
   function makeEnemy(kind, tx, ty, extra = {}) {
-    const base = { mite: { hp: 2, speed: 22, r: 5, dmg: 1 }, wisp: { hp: 2, speed: 34, r: 5, dmg: 1 }, warden: { hp: 16, speed: 26, r: 11, dmg: 1 } }[kind];
+    const base = { mite: { hp: 2, speed: 22, r: 5, dmg: 1 }, wisp: { hp: 2, speed: 34, r: 5, dmg: 1 }, warden: { hp: 8, speed: 20, r: 11, dmg: 1 } }[kind];
     return { kind, x: tx * TILE + 8, y: ty * TILE + 8, hx: tx * TILE + 8, hy: ty * TILE + 8, vx: 0, vy: 0, hurt: 0, t: hash(tx, ty) * 10, state: "idle", timer: 2, ...base, maxHp: base.hp, ...extra };
   }
   function spawnWorld() {
@@ -380,10 +409,34 @@
   }
   function spawnBoss() {
     if (enemies.some(e => e.kind === "warden") || G.bossDead) return;
-    enemies.push(makeEnemy("warden", 34, 6));
-    toast("The Hollow Warden wakes!");
-    shake = 6;
+    const fight = G.flags.wardenChoice === "fight";
+    enemies.push(makeEnemy("warden", 34, 6, { state: fight ? "walk" : "dormant" }));
+    if (!G.flags.wardenChoice) openDialog("warden_0");
+    else if (fight) { toast("The Hollow Warden wakes!"); shake = 6; }
   }
+  // The thief shattered the Warden's memory into three shards and scattered them.
+  const SHARDS = [
+    { id: 0, x: 4, y: 50, node: "memory_0" },
+    { id: 1, x: 66, y: 48, node: "memory_1" },
+    { id: 2, x: 45, y: 5, node: "memory_2" },
+  ];
+  const shardsFound = () => (G.flags.shards || []).length;
+  // Treasure for explorers.
+  const CHESTS = [
+    { id: "flats", x: 8, y: 24, coins: 8 },
+    { id: "grove", x: 66, y: 34, heart: true },
+    { id: "hall", x: 26, y: 15, coins: 5 },
+    { id: "east", x: 60, y: 24, coins: 6 },
+  ];
+  const REGIONS = [
+    { name: "Kessa", x0: 3, y0: 33, x1: 25, y1: 51 },
+    { name: "The Well of Nine", x0: 31, y0: 22, x1: 41, y1: 30 },
+    { name: "The Palm Grove", x0: 52, y0: 32, x1: 68, y1: 50 },
+    { name: "The Salt Cathedral", x0: 25, y0: 4, x1: 43, y1: 18 },
+    { name: "Gates of Oru", x0: 50, y0: 11, x1: 69, y1: 16 },
+    { name: "The Glass Flats", x0: 0, y0: 0, x1: W, y1: H },
+  ];
+  let region = "";
 
   // ------------------------------------------------------------------ input
   const keys = {};
@@ -449,6 +502,8 @@
   function interact() {
     const n = nearestNpc();
     if (n) { n.dir = Math.abs(G.px - n.px) > Math.abs(G.py - n.py) ? (G.px > n.px ? "right" : "left") : (G.py > n.py ? "down" : "up"); openDialog(dialogFor(n)); return true; }
+    const w = enemies.find(e => e.kind === "warden" && e.state === "dormant");
+    if (w && Math.hypot(w.x - G.px, w.y - G.py) < 34) { openDialog(shardsFound() >= 3 ? "warden_done" : G.flags.wardenChoice ? "warden_wait" : "warden_2"); return true; }
     if (G.bossDead && !G.inv.bell && Math.hypot(G.px - (34 * TILE + 8), G.py - (6 * TILE + 8)) < 24) {
       G.inv.bell = true; advance(4); toast("You took the Rain Bell!"); burst(G.px, G.py - 8, "#ffcf4a", 30); save(); updateHud(); return true;
     }
@@ -469,6 +524,7 @@
     e.vx += fx * kb; e.vy += fy * kb;
     burst(e.x, e.y - 6, e.kind === "mite" ? "#ffffff" : "#9ef0f5", 8);
     shake = Math.max(shake, e.kind === "warden" ? 4 : 2);
+    if (e.kind === "warden" && e.hp > 0 && e.hp % 3 === 0) drops.push({ x: e.x + (Math.random() - .5) * 30, y: e.y + 16, kind: "heart", t: 0 });
     if (e.hp <= 0) killEnemy(e);
   }
   function killEnemy(e) {
@@ -477,6 +533,14 @@
     if (e.kind === "warden") { G.bossDead = true; shake = 10; toast("The Hollow Warden shatters. The Rain Bell rests on the pedestal."); save(); }
     else if (Math.random() < 0.7) drops.push({ x: e.x, y: e.y, kind: Math.random() < 0.25 ? "heart" : "coin", t: 0 });
     if (e.maru) { G.flags.maruMitesLeft = Math.max(0, (G.flags.maruMitesLeft || 1) - 1); if (G.flags.maruMitesLeft === 0) toast("The mites are gone. Return to Maru."); save(); }
+  }
+  function freeWarden() {
+    const e = enemies.find(x => x.kind === "warden");
+    if (e) { burst(e.x, e.y - 12, "#9ef0f5", 50); e.dead = true; }
+    enemies = enemies.filter(x => !x.dead);
+    G.bossDead = true; G.flags.peaceful = true; shake = 4;
+    toast("The Warden fades into light. The Rain Bell rests on the pedestal.");
+    save();
   }
   function dash() {
     if (player.dashCd > 0 || player.dash > 0) return;
@@ -509,7 +573,7 @@
   }
   function renderDialog() {
     const npc = NPCS.find(n => n.id === dlg.who);
-    $("who").textContent = npc ? npc.name : "Sign";
+    $("who").textContent = npc ? npc.name : dlg.who === "warden" ? "The Hollow Warden" : dlg.text.startsWith("A memory") ? "Memory shard" : "Sign";
     $("line").textContent = dlg.text.slice(0, Math.floor(typed));
     const done = typed >= dlg.text.length;
     const opts = $("opts"); opts.innerHTML = "";
@@ -629,6 +693,7 @@
       g.fillStyle = flash ? "#ffffff" : "#e8ffff"; g.fillRect(x - 3, y - 13 + fy, 6, 6);
       g.fillStyle = "#1b1633"; g.fillRect(x - 2, y - 11 + fy, 1, 2); g.fillRect(x + 1, y - 11 + fy, 1, 2);
     } else if (e.kind === "warden") {
+      if (e.state === "dormant") g.globalAlpha = 0.75;
       const tele = e.state === "wind" && Math.floor(time * 20) % 2 === 0;
       const body = flash || tele ? "#ffffff" : "#6b6390";
       g.fillStyle = "#1b1633"; g.fillRect(x - 13, y - 30, 26, 30);
@@ -639,12 +704,14 @@
       g.fillStyle = "#3ee0e8"; g.fillRect(x - 3 - pulse / 2, y - 18 - pulse / 2, 6 + pulse, 6 + pulse);
       g.fillStyle = "#1b1633"; g.fillRect(x - 8, y - 24, 4, 2); g.fillRect(x + 4, y - 24, 4, 2);
       g.fillStyle = "#4f4872"; g.fillRect(x - 17, y - 22, 5, 14); g.fillRect(x + 12, y - 22, 5, 14);
+      g.globalAlpha = 1;
     }
   }
   function drawPortrait(npc) {
     const c = $("portrait"), g = c.getContext("2d");
     g.fillStyle = "#231d45"; g.fillRect(0, 0, c.width, c.height);
-    if (!npc) { g.fillStyle = "#ffcf4a"; g.fillRect(8, 4, 5, 10); g.fillRect(8, 16, 5, 2); return; }
+    if (dlg && dlg.who === "warden") { g.fillStyle = "#6b6390"; g.fillRect(4, 5, 13, 14); g.fillStyle = "#9ef0f5"; g.fillRect(6, 2, 2, 3); g.fillRect(13, 1, 2, 4); g.fillStyle = "#3ee0e8"; g.fillRect(9, 11, 3, 3); g.fillStyle = "#1b1633"; g.fillRect(6, 8, 2, 1); g.fillRect(13, 8, 2, 1); return; }
+    if (!npc) { g.fillStyle = dlg && dlg.text.startsWith("A memory") ? "#9ef0f5" : "#ffcf4a"; g.fillRect(8, 4, 5, 10); g.fillRect(8, 16, 5, 2); return; }
     const l = npc.look;
     drawPerson(g, 10.5, 30, { dir: "down", robe: l.robe, hair: l.hair, skin: l.skin, extra: l.extra });
   }
@@ -713,6 +780,24 @@
     if (!G.inv.key && !G.flags.unlocked && Math.hypot(G.px - (KEY_CHEST.x * TILE + 8), G.py - (KEY_CHEST.y * TILE + 8)) < 14) {
       G.inv.key = true; toast("Found the rain-drop key!"); burst(G.px, G.py - 8, "#ffcf4a", 24); save(); updateHud();
     }
+    if (G.flags.wardenChoice === "shards") for (const sh of SHARDS) {
+      const found = G.flags.shards || (G.flags.shards = []);
+      if (!found.includes(sh.id) && Math.hypot(G.px - (sh.x * TILE + 8), G.py - (sh.y * TILE + 8)) < 13) {
+        found.push(sh.id); burst(sh.x * TILE + 8, sh.y * TILE + 4, "#9ef0f5", 26); toast(`Memory shard ${found.length}/3`); save(); updateHud(); openDialog(sh.node); break;
+      }
+    }
+    G.flags.chests = G.flags.chests || {};
+    for (const c of CHESTS) {
+      if (G.flags.chests[c.id] || Math.hypot(G.px - (c.x * TILE + 8), G.py - (c.y * TILE + 8)) > 13) continue;
+      G.flags.chests[c.id] = true; burst(c.x * TILE + 8, c.y * TILE, "#ffcf4a", 20);
+      if (c.heart) { G.maxHp += 1; G.hp = G.maxHp; toast("Treasure! +1 heart"); } else { G.coins += c.coins; toast(`Treasure! +${c.coins} coin`); }
+      save(); updateHud();
+    }
+    const reg = REGIONS.find(r => tx >= r.x0 && tx <= r.x1 && ty >= r.y0 && ty <= r.y1);
+    if (reg && reg.name !== region) {
+      const first = region === ""; region = reg.name;
+      if (!first) { const bn = $("banner"); $("bannerText").textContent = reg.name; bn.hidden = true; void bn.offsetWidth; bn.hidden = false; clearTimeout(bn._t); bn._t = setTimeout(() => { bn.hidden = true; }, 2800); }
+    }
     if (G.flags.benoQuest && !G.inv.charm && !G.flags.charmReturned && Math.hypot(G.px - CHARM.x, G.py - CHARM.y) < 12) {
       G.inv.charm = true; toast("Found Beno's charm! Take it back to him."); burst(CHARM.x, CHARM.y, "#ff8ab0", 20); save(); updateHud();
     }
@@ -722,15 +807,16 @@
       e.t += dt; e.hurt -= dt;
       const dx = G.px - e.x, dy = G.py - e.y, d = Math.hypot(dx, dy) || 1;
       let ax = 0, ay = 0;
+      if (e.kind === "warden" && e.state === "dormant") continue;
       if (e.kind === "warden") {
         e.timer -= dt;
-        if (e.state === "idle" || e.state === "walk") { ax = dx / d * e.speed; ay = dy / d * e.speed; e.state = "walk"; if (e.timer <= 0) { e.state = "wind"; e.timer = 0.7; } }
+        if (e.state === "idle" || e.state === "walk") { ax = dx / d * e.speed; ay = dy / d * e.speed; e.state = "walk"; if (e.timer <= 0) { e.state = "wind"; e.timer = 1.0; } }
         else if (e.state === "wind") { if (e.timer <= 0) { e.state = "charge"; e.timer = 0.55; e.cx = dx / d; e.cy = dy / d; } }
-        else if (e.state === "charge") { ax = e.cx * 170; ay = e.cy * 170; if (e.timer <= 0) { e.state = "rest"; e.timer = 1.1; shake = 3; } }
+        else if (e.state === "charge") { ax = e.cx * 115; ay = e.cy * 115; if (e.timer <= 0) { e.state = "rest"; e.timer = 1.8; shake = 3; } }
         else if (e.state === "rest") { if (e.timer <= 0) { e.state = "walk"; e.timer = 2 + Math.random(); } }
-        if (e.hp <= e.maxHp / 2 && !e.summoned) { e.summoned = true; enemies.push(makeEnemy("wisp", 30, 8), makeEnemy("wisp", 38, 8)); toast("The Warden calls its wisps!"); }
+        if (e.hp <= e.maxHp / 2 && !e.summoned) { e.summoned = true; enemies.push(makeEnemy("wisp", 30, 8)); toast("The Warden calls a wisp!"); }
       } else {
-        const aggro = e.kind === "wisp" ? 90 : 70;
+        const aggro = e.kind === "wisp" ? 80 : 55;
         if (d < aggro && (G.inv.sword || e.kind === "wisp")) { ax = dx / d * e.speed; ay = dy / d * e.speed; }
         else { ax = (e.hx - e.x) * 0.6 + Math.cos(e.t) * 8; ay = (e.hy - e.y) * 0.6 + Math.sin(e.t * 1.3) * 8; }
       }
@@ -804,6 +890,8 @@
     if (!G.inv.key && !G.flags.unlocked) drawChest(g, KEY_CHEST.x * TILE + 8 - ox, KEY_CHEST.y * TILE + 8 - oy);
     if (G.flags.benoQuest && !G.inv.charm && !G.flags.charmReturned) drawSparkle(g, CHARM.x - ox, CHARM.y - oy, "#ff8ab0");
     if (G.bossDead && !G.inv.bell) drawBell(g, 34 * TILE + 8 - ox, 5 * TILE + 8 - oy);
+    if (G.flags.wardenChoice === "shards") for (const sh of SHARDS) if (!(G.flags.shards || []).includes(sh.id)) drawShard(g, sh.x * TILE + 8 - ox, sh.y * TILE + 8 - oy);
+    for (const c of CHESTS) if (!(G.flags.chests || {})[c.id]) drawChest(g, c.x * TILE + 8 - ox, c.y * TILE + 8 - oy);
     for (const dr of drops) {
       if (dr.t > 11 && Math.floor(dr.t * 8) % 2) continue;
       const y = dr.y - oy - 3 - Math.abs(Math.sin(dr.t * 5)) * 2;
@@ -852,7 +940,7 @@
       g.drawImage(light, 0, 0);
       g.fillStyle = "rgba(255,190,90,.06)"; g.fillRect(0, 0, VIEW_W, VIEW_H);
     }
-    for (const e of enemies) if (e.kind === "warden") {
+    for (const e of enemies) if (e.kind === "warden" && e.state !== "dormant") {
       g.fillStyle = "#1b1633"; g.fillRect(VIEW_W / 2 - 61, VIEW_H - 15, 122, 8);
       g.fillStyle = "#ff4d6d"; g.fillRect(VIEW_W / 2 - 60, VIEW_H - 14, 120 * e.hp / e.maxHp, 6);
       g.font = "7px 'Pixelify Sans', monospace"; g.textAlign = "center"; g.fillStyle = "#f3efe6"; g.fillText("THE HOLLOW WARDEN", VIEW_W / 2, VIEW_H - 18);
@@ -870,6 +958,14 @@
   function drawMarker(g, x, y) { const b = Math.round(Math.sin(time * 5) * 2); x = Math.round(x); y = Math.round(y); g.fillStyle = "#1b1633"; g.fillRect(x - 2, y - 9 + b, 5, 11); g.fillStyle = "#ffcf4a"; g.fillRect(x - 1, y - 8 + b, 3, 6); g.fillRect(x - 1, y - 1 + b, 3, 2); }
   function drawChest(g, x, y) { x = Math.round(x); y = Math.round(y); g.fillStyle = "#1b1633"; g.fillRect(x - 7, y - 9, 14, 11); g.fillStyle = "#8a5533"; g.fillRect(x - 6, y - 8, 12, 9); g.fillStyle = "#ffcf4a"; g.fillRect(x - 6, y - 5, 12, 1); g.fillRect(x - 1, y - 6, 2, 3); if (Math.floor(time * 3) % 2) { g.fillStyle = "#ffffff"; g.fillRect(x + 5, y - 11, 1, 1); } }
   function drawSparkle(g, x, y, c) { x = Math.round(x); y = Math.round(y); const s = 2 + Math.round(Math.abs(Math.sin(time * 4)) * 3); g.fillStyle = c; g.fillRect(x - 1, y - 1, 3, 3); g.fillStyle = "#ffffff"; g.fillRect(x, y - s - 1, 1, s); g.fillRect(x, y + 2, 1, s); g.fillRect(x - s - 1, y, s, 1); g.fillRect(x + 2, y, s, 1); }
+  function drawShard(g, x, y) {
+    x = Math.round(x); y = Math.round(y) - 4 - Math.round(Math.sin(time * 3) * 2);
+    const gr = g.createRadialGradient(x, y, 1, x, y, 12); gr.addColorStop(0, "rgba(158,240,245,.7)"); gr.addColorStop(1, "rgba(158,240,245,0)");
+    g.fillStyle = gr; g.fillRect(x - 12, y - 12, 24, 24);
+    g.fillStyle = "#1b1633"; g.beginPath(); g.moveTo(x, y - 7); g.lineTo(x + 5, y); g.lineTo(x, y + 7); g.lineTo(x - 5, y); g.fill();
+    g.fillStyle = "#9ef0f5"; g.beginPath(); g.moveTo(x, y - 5); g.lineTo(x + 3, y); g.lineTo(x, y + 5); g.lineTo(x - 3, y); g.fill();
+    g.fillStyle = "#ffffff"; g.fillRect(x - 1, y - 3, 1, 3);
+  }
   function drawBell(g, x, y) { x = Math.round(x); y = Math.round(y) - 6 - Math.round(Math.sin(time * 3) * 2); g.fillStyle = "#1b1633"; g.fillRect(x - 6, y - 8, 12, 11); g.fillStyle = "#ffcf4a"; g.fillRect(x - 5, y - 7, 10, 9); g.fillRect(x - 6, y + 1, 12, 2); g.fillStyle = "#fff1b0"; g.fillRect(x - 3, y - 6, 2, 5); g.fillStyle = "#8a5533"; g.fillRect(x - 1, y + 3, 2, 2); }
   function drawCompass(g, ox, oy) {
     const t = goal(); if (!t.text) return;
@@ -936,18 +1032,19 @@
     updateHud();
     if (G.stage === 0 && !G.flags.intro) { G.flags.intro = true; toast("Find Elder Nadia. Follow the gold arrow."); }
   }
-  function newGame() {
-    G = freshGame(); buildMap(); miniDirty = true; spawnWorld(); drops = []; particles = [];
+  function newGame(persist = true) {
+    G = freshGame(); buildMap(); miniDirty = true; region = ""; spawnWorld(); drops = []; particles = [];
     player.scarf = []; player.ghosts = []; camX = G.px - VIEW_W / 2; camY = G.py - VIEW_H / 2;
     const b = NPCS.find(n => n.id === "beno"); b.px = b.x * TILE + 8; b.py = b.y * TILE + 8; b.walking = false;
-    save(); updateHud();
+    if (persist) save();
+    updateHud();
   }
   function ending(kind) {
     mode = "ending";
     const good = kind === "ring";
     $("endTitle").textContent = good ? "The Gates Open" : "The Guild's Coin";
     $("endText").textContent = good
-      ? `The Bell's note rolls across the Flats. Oru's gates swing wide, and the people of Kessa walk to high ground as the first rain falls.${G.flags.benoFollows ? " Beno rides on your shoulders the whole way." : ""} Couriers will tell of Sable for a hundred dry seasons.`
+      ? `${G.flags.peaceful ? "You never drew your sword on the Warden. " : ""}The Bell's note rolls across the Flats. Oru's gates swing wide, and the people of Kessa walk to high ground as the first rain falls.${G.flags.benoFollows ? " Beno rides on your shoulders the whole way." : ""} Couriers will tell of Sable for a hundred dry seasons.`
       : "The Guild pays in gold. The gates stay shut. You watch from a dry balcony in Oru as the rains roll over the Flats toward Kessa. You never deliver anything again.";
     $("ending").hidden = false;
     try { localStorage.removeItem("salt-road-rpg"); } catch { /* storage unavailable */ }
@@ -957,8 +1054,8 @@
   $("againBtn").addEventListener("click", () => { $("ending").hidden = true; newGame(); startGame(); });
 
   // ------------------------------------------------------------------ boot
-  newGame();
-  const saved = load();
+  const saved = load();          // read the save before a fresh game could overwrite it
+  newGame(false);
   if (saved && saved.stage !== undefined && saved.stage > 0) {
     Object.assign(G, saved);
     if (G.flags.unlocked) set(34, 11, T.DARK);
