@@ -1,10 +1,12 @@
 """Paths and competition constants shared by every stage of the pipeline."""
+import os
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-RAW = ROOT / "data" / "raw"
-PROCESSED = ROOT / "data" / "processed"
-OUTPUTS = ROOT / "outputs"
+# M5_RAW / M5_WORK let the same code run elsewhere, e.g. in a Kaggle notebook.
+RAW = Path(os.environ.get("M5_RAW", ROOT / "data" / "raw"))
+PROCESSED = Path(os.environ.get("M5_WORK", ROOT / "data")) / "processed"
+OUTPUTS = Path(os.environ["M5_WORK"]) / "outputs" if "M5_WORK" in os.environ else ROOT / "outputs"
 DASHBOARD_JSON = ROOT.parent / "m5-data.json"
 
 HORIZON = 28
