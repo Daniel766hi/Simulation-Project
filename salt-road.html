@@ -74,6 +74,12 @@
   .turnbar span { font-size: 11px; padding: 2px 7px; border-radius: 4px; background: var(--panel); border: 1px solid var(--edge); }
   .turnbar span.now { border-color: var(--gold); color: var(--gold); }
   .turnbar span.foe { color: #ff8a8a; }
+  .fury { display: flex; align-items: center; gap: 6px; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: #ffb14a; background: var(--panel); border: 1px solid var(--edge); border-radius: 6px; padding: 3px 8px; }
+  .fury .bar { width: 110px; height: 7px; }
+  .fury .bar i { background: linear-gradient(90deg, #c8102e, #ffb14a); transition: width .25s; }
+  .fury.full { border-color: #ffb14a; box-shadow: 0 0 12px rgba(255,177,74,.5); animation: furyPulse 1s ease-in-out infinite; }
+  @keyframes furyPulse { 50% { box-shadow: 0 0 20px rgba(255,177,74,.8); } }
+  @media (prefers-reduced-motion: reduce) { .fury.full { animation: none; } }
   .blog { font-size: 14px; background: var(--panel); border: 1px solid var(--edge); border-radius: 6px; padding: 5px 10px; max-width: 34%; min-height: 1.6em; line-height: 1.3; }
   .battle-bottom { position: absolute; left: 10px; right: 10px; bottom: 10px; display: grid; grid-template-columns: 1fr 250px; gap: 10px; align-items: end; }
   .cards { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -148,7 +154,7 @@
   <div class="banner" id="banner" hidden><small>Entering</small><span id="bannerText"></span></div>
 
   <div id="battleUI" hidden>
-    <div class="battle-top"><div class="turnbar" id="turnbar"></div><div class="blog" id="blog"></div></div>
+    <div class="battle-top"><div class="turnbar" id="turnbar"></div><div class="fury" id="fury"><span>Fury</span><div class="bar"><i id="furyFill"></i></div></div><div class="blog" id="blog"></div></div>
     <div class="battle-bottom"><div class="cards" id="cards"></div><div class="menu" id="menu"></div></div>
   </div>
 
@@ -595,7 +601,13 @@
       { t: "Bitter Tonic (stop bleeding, +6 SP): 5 coin", go: "odo_0", act: () => buy("tonic"), req: () => G.coins >= 5, reqText: "5 coin" },
       { t: "Smelling Salts (revive): 10 coin", go: "odo_0", act: () => buy("salts"), req: () => G.coins >= 10, reqText: "10 coin" },
       { t: "Oil Bomb (14 to every enemy): 12 coin", go: "odo_0", act: () => buy("fire"), req: () => G.coins >= 12 && G.stage >= 3, reqText: "12 coin, sold from Chapter III" },
+      { t: "The forge (upgrade the whole party's gear)", go: "forge_0" },
       { t: "Leave", go: "odo_bye" },
+    ] },
+    forge_0: { who: "odo", text: "Ilse left me the keys to her forge. I'm no smith, but I can follow her notes. Every upgrade works for the whole party, including anyone who joins later.", choices: [
+      { t: () => forgeLabel("atk"), go: "forge_0", act: () => forge("atk"), req: () => forgeOk("atk"), reqText: () => forgeReq("atk") },
+      { t: () => forgeLabel("def"), go: "forge_0", act: () => forge("def"), req: () => forgeOk("def"), reqText: () => forgeReq("def") },
+      { t: "Back to the shop", go: "odo_0" },
     ] },
     odo_bye: say("odo", "Come back alive! Dead customers are terrible for business."),
     tam_0: say("tam", "My brother went out on the salt last week to look for the Bell. They found his cart. Not him. Rest at the village well before you go, courier."),
@@ -725,6 +737,22 @@
   }
   const SPEAKERS = { butcher: "The Well Butcher", voss: "Magister Voss", warden: "The Warden", choirmaster: "The Choirmaster", hollis: "Guild Master Hollis" };
 
+  const FORGE = {
+    atk: { name: "Salt-tempered blades", per: "+2 attack", cost: [20, 45, 80, 130], stat: "atk", amount: 2 },
+    def: { name: "Riveted leathers", per: "+1 defence, +6 max health", cost: [18, 40, 70, 115], stat: "def", amount: 1 },
+  };
+  const forgeTier = k => (G.forge || {})[k] || 0;
+  const forgeLabel = k => { const f = FORGE[k], t = forgeTier(k); return t >= f.cost.length ? `${f.name}: fully upgraded` : `${f.name} ${"I II III IV".split(" ")[t]} (${f.per}): ${f.cost[t]} coin`; };
+  const forgeOk = k => forgeTier(k) < FORGE[k].cost.length && G.coins >= FORGE[k].cost[forgeTier(k)];
+  const forgeReq = k => forgeTier(k) >= FORGE[k].cost.length ? "nothing left" : `${FORGE[k].cost[forgeTier(k)]} coin`;
+  function applyForge(h, k, times) { for (let i = 0; i < times; i++) { h[FORGE[k].stat] += FORGE[k].amount; if (k === "def") { h.maxHp += 6; h.hp += 6; } } }
+  function forge(k) {
+    if (!forgeOk(k)) return;
+    G.coins -= FORGE[k].cost[forgeTier(k)];
+    G.forge = G.forge || {}; G.forge[k] = forgeTier(k) + 1;
+    for (const id of G.members) applyForge(G.party[id], k, 1);
+    Music.sound("crit"); toast(`${FORGE[k].name} upgraded: ${FORGE[k].per} for everyone.`); save(); updateHud();
+  }
   function buy(id) { const it = ITEMS[id]; if (G.coins < it.price) return; G.coins -= it.price; G.items[id] = (G.items[id] || 0) + 1; toast(`Bought ${it.name}`); Music.sound("item"); save(); updateHud(); }
   function joinParty(id) {
     if (G.members.includes(id)) return;
@@ -732,6 +760,7 @@
     const avg = Math.max(1, Math.round(G.members.reduce((s, m) => s + G.party[m].level, 0) / G.members.length));
     for (let i = 1; i < avg; i++) levelUp(G.party[id]);
     if (G.flags.charmBonus) { G.party[id].maxHp += 6; }
+    for (const k of ["atk", "def"]) applyForge(G.party[id], k, forgeTier(k));
     G.party[id].hp = G.party[id].maxHp; G.party[id].sp = G.party[id].maxSp;
     G.members.push(id);
     if (G.active.length < 4) G.active.push(id);
@@ -940,7 +969,8 @@
     if (done && dlg.choices) dlg.choices.forEach((c, i) => {
       const b = document.createElement("button");
       const ok = !c.req || c.req();
-      b.textContent = `${i + 1}. ${c.t}${!ok && c.reqText ? ` (needs ${c.reqText})` : ""}`;
+      const label = typeof c.t === "function" ? c.t() : c.t, need = typeof c.reqText === "function" ? c.reqText() : c.reqText;
+      b.textContent = `${i + 1}. ${label}${!ok && need ? ` (needs ${need})` : ""}`;
       b.disabled = !ok;
       if (i === sel) b.classList.add("sel");
       b.addEventListener("click", () => pickChoice(i));
@@ -1003,7 +1033,8 @@
     const counts = {}; foes.forEach(f => { counts[f.id] = (counts[f.id] || 0) + 1; });
     const seen = {}; foes.forEach(f => { if (counts[f.id] > 1) { seen[f.id] = (seen[f.id] || 0) + 1; f.name += " " + "ABC"[seen[f.id] - 1]; } });
     const heroes = (G.active.length ? G.active : G.members.slice(0, 4)).map(heroUnit);
-    battle = { foes, heroes, round: 0, queue: [], current: null, over: false, opts, flash: 1, warden: opts.boss === "voss" && G.flags.wardenFree };
+    battle = { foes, heroes, round: 0, queue: [], current: null, over: false, opts, flash: 1, fury: 0, warden: opts.boss === "voss" && G.flags.wardenFree };
+    addFury(0);
     $("battleUI").hidden = false; $("hud").hidden = true; $("minimap").hidden = true; $("corner").hidden = true;
     shake = 4;
     const boss = opts.boss && MONSTERS[opts.boss];
@@ -1129,6 +1160,7 @@
       { label: "Attack", sub: "A plain strike.", go: () => toTarget({ kind: "attack", target: "enemy" }) },
       { label: "Skills", sub: `${h.sp} SP`, go: () => { m.page = "skills"; m.sel = 0; } },
       { label: "Guard", sub: "Halve damage until your next turn, +3 SP.", go: () => finish({ kind: "guard" }) },
+      ...(battle.fury >= 100 ? [{ label: "★ Chain Assault", sub: "Fury is full. Every standing hero strikes one enemy in turn; the last blow always lands critical.", go: () => toTarget({ kind: "chain", target: "enemy" }) }] : []),
       { label: "Items", sub: itemCount().map(([k, n]) => `${ITEMS[k].name} ×${n}`).join(", ") || "None", go: () => { m.page = "items"; m.sel = 0; }, disabled: !itemCount().length },
       { label: "Flee", sub: battle.opts.boss ? "You can't run from this." : "60% chance.", go: () => finish({ kind: "flee" }), disabled: !!battle.opts.boss },
     ];
@@ -1192,9 +1224,11 @@
   }
 
   // ---- resolving actions
+  function addFury(n) { if (!battle) return; battle.fury = Math.min(100, battle.fury + n); const el = $("fury"); $("furyFill").style.width = battle.fury + "%"; el.classList.toggle("full", battle.fury >= 100); }
   function damage(target, amount, o = {}) {
     let d = amount;
     if (target.st.guard) d = Math.ceil(d / 2);
+    if (!o.noFury) addFury(target.side === "hero" ? d * 1.1 : d * 0.45);
     if (target.side === "hero") target.ref.hp = Math.max(0, target.ref.hp - d);
     else { target.hp = Math.max(0, target.hp - d); if (target.hp === 0) { target.dead = true; target.deathT = 0; } }
     target.hurt = 0.35; target.shake = 6;
@@ -1209,7 +1243,7 @@
     const crit = !o.noCrit && (Math.random() < 0.1 || target.st.mark);
     if (target.st.mark) delete target.st.mark;
     if (crit) dmg = Math.round(dmg * 1.6);
-    const dealt = damage(target, dmg, { crit });
+    const dealt = damage(target, dmg, { crit, noFury: o.noFury });
     if (crit) shake = Math.max(shake, 7);
     Music.sound(crit ? "crit" : "hit");
     gore(target, crit ? 22 : 10);
@@ -1219,6 +1253,18 @@
     const name = u.name;
     if (!act || act.kind === "nothing") { await wait(400); return; }
     u.lunge = 1;
+    if (act.kind === "chain") {
+      battle.fury = 0; addFury(0); flash(0.8); shake = 8;
+      blog(`${name} calls the Chain Assault!`); await wait(500);
+      const team = battle.heroes.filter(alive); let total = 0;
+      for (let i = 0; i < team.length; i++) {
+        const t = act.unit.dead ? battle.foes.find(f => !f.dead) : act.unit; if (!t) break;
+        team[i].lunge = 1; if (i === team.length - 1) t.st.mark = true;
+        const r = attackRoll(team[i], t, 1.0, { noFury: true }); total += r.dmg;
+        blog(`${team[i].name} strikes${i === team.length - 1 ? " the finishing blow" : ""}! (${r.dmg})`); renderCards(); await wait(380);
+      }
+      blog(`Chain Assault: ${total} damage in all.`); await wait(600); return;
+    }
     if (act.kind === "guard") { u.st.guard = true; u.st.guardSource = u.id; u.ref.sp = Math.min(u.ref.maxSp, u.ref.sp + 3); blog(`${name} braces.`); await wait(500); return; }
     if (act.kind === "attack") {
       const r = attackRoll(u, act.unit, 1.0);
