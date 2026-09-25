@@ -1,0 +1,695 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="The Salt Road: a choice-driven caravan adventure across a salt desert before the rains come.">
+<title>The Salt Road</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gloock&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&family=Instrument+Sans:wght@500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+  /* One deliberate look: a traveller's journal, ultramarine ink on sun-bleached salt, with
+     sulphur for water and vermilion for danger. Colours are set explicitly for any host theme. */
+  *, *::before, *::after { box-sizing: border-box; }
+  :root {
+    color-scheme: light;
+    --salt: #eef1f4;
+    --salt-2: #e2e7ee;
+    --paper: #f8fafc;
+    --ink: #1f2f8f;
+    --ink-2: #3f4fa8;
+    --ink-soft: #6a74a8;
+    --rule: #c9d0e3;
+    --sulphur: #e0b52f;
+    --water: #2f8fbf;
+    --vermilion: #d2432a;
+    --moss: #3f8a5a;
+    --text: #1d2342;
+    --display: "Gloock", "Georgia", serif;
+    --prose: "Newsreader", "Iowan Old Style", "Georgia", serif;
+    --ui: "Instrument Sans", "Segoe UI", system-ui, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  }
+  html, body { height: 100%; }
+  [hidden] { display: none !important; }
+  body {
+    margin: 0;
+    background: var(--salt);
+    background-image:
+      radial-gradient(circle at 20% 10%, rgba(255,255,255,.9), transparent 40%),
+      repeating-linear-gradient(115deg, transparent 0 22px, rgba(31,47,143,.025) 22px 23px);
+    color: var(--text);
+    font-family: var(--ui);
+    padding-inline: 16px;
+    padding-block: 18px 32px;
+  }
+  .app { max-width: 1080px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+
+  header { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; border-bottom: 2px solid var(--ink); padding-bottom: 10px; }
+  .brand h1 { margin: 0; font-family: var(--display); font-weight: 400; font-size: clamp(30px, 5vw, 44px); line-height: 1; color: var(--ink); letter-spacing: -.01em; }
+  .brand p { margin: 4px 0 0; color: var(--ink-soft); font-size: 13px; letter-spacing: .02em; }
+  .clock { display: flex; align-items: baseline; gap: 10px; }
+  .clock .days { font-family: var(--display); font-size: 40px; line-height: 1; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .clock .days.low { color: var(--vermilion); }
+  .clock span { font-size: 12px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-soft); }
+  .tools { display: flex; gap: 8px; }
+  .tool { font: 600 12px var(--ui); letter-spacing: .06em; text-transform: uppercase; color: var(--ink); background: transparent; border: 1.5px solid var(--ink); border-radius: 999px; padding: 6px 12px; cursor: pointer; }
+  .tool:hover { background: var(--ink); color: var(--paper); }
+
+  .layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; align-items: start; }
+  .story { background: var(--paper); border: 1.5px solid var(--rule); border-radius: 4px; overflow: hidden; box-shadow: 0 1px 0 var(--rule), 0 18px 40px -30px rgba(31,47,143,.5); }
+  .scene-art { display: block; width: 100%; height: auto; aspect-ratio: 600 / 210; background: var(--salt-2); }
+  .scene-body { padding: 20px 26px 26px; }
+  .place { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+  .place h2 { margin: 0; font-family: var(--display); font-weight: 400; font-size: clamp(22px, 3.4vw, 30px); color: var(--ink); text-wrap: balance; }
+  .place .when { font: 600 11px var(--ui); letter-spacing: .14em; text-transform: uppercase; color: var(--ink-soft); }
+  .prose { font-family: var(--prose); font-size: 18px; line-height: 1.6; max-width: 62ch; color: var(--text); }
+  .prose p { margin: 0 0 .8em; }
+  .prose em { color: var(--ink-2); }
+  .outcome { margin: 4px 0 16px; padding: 10px 14px; border-left: 3px solid var(--ink); background: var(--salt); font: 500 14px/1.5 var(--ui); color: var(--ink); max-width: 62ch; }
+  .outcome.bad { border-color: var(--vermilion); color: #8e2a18; }
+  .outcome.good { border-color: var(--moss); color: #235c38; }
+  .outcome .delta { font-family: var(--mono); font-size: 12px; display: block; margin-top: 4px; opacity: .9; }
+
+  .choices { display: flex; flex-direction: column; gap: 10px; margin-top: 18px; max-width: 64ch; }
+  .choice {
+    display: grid; grid-template-columns: 26px 1fr; gap: 10px; align-items: start; text-align: left;
+    width: 100%; padding: 12px 14px; border-radius: 4px; cursor: pointer;
+    background: var(--paper); border: 1.5px solid var(--ink); color: var(--text);
+    font: 500 15px/1.45 var(--ui);
+    transition: background .15s, transform .15s;
+  }
+  .choice:hover:not(:disabled) { background: #e9edfb; transform: translateX(3px); }
+  .choice:focus-visible, .tool:focus-visible { outline: 3px solid var(--sulphur); outline-offset: 2px; }
+  .choice:disabled { cursor: not-allowed; border-style: dashed; border-color: var(--rule); color: var(--ink-soft); }
+  .choice .key { font: 600 13px var(--mono); color: var(--ink); border: 1.5px solid currentColor; border-radius: 50%; width: 24px; height: 24px; display: grid; place-items: center; }
+  .choice:disabled .key { color: var(--rule); }
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .tag { font: 600 11px var(--mono); padding: 2px 7px; border-radius: 3px; background: var(--salt-2); color: var(--ink); }
+  .tag.req { background: var(--ink); color: var(--paper); }
+  .tag.cost { background: #fbe9e5; color: #8e2a18; }
+  .tag.gain { background: #e3f1e7; color: #235c38; }
+  .tag.check { background: #fbf3d9; color: #6b5310; }
+
+  .roll { display: flex; align-items: center; gap: 12px; margin-top: 14px; font: 600 13px var(--ui); color: var(--ink); }
+  .die { width: 54px; height: 54px; display: grid; place-items: center; border: 2px solid var(--ink); border-radius: 10px; font: 600 20px var(--mono); background: var(--paper); transform: rotate(-6deg); }
+
+  aside { display: flex; flex-direction: column; gap: 14px; }
+  .panel { background: var(--paper); border: 1.5px solid var(--rule); border-radius: 4px; padding: 14px 16px; }
+  .panel h3 { margin: 0 0 10px; font: 700 11px var(--ui); letter-spacing: .16em; text-transform: uppercase; color: var(--ink-soft); }
+  .meter { display: grid; grid-template-columns: 74px 1fr 34px; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 13px; font-weight: 600; }
+  .meter .bar { height: 8px; background: var(--salt-2); border-radius: 4px; overflow: hidden; }
+  .meter .bar i { display: block; height: 100%; border-radius: 4px; transition: width .5s ease; }
+  .meter b { font: 600 13px var(--mono); text-align: right; font-variant-numeric: tabular-nums; }
+  .meter.flash b { animation: flash .8s; }
+  @keyframes flash { 30% { color: var(--vermilion); transform: scale(1.25); } }
+  .coin { display: flex; justify-content: space-between; font-weight: 600; font-size: 13px; margin-top: 4px; }
+  .coin b { font: 600 15px var(--mono); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { font: 600 12px var(--ui); padding: 4px 9px; border-radius: 999px; border: 1.5px solid var(--ink); color: var(--ink); background: var(--paper); }
+  .chip.dim { border-style: dashed; color: var(--ink-soft); border-color: var(--rule); }
+  .who { font-size: 13px; line-height: 1.5; color: var(--text); margin: 0; }
+  .who b { color: var(--ink); }
+  .journal { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; max-height: 190px; overflow-y: auto; }
+  .journal li { font: 400 13px/1.4 var(--prose); color: var(--text); padding-left: 12px; border-left: 2px solid var(--rule); }
+  .journal li span { font: 600 10px var(--mono); color: var(--ink-soft); display: block; }
+  .route svg { display: block; width: 100%; height: auto; }
+
+  .ending-stamp { display: inline-block; margin: 6px 0 14px; padding: 6px 12px; border: 2.5px solid var(--vermilion); color: var(--vermilion); font: 700 12px var(--ui); letter-spacing: .18em; text-transform: uppercase; transform: rotate(-3deg); }
+  .ending-stamp.good { border-color: var(--moss); color: var(--moss); }
+  .endings { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+
+  @media (max-width: 860px) {
+    .layout { grid-template-columns: 1fr; }
+    aside { order: -1; display: grid; grid-template-columns: 1fr 1fr; }
+    aside .wide { grid-column: 1 / -1; }
+    .journal { max-height: 120px; }
+  }
+  @media (max-width: 520px) {
+    aside { grid-template-columns: 1fr; }
+    .scene-body { padding: 16px 16px 20px; }
+    .prose { font-size: 17px; }
+  }
+  @media (prefers-reduced-motion: reduce) { .choice, .meter .bar i { transition: none; } .meter.flash b { animation: none; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand">
+      <h1>The Salt Road</h1>
+      <p>Cross the Glass Flats before the rains turn them into a lake.</p>
+    </div>
+    <div class="clock" aria-live="polite"><div class="days" id="days">12</div><span>days until<br>the rains</span></div>
+    <div class="tools"><button class="tool" id="restart">New journey</button></div>
+  </header>
+
+  <div class="layout">
+    <main class="story">
+      <svg class="scene-art" id="art" viewBox="0 0 600 210" role="img" aria-label="Scene illustration"></svg>
+      <div class="scene-body">
+        <div class="place"><h2 id="place">Kessa</h2><span class="when" id="when">Day 1 · dawn</span></div>
+        <div class="outcome" id="outcome" hidden></div>
+        <div class="prose" id="prose"></div>
+        <div class="roll" id="roll" hidden><div class="die" id="die">?</div><span id="rollText"></span></div>
+        <div class="choices" id="choices"></div>
+      </div>
+    </main>
+
+    <aside>
+      <div class="panel">
+        <h3>Caravan</h3>
+        <div class="meter" id="m-water"><span>Water</span><div class="bar"><i style="background:var(--water)"></i></div><b>0</b></div>
+        <div class="meter" id="m-supplies"><span>Supplies</span><div class="bar"><i style="background:var(--sulphur)"></i></div><b>0</b></div>
+        <div class="meter" id="m-morale"><span>Morale</span><div class="bar"><i style="background:var(--moss)"></i></div><b>0</b></div>
+        <div class="meter" id="m-crew"><span>Crew</span><div class="bar"><i style="background:var(--ink)"></i></div><b>0</b></div>
+        <div class="coin"><span>Coin</span><b id="coin">0</b></div>
+      </div>
+      <div class="panel">
+        <h3>Company</h3>
+        <p class="who" id="who"></p>
+        <div class="chips" id="companions" style="margin-top:8px"></div>
+      </div>
+      <div class="panel route wide">
+        <h3>Route</h3>
+        <svg id="route" viewBox="0 0 280 70" aria-label="Route across the Glass Flats"></svg>
+      </div>
+      <div class="panel wide">
+        <h3>Journal</h3>
+        <ul class="journal" id="journal"></ul>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script>
+(() => {
+  "use strict";
+  const $ = id => document.getElementById(id);
+  const REDUCED = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const SAVE = "salt-road-save", SEEN = "salt-road-endings";
+  const store = {
+    get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* storage unavailable */ } },
+  };
+
+  // ---------------------------------------------------------------- state
+  const ORIGINS = {
+    cartographer: { name: "Cartographer", blurb: "You read salt the way others read faces. Better odds when finding the way." },
+    smuggler: { name: "Smuggler", blurb: "You know which palms to grease. Start with more coin; better odds when talking your way through." },
+    healer: { name: "Healer", blurb: "You keep people breathing. Treat the sick and steady the crew." },
+  };
+  const CARGO = {
+    medicine: "Fever medicine for the wards of Oru",
+    salt: "Forty ingots of Guild salt",
+    crate: "A sealed Guild crate, contents unknown",
+  };
+  const COMPANIONS = {
+    ilse: { name: "Ilse", role: "ex-Guild guard" },
+    maru: { name: "Maru", role: "storm-singer" },
+    beno: { name: "Beno", role: "runaway" },
+  };
+  const ROUTE = [
+    { id: "kessa", name: "Kessa" }, { id: "well", name: "Well of Nine" }, { id: "fork1", name: "Dunes / Cathedral" },
+    { id: "market", name: "Mirage Market" }, { id: "fork2", name: "Stormline / Ferry" }, { id: "oru", name: "Oru" },
+  ];
+
+  let S;
+  function freshState() {
+    return {
+      scene: "start", origin: null, cargo: null,
+      water: 12, supplies: 10, morale: 6, crew: 4, coin: 20,
+      day: 1, deadline: 12, time: "dawn", leg: 0,
+      companions: [], flags: {}, journal: [], outcome: null,
+    };
+  }
+  const MAX = { water: 20, supplies: 20, morale: 10, crew: 6 };
+  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+  const has = c => S.companions.includes(c);
+  const daysLeft = () => S.deadline - S.day + 1;
+
+  function apply(delta) {
+    const parts = [];
+    for (const [k, v] of Object.entries(delta || {})) {
+      if (!v) continue;
+      if (k === "day") { S.day += v; parts.push(`${v > 0 ? "+" : ""}${v} day${Math.abs(v) === 1 ? "" : "s"}`); continue; }
+      const before = S[k];
+      S[k] = k in MAX ? clamp(before + v, 0, MAX[k]) : Math.max(0, before + v);
+      const real = S[k] - before;
+      if (real) { parts.push(`${real > 0 ? "+" : ""}${real} ${k}`); flash(k); }
+    }
+    return parts.join(" · ");
+  }
+  // One day on the Flats: every mouth drinks, every body eats.
+  function travel(days, extra = {}) {
+    const mouths = S.crew + S.companions.length;
+    const drink = Math.ceil(mouths / 2) * days, eat = Math.ceil(mouths / 3) * days;
+    const d = { day: days, water: -drink, supplies: -eat, ...extra };
+    const text = apply(d);
+    S.time = ["dawn", "noon", "dusk", "night"][(S.day + days) % 4];
+    const hurt = [];
+    if (S.water === 0) { hurt.push(apply({ morale: -2, crew: -1 })); log("The barrels ran dry. Someone did not wake up."); }
+    if (S.supplies === 0) { hurt.push(apply({ morale: -1 })); }
+    return [text, ...hurt].filter(Boolean).join(" · ");
+  }
+  function log(text) { S.journal.unshift({ day: S.day, text }); S.journal = S.journal.slice(0, 40); }
+
+  // chance of success, in percent, for a labelled skill
+  function chance(kind, base) {
+    let p = base;
+    if (kind === "way" && S.origin === "cartographer") p += 25;
+    if (kind === "talk" && S.origin === "smuggler") p += 25;
+    if (kind === "care" && S.origin === "healer") p += 25;
+    if (kind === "fight" && has("ilse")) p += 25;
+    if (kind === "weather" && has("maru")) p += 30;
+    p += (S.morale - 5) * 2;
+    return clamp(Math.round(p), 5, 95);
+  }
+  const KIND_LABEL = { way: "Wayfinding", talk: "Persuasion", care: "Healing", fight: "Force", weather: "Weather sense", luck: "Luck" };
+
+  // ---------------------------------------------------------------- story
+  // Each scene: place, art, text(S), choices[]. A choice has t (label), and any of:
+  // req() + reqLabel, cost {}, gain {}, check {kind, base, ok, fail, okText, failText}, go, run().
+  const SCENES = {
+    start: {
+      place: "Kessa, the last town", art: "town", when: "Day 1 · dawn",
+      text: () => `<p>Every year the Glass Flats give travellers twelve dry days. Then the rains come down from the mountains and the whole salt plain becomes a lake, flat as a mirror, for eight months.</p>
+        <p>The caravan is loaded. Four hands, six camels, water for a week if nobody wastes it. The harbourmaster of Kessa squints at your papers. <em>"And who are you, to lead them?"</em></p>`,
+      choices: [
+        { t: "A cartographer. I have crossed the Flats twice with a compass and a good memory.", run: () => { S.origin = "cartographer"; }, go: "cargo" },
+        { t: "A smuggler. I know people on both shores, and people know my purse.", run: () => { S.origin = "smuggler"; S.coin += 25; }, go: "cargo" },
+        { t: "A healer. Someone has to keep the crew alive out there.", run: () => { S.origin = "healer"; S.supplies += 2; }, go: "cargo" },
+      ],
+    },
+    cargo: {
+      place: "Kessa, the loading yard", art: "town", when: "Day 1 · dawn",
+      text: () => `<p>${ORIGINS[S.origin].blurb}</p><p>Three contracts wait on the yard board. You can carry only one across.</p>`,
+      choices: [
+        { t: "Fever medicine for the wards of Oru. Pays little. People are waiting for it.", run: () => { S.cargo = "medicine"; S.coin += 10; log("Took the medicine contract."); }, go: "yard" },
+        { t: "Forty ingots of Guild salt. Heavy, and it pays very well in Oru.", run: () => { S.cargo = "salt"; S.coin += 40; log("Took the Guild salt contract."); }, go: "yard" },
+        { t: "A sealed Guild crate. Double pay, no questions.", run: () => { S.cargo = "crate"; S.coin += 60; log("Took the sealed crate. Double pay, no questions."); }, go: "yard" },
+      ],
+    },
+    yard: {
+      place: "Kessa, the loading yard", art: "town", when: "Day 1 · morning",
+      text: () => `<p>A tall woman in a scuffed Guild coat is leaning on the water trough. She has been dismissed, she says, for refusing to beat a debtor. She would work the crossing for coin and a share of water.</p>
+        <p>Behind her, the water merchant is still open. Barrels are twelve coin for three.</p>`,
+      choices: [
+        { t: "Hire her. \"What's your name?\" \"Ilse.\"", cost: { coin: -15 }, req: () => S.coin >= 15, reqLabel: "15 coin", run: () => { S.companions.push("ilse"); log("Hired Ilse, once of the Guild guard."); }, go: "yard2" },
+        { t: "Buy three extra barrels of water instead.", cost: { coin: -12 }, gain: { water: 3 }, req: () => S.coin >= 12, reqLabel: "12 coin", go: "yard2" },
+        { t: "Neither. Leave now, while the air is still cool.", go: "depart" },
+      ],
+    },
+    yard2: {
+      place: "Kessa, the town gate", art: "town", when: "Day 1 · morning",
+      text: () => `<p>${has("ilse") ? "Ilse checks every strap on every camel without being asked. " : "The barrels slosh reassuringly. "}The gate guards wave you through. Ahead, the Flats shine white to the edge of the world.</p>`,
+      choices: [{ t: "Set out.", go: "depart" }],
+    },
+    depart: {
+      place: "The Glass Flats", art: "flats", when: "Day 1",
+      enter: () => { S.leg = 0.4; },
+      text: () => `<p>The salt crunches like frost under the camels. By noon the glare is so bright that the crew wrap their eyes in gauze and walk by feel.</p>
+        <p>${S.cargo === "crate" ? "On the second night you hear it: a knock from inside the sealed crate. Three knocks. Then silence." : "On the second night the wind drops and the stars come down to the horizon."}</p>`,
+      choices: [
+        { t: "Push hard for the Well of Nine: two days of walking.", run: () => { S.outcome = { text: "Two long days. The Well of Nine rises out of the haze.", delta: travel(2) }; }, go: () => S.cargo === "crate" ? "crate" : "well" },
+        { t: "Walk only at night. Three days, but the crew drink less.", run: () => { S.outcome = { text: "Three cool nights of walking. Nobody complains.", delta: travel(3, { water: 2, morale: 1 }) }; }, go: () => S.cargo === "crate" ? "crate" : "well" },
+      ],
+    },
+    crate: {
+      place: "Camp on the Flats", art: "flats", when: "Night",
+      text: () => `<p>You pry the lid. Inside, curled around a waterskin, is a boy of about twelve with salt in his hair. <em>"Please,"</em> he says. <em>"They sold my mother's debt to the Guild mines. I'm the debt."</em></p>
+        <p>His name is Beno. The Guild paid double to have him delivered to their agent in Oru.</p>`,
+      choices: [
+        { t: "Let him out. He walks with us, as one of us.", run: () => { S.companions.push("beno"); S.flags.freedBeno = true; log("Opened the crate. Beno walks free."); }, gain: { morale: 1 }, go: "well" },
+        { t: "Close the lid. A contract is a contract.", run: () => { S.flags.keptCrate = true; log("Closed the crate on the boy."); }, cost: { morale: -2 }, go: "well" },
+      ],
+    },
+    well: {
+      place: "The Well of Nine", art: "oasis", when: "",
+      enter: () => { S.leg = 1; },
+      text: () => `<p>Nine stone mouths ring a single deep shaft. Only three still hold water this late in the dry. A Guild patrol has chained two of them and charges a toll.</p>
+        <p>By the third well an old woman sits singing to the wind, a scarf over her eyes. The caravans call her kind storm-singers: they can hear weather a day before it arrives.</p>`,
+      choices: [
+        { t: "Pay the Guild toll and fill every barrel.", cost: { coin: -20 }, gain: { water: 8 }, req: () => S.coin >= 20, reqLabel: "20 coin", go: "well2" },
+        { t: "Talk the patrol down. Surely the Guild owes a courier a courtesy.", check: { kind: "talk", base: 45, ok: "well2", fail: "well2", okDelta: { water: 8 }, okText: "The sergeant laughs, and unchains a well for you.", failDelta: { water: 2, morale: -1 }, failText: "The sergeant spits. You get what the free well gives: two barrels of silt." } },
+        { t: "Drink from the free well only.", gain: { water: 3 }, go: "well2" },
+      ],
+    },
+    well2: {
+      place: "The Well of Nine", art: "oasis", when: "",
+      text: () => `<p>The singer turns her covered eyes to you. <em>"There is a storm walking in from the east,"</em> she says. <em>"Four days out. I am Maru. I would like to see Oru once more before I die. I can tell you where the storm will not be."</em></p>`,
+      choices: [
+        { t: "\"Walk with us, Maru.\"", run: () => { S.companions.push("maru"); log("Maru the storm-singer joined the caravan."); }, go: "fork1" },
+        { t: "Thank her, share some water, and move on.", cost: { water: -1 }, gain: { morale: 1 }, run: () => { S.flags.kindToMaru = true; }, go: "fork1" },
+        { t: "Salve her cracked eyes first, then ask her to come.", req: () => S.origin === "healer", reqLabel: "Healer", gain: { morale: 1 }, run: () => { S.companions.push("maru"); S.flags.healedMaru = true; log("Treated Maru's eyes. She joined the caravan, grateful."); }, go: "fork1" },
+      ],
+    },
+    fork1: {
+      place: "Beyond the Well", art: "flats", when: "",
+      enter: () => { S.leg = 1.4; },
+      text: () => `<p>Two roads. East, the Bone Dunes: a long way round over soft sand, safe from the storm but slow. North, straight across the salt, lies the drowned Cathedral: a ruin from before the Flats were salt. The way is shorter, and stranger.</p>
+        <p class="hint"><em>${daysLeft()} days until the rains.</em></p>`,
+      choices: [
+        { t: "Take the Bone Dunes. Four days, no surprises.", run: () => { S.outcome = { text: "Four days of soft sand. The camels hate it. You arrive.", delta: travel(4, { morale: -1 }) }; }, go: "market" },
+        { t: "Head for the Cathedral. Two days, if you can find it.", check: { kind: "way", base: 50, ok: "cathedral", fail: "lost", okRun: () => travel(2), failRun: () => travel(3) , okText: "Two days due north, and the spires rise out of the white.", failText: "The horizon lies. You wander for three days before the spires appear." } },
+      ],
+    },
+    lost: {
+      place: "Somewhere on the salt", art: "flats", when: "",
+      text: () => `<p>You were lost for a day, walking circles around your own tracks. When the Cathedral finally appears, the crew are quiet in a way you do not like.</p>`,
+      choices: [
+        { t: "Give the crew a rest day inside the ruin.", run: () => { S.outcome = { text: "A day of shade. Tempers cool.", delta: apply({ day: 1, morale: 2, water: -2 }) }; }, go: "cathedral" },
+        { t: "No rest. Into the ruin.", cost: { morale: -1 }, go: "cathedral" },
+      ],
+    },
+    cathedral: {
+      place: "The Salt Cathedral", art: "ruins", when: "",
+      enter: () => { S.leg = 2; },
+      text: () => `<p>Salt has grown over the old stone like frost over glass, and the wind sings in the broken towers. Deep inside, people in white sit in a ring and hum a single note that you feel in your teeth.</p>
+        <p>They are the Choir. They say the salt remembers every traveller who ever died on it, and that the note keeps the memories calm. They invite you to stay the night, or to stay forever.</p>`,
+      choices: [
+        { t: "Stay the night. Share their bread.", gain: { morale: 2, supplies: 2 }, run: () => { S.outcome = { text: "You sleep better than you have in years.", delta: travel(1, { water: 1 }) }; }, go: "market" },
+        { t: "Search the crypt for old Guild stores.", check: { kind: "luck", base: 50, ok: "market", fail: "market", okDelta: { water: 5, coin: 25 }, okText: "Behind a salt-crusted door: sealed jars of water and a purse of old coins.", failDelta: { crew: -1, morale: -1 }, failText: "The floor gives way. One of the hands does not climb out." } },
+        { t: "Put down the road. Stay with the Choir.", req: () => S.morale <= 4, reqLabel: "morale 4 or less", go: "end_choir" },
+      ],
+    },
+    market: {
+      place: "The Mirage Market", art: "market", when: "",
+      enter: () => { S.leg = 3; },
+      text: () => `<p>Halfway across, where two ancient roads meet, traders set up tents for the last caravans of the season. Water sells for a fortune. So does everything else.</p>
+        ${S.cargo === "salt" ? "<p>A trader in a copper mask offers to buy your Guild salt right here, for twice what Oru would pay. <em>\"Who would ever know?\"</em></p>" : ""}
+        ${S.cargo === "medicine" ? "<p>Word has spread that you carry fever medicine. A mother waits by your camels holding a hot, limp child.</p>" : ""}
+        ${S.flags.keptCrate ? "<p>A Guild agent walks the market, asking every caravan whether they carry a sealed crate.</p>" : ""}`,
+      choices: [
+        { t: "Buy water: four barrels for 20 coin.", cost: { coin: -20 }, gain: { water: 4 }, req: () => S.coin >= 20, reqLabel: "20 coin", go: "market" , stay: true },
+        { t: "Buy supplies: five days of food for 15 coin.", cost: { coin: -15 }, gain: { supplies: 5 }, req: () => S.coin >= 15, reqLabel: "15 coin", go: "market", stay: true },
+        { t: "Sell the Guild salt to the masked trader and go home rich.", req: () => S.cargo === "salt", reqLabel: "carrying salt", go: "end_rich" },
+        { t: "Give one dose of medicine to the child.", req: () => S.cargo === "medicine" && !S.flags.gaveDose, reqLabel: "carrying medicine", run: () => { S.flags.gaveDose = true; log("Gave a dose to a sick child at the market."); }, check: { kind: "care", base: 55, ok: "market", fail: "market", okDelta: { morale: 2 }, okText: "By evening the fever breaks. The mother presses a water flask and her blessing into your hands.", okRun: () => apply({ water: 2 }), failDelta: { morale: -1 }, failText: "The fever does not break before you leave. You tell yourself it will." } },
+        { t: "Hand the crate to the Guild agent here and take your pay early.", req: () => S.flags.keptCrate, reqLabel: "kept the crate", go: "end_guild" },
+        { t: "Move on toward Oru.", go: "fork2" },
+      ],
+    },
+    fork2: {
+      place: "The last stretch", art: () => (has("maru") ? "flats" : "storm"), when: "",
+      enter: () => { S.leg = 4; },
+      text: () => `<p>${has("maru") ? "Maru stops, turns her face east, and hums. <em>\"The storm crosses the Stormline tomorrow night,\"</em> she says. <em>\"Not before.\"</em>" : "The eastern sky has gone the colour of a bruise."} Ahead lie two ways to Oru: the Stormline, a straight run over open salt, or the Ferry of Oars, where the river mouth already holds water deep enough to row.</p>
+        <p><em>${daysLeft()} days until the rains.</em></p>`,
+      choices: [
+        { t: "The Stormline. Two days, straight into the weather.", check: { kind: "weather", base: 35, ok: "gates", fail: "storm", okRun: () => travel(2), failRun: () => travel(2, { crew: -1, water: -2 }), okText: "The storm passes behind you, close enough to smell.", failText: "The storm catches you in the open." } },
+        { t: "The Ferry of Oars. Three days, and the ferrymen want 30 coin.", cost: { coin: -30 }, req: () => S.coin >= 30, reqLabel: "30 coin", run: () => { S.outcome = { text: "Three days of rowing through shallow, glassy water. Slow and safe.", delta: travel(3, { water: 2 }) }; }, go: "gates" },
+        { t: "Beno says he knows a smugglers' path through the reeds.", req: () => has("beno"), reqLabel: "Beno", run: () => { S.outcome = { text: "The reeds close over your heads. Two days later, Oru's walls.", delta: travel(2) }; log("Beno led the way through the reeds."); }, go: "gates" },
+      ],
+    },
+    storm: {
+      place: "The Stormline", art: "storm", when: "Night",
+      text: () => `<p>The wind picks up salt and throws it like gravel. The camels kneel and refuse to move. Somewhere in the white roar, someone is shouting your name.</p>`,
+      choices: [
+        { t: "Rope everyone together and walk blind.", check: { kind: "fight", base: 45, ok: "gates", fail: "gates", okText: "Hand over hand, the rope holds. At dawn, Oru.", failDelta: { crew: -1, supplies: -3, morale: -2 }, failText: "The rope snaps once. You find the camel. You do not find the man." } },
+        { t: "Dig in behind the camels and wait it out.", run: () => { S.outcome = { text: "A day and a night behind the camels. The storm passes. The calendar does not.", delta: travel(2, { morale: -1 }) }; }, go: "gates" },
+      ],
+    },
+    gates: {
+      place: "The gates of Oru", art: "city", when: "",
+      enter: () => { S.leg = 5; },
+      text: () => `<p>Oru rises from the far shore of the Flats in terraces of blue tile. Behind you, for the first time in months, thunder rolls down from the mountains.</p>`,
+      choices: [{ t: "Enter the city.", go: () => endingFor() }],
+    },
+
+    // ---------------------------------------------------------- endings
+    end_fever: { ending: "The Fever Breaks", good: true, place: "Oru, the fever wards", art: "city",
+      text: () => `<p>You carry the medicine chests up the ward stairs yourself. By the time the rains hit the Flats behind you, the first patients are sitting up and asking for water.</p>
+        <p>${has("beno") ? "Beno stays in Oru, apprenticed to the ward apothecary. The Guild never finds him. " : ""}${has("maru") ? "Maru sits by the river and listens to the rain arrive, smiling like someone hearing an old song. " : ""}They will tell this crossing for years.</p>` },
+    end_trade: { ending: "Safe Harbour", good: true, place: "Oru, the Guild exchange", art: "city",
+      text: () => `<p>The salt is weighed, the ledger stamped, the pay counted twice. ${S.coin} coin, and a warm dry room for the eight wet months.</p>
+        <p>${has("ilse") ? "Ilse takes her share and buys a boat. " : ""}Out on the Flats, the rain turns the whole plain into sky.</p>` },
+    end_free: { ending: "Unpaid, Unbought", good: true, place: "Oru, the lower terraces", art: "city",
+      text: () => `<p>There is no pay for an empty crate. The Guild agent at the gate finds nothing and nobody. You walk into Oru with ${S.coin} coin and a twelve-year-old who is nobody's debt.</p>
+        <p>Beno finds his mother's cousin by the fish market the next morning. You were never paid. It is the best trade you ever made.</p>` },
+    end_late: { ending: "Mirror City", good: false, place: "The shore of the new lake", art: "lake",
+      text: () => `<p>You arrive on day ${S.day}. The rains came first. The last stretch is already water, knee-deep and rising, and the ferrymen want everything you own to row you across.</p>
+        <p>${S.cargo === "medicine" ? "The medicine reaches the wards a week late. It is still medicine. It is fewer people." : "The contract is void by the time you reach the exchange."} Behind you the Flats have become a perfect mirror, and in it you see yourself, too slow.</p>` },
+    end_thirst: { ending: "The Salt Keeps Everything", good: false, place: "The Glass Flats", art: "flats",
+      text: () => `<p>The barrels ran dry, and then the crew ran out. The salt is patient; it preserves what it takes. When the rains come, the Flats will drown your caravan in perfect clear water, and the Choir will hum one more note.</p>` },
+    end_rich: { ending: "Rich and Hollow", good: false, place: "The Mirage Market", art: "market",
+      text: () => `<p>The masked trader counts out more coin than you have ever held. You turn back for Kessa with your pockets full and your name worthless: the Guild does not forgive a courier who sells its salt.</p>
+        <p>${has("ilse") ? "Ilse leaves you at the first well without a word. " : ""}You never cross the Flats again.</p>` },
+    end_guild: { ending: "Guild Coin", good: false, place: "The Mirage Market", art: "market",
+      text: () => `<p>The agent pays in full, early, and smiles. Two of his men carry the crate away between them. It knocks, once, as it goes.</p>
+        <p>You reach Oru comfortably ahead of the rains. You drink very well there for eight months, and you never sleep well.</p>` },
+    end_choir: { ending: "The Choir", good: true, place: "The Salt Cathedral", art: "ruins",
+      text: () => `<p>You send the crew on with the camels and the contract, and you sit down in the ring. The note fills you like water fills a jar.</p>
+        <p>When the rains come, the Cathedral becomes an island in a lake of sky. You are not afraid. The salt remembers everyone, and now you will help it remember gently. A secret ending: few travellers ever find it.</p>` },
+  };
+
+  function endingFor() {
+    if (S.crew === 0) return "end_thirst";
+    if (S.day > S.deadline) return "end_late";
+    if (S.cargo === "medicine") return "end_fever";
+    if (S.cargo === "crate") return S.flags.freedBeno ? "end_free" : "end_trade";
+    return "end_trade";
+  }
+
+  // ---------------------------------------------------------------- engine
+  function current() { return SCENES[S.scene]; }
+  function go(target) {
+    const id = typeof target === "function" ? target() : target;
+    if (!SCENES[id]) { console.error("Missing scene:", id); return; }
+    // running out of crew or time ends the journey wherever you are
+    if (!SCENES[id].ending && S.scene !== "start" && S.scene !== "cargo") {
+      if (S.crew === 0) return enter("end_thirst");
+      if (S.day > S.deadline + 2) return enter("end_late");
+    }
+    enter(id);
+  }
+  function enter(id) {
+    const changed = id !== S.scene;
+    S.scene = id;
+    const sc = current();
+    if (changed && sc.enter) sc.enter();
+    if (sc.ending) finish(sc);
+    render();
+    store.set(SAVE, S);
+    if (changed) { $("prose").closest(".story").scrollIntoView({ behavior: REDUCED ? "auto" : "smooth", block: "start" }); }
+  }
+  function finish(sc) {
+    const seen = store.get(SEEN) || [];
+    if (!seen.includes(sc.ending)) { seen.push(sc.ending); store.set(SEEN, seen); }
+    if (!S.flags.logged) { log(`Ending: ${sc.ending}.`); S.flags.logged = true; }
+  }
+
+  let rolling = false;
+  function choose(ch) {
+    if (rolling) return;
+    S.outcome = null;
+    const parts = [];
+    if (ch.cost) parts.push(apply(ch.cost));
+    if (ch.gain) parts.push(apply(ch.gain));
+    if (ch.run) ch.run();
+    if (ch.check) return roll(ch, parts);
+    if (!S.outcome && parts.filter(Boolean).length) S.outcome = { text: "", delta: parts.filter(Boolean).join(" · ") };
+    else if (S.outcome && parts.filter(Boolean).length) S.outcome.delta = [parts.filter(Boolean).join(" · "), S.outcome.delta].filter(Boolean).join(" · ");
+    go(ch.go);
+  }
+  function roll(ch, parts) {
+    const c = ch.check, p = chance(c.kind, c.base);
+    const r = 1 + Math.floor(Math.random() * 100);
+    const ok = r <= p;
+    rolling = true;
+    $("roll").hidden = false;
+    $("rollText").textContent = `${KIND_LABEL[c.kind]}: ${p}% chance…`;
+    const die = $("die");
+    let n = 0;
+    const spin = setInterval(() => { die.textContent = 1 + Math.floor(Math.random() * 100); if (++n > 9) settle(); }, REDUCED ? 0 : 55);
+    function settle() {
+      clearInterval(spin);
+      die.textContent = r;
+      $("rollText").textContent = `${KIND_LABEL[c.kind]}: needed ${p} or less, rolled ${r}. ${ok ? "Success." : "Failure."}`;
+      const d = [...parts];
+      const extra = ok ? (c.okRun ? c.okRun() : "") : (c.failRun ? c.failRun() : "");
+      if (extra) d.push(extra);
+      const delta = ok ? c.okDelta : c.failDelta;
+      if (delta) d.push(apply(delta));
+      S.outcome = { text: ok ? c.okText : c.failText, delta: d.filter(Boolean).join(" · "), mood: ok ? "good" : "bad" };
+      log(`${KIND_LABEL[c.kind]} ${ok ? "succeeded" : "failed"}: ${(ok ? c.okText : c.failText) || ""}`.trim());
+      setTimeout(() => { rolling = false; $("roll").hidden = true; go(ok ? c.ok : c.fail); }, REDUCED ? 200 : 900);
+    }
+  }
+
+  // ---------------------------------------------------------------- rendering
+  function render() {
+    const sc = current();
+    $("place").textContent = typeof sc.place === "function" ? sc.place() : sc.place;
+    $("when").textContent = sc.ending ? `Day ${Math.min(S.day, 99)} · the end` : `Day ${S.day} · ${S.time}`;
+    const kind = typeof sc.art === "function" ? sc.art() : sc.art;
+    $("art").innerHTML = art(kind, sc.ending ? "dusk" : S.time);
+    const o = $("outcome");
+    if (S.outcome && (S.outcome.text || S.outcome.delta)) {
+      o.hidden = false; o.className = "outcome" + (S.outcome.mood ? " " + S.outcome.mood : "");
+      o.innerHTML = (S.outcome.text ? escapeHtml(S.outcome.text) : "") + (S.outcome.delta ? `<span class="delta">${escapeHtml(S.outcome.delta)}</span>` : "");
+    } else o.hidden = true;
+
+    let html = sc.text();
+    if (sc.ending) {
+      const seen = store.get(SEEN) || [];
+      html = `<span class="ending-stamp${sc.good ? " good" : ""}">Ending · ${sc.ending}</span>` + html +
+        `<p style="font-family:var(--ui);font-size:13px;color:var(--ink-soft)">Endings found: ${seen.length} of ${ENDINGS.length}</p>` +
+        `<div class="endings">${ENDINGS.map(e => `<span class="chip${seen.includes(e) ? "" : " dim"}">${seen.includes(e) ? e : "?"}</span>`).join("")}</div>`;
+    }
+    $("prose").innerHTML = html;
+
+    const box = $("choices");
+    box.innerHTML = "";
+    const list = sc.ending ? [{ t: "Begin a new journey", restart: true }] : sc.choices;
+    list.forEach((ch, i) => {
+      const b = document.createElement("button");
+      b.className = "choice"; b.type = "button";
+      const ok = !ch.req || ch.req();
+      b.disabled = !ok;
+      const tags = [];
+      if (ch.req && ch.reqLabel) tags.push(`<span class="tag req">${ok ? "" : "needs "}${ch.reqLabel}</span>`);
+      for (const [k, v] of Object.entries(ch.cost || {})) tags.push(`<span class="tag cost">${v} ${k}</span>`);
+      for (const [k, v] of Object.entries(ch.gain || {})) tags.push(`<span class="tag gain">+${v} ${k}</span>`);
+      if (ch.check) tags.push(`<span class="tag check">${KIND_LABEL[ch.check.kind]} ${chance(ch.check.kind, ch.check.base)}%</span>`);
+      b.innerHTML = `<span class="key">${i + 1}</span><span>${escapeHtml(ch.t)}${tags.length ? `<span class="tags">${tags.join("")}</span>` : ""}</span>`;
+      b.addEventListener("click", () => ch.restart ? restart() : choose(ch));
+      box.appendChild(b);
+    });
+    renderStatus();
+  }
+  function escapeHtml(s) { return String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+
+  const lastVals = {};
+  function flash(k) { lastVals[k] = true; }
+  function renderStatus() {
+    for (const k of ["water", "supplies", "morale", "crew"]) {
+      const el = $("m-" + k);
+      el.querySelector("i").style.width = (S[k] / MAX[k] * 100) + "%";
+      el.querySelector("b").textContent = S[k];
+      if (lastVals[k]) { el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash"); lastVals[k] = false; }
+    }
+    $("coin").textContent = S.coin;
+    const left = daysLeft();
+    $("days").textContent = Math.max(0, left);
+    $("days").classList.toggle("low", left <= 3);
+    $("who").innerHTML = S.origin
+      ? `<b>${ORIGINS[S.origin].name}</b> carrying ${escapeHtml((S.cargo && CARGO[S.cargo]) || "nothing yet").toLowerCase()}.`
+      : "Who are you, to lead them?";
+    $("companions").innerHTML = Object.entries(COMPANIONS).map(([id, c]) =>
+      `<span class="chip${has(id) ? "" : " dim"}" title="${c.role}">${has(id) ? `${c.name}, ${c.role}` : "?"}</span>`).join("");
+    $("journal").innerHTML = S.journal.length
+      ? S.journal.map(j => `<li><span>DAY ${j.day}</span>${escapeHtml(j.text)}</li>`).join("")
+      : `<li><span>DAY 1</span>The ledger is empty. It will not stay that way.</li>`;
+    renderRoute();
+  }
+  function renderRoute() {
+    const n = ROUTE.length, x = i => 18 + i * (244 / (n - 1));
+    let s = `<line x1="${x(0)}" y1="26" x2="${x(n - 1)}" y2="26" stroke="#c9d0e3" stroke-width="2" stroke-dasharray="4 4"/>`;
+    s += `<line x1="${x(0)}" y1="26" x2="${x(Math.min(S.leg, n - 1))}" y2="26" stroke="#1f2f8f" stroke-width="2.5"/>`;
+    ROUTE.forEach((r, i) => {
+      const done = i <= Math.floor(S.leg), here = i === Math.round(S.leg);
+      s += `<circle cx="${x(i)}" cy="26" r="${here ? 7 : 5}" fill="${done ? "#1f2f8f" : "#f8fafc"}" stroke="#1f2f8f" stroke-width="2"/>`;
+      s += `<text x="${x(i)}" y="${i % 2 ? 60 : 48}" text-anchor="middle" font-family="Instrument Sans, sans-serif" font-size="9" font-weight="600" fill="${here ? "#1f2f8f" : "#6a74a8"}">${r.name}</text>`;
+    });
+    $("route").innerHTML = s;
+  }
+
+  // ---------------------------------------------------------------- scene art
+  const SKY = {
+    dawn: ["#f4c7a6", "#c9d6f2", "#fff1d8"], noon: ["#b9d3f3", "#eef3fb", "#fffbe8"],
+    dusk: ["#e5825a", "#5b3f8c", "#ffd9a3"], night: ["#141a3c", "#2d3470", "#e9ecff"],
+  };
+  function art(kind, time) {
+    const [top, bottom, sun] = SKY[time] || SKY.noon;
+    const night = time === "night";
+    const ground = night ? "#48507e" : "#f3f5f8", groundLine = night ? "#6c74a6" : "#c9d0e3", ink = night ? "#0d1230" : "#1f2f8f";
+    const sunX = { dawn: 90, noon: 300, dusk: 510, night: 470 }[time] ?? 300, sunY = { dawn: 118, noon: 42, dusk: 116, night: 44 }[time] ?? 60;
+    let s = `<defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${top}"/><stop offset="1" stop-color="${bottom}"/></linearGradient></defs>
+      <rect width="600" height="210" fill="url(#sky)"/>`;
+    if (night) for (let i = 0; i < 40; i++) s += `<circle cx="${(i * 137) % 600}" cy="${(i * 53) % 110}" r="${i % 5 ? .8 : 1.4}" fill="#e9ecff" opacity=".8"/>`;
+    s += `<circle cx="${sunX}" cy="${sunY}" r="${night ? 14 : 22}" fill="${sun}" opacity=".95"/>`;
+    const horizon = 140;
+    s += `<rect y="${horizon}" width="600" height="${210 - horizon}" fill="${ground}"/>`;
+    // salt crust: a hexagonal crack pattern in perspective
+    for (let r = 0; r < 5; r++) {
+      const y = horizon + 8 + r * r * 3.2 + r * 6;
+      s += `<path d="M0 ${y} ${Array.from({ length: 13 }, (_, i) => `L${i * 50 + (r % 2) * 25} ${y + (i % 2 ? 3 : -3)}`).join(" ")}" stroke="${groundLine}" stroke-width="1" fill="none"/>`;
+    }
+    const k = kind;
+    if (k === "town") {
+      s += [[40, 60, 34], [92, 44, 50], [150, 70, 28], [228, 50, 42], [286, 36, 56]].map(([x, w, h]) =>
+        `<rect x="${x}" y="${horizon - h}" width="${w}" height="${h}" fill="${ink}" opacity=".85"/><rect x="${x + w / 2 - 4}" y="${horizon - 14}" width="8" height="14" fill="${sun}" opacity=".7"/>`).join("");
+      s += `<path d="M330 ${horizon} q10 -60 14 -60 q4 0 14 60z" fill="${ink}" opacity=".85"/>`;
+      s += caravan(430, horizon, ink, 4);
+    } else if (k === "flats") {
+      s += `<path d="M0 ${horizon} L600 ${horizon}" stroke="${ink}" stroke-width="1.2" opacity=".4"/>`;
+      s += caravan(240, horizon + 12, ink, 6);
+    } else if (k === "oasis") {
+      s += `<ellipse cx="300" cy="${horizon + 16}" rx="120" ry="12" fill="#2f8fbf" opacity=".55"/>`;
+      for (let i = 0; i < 9; i++) { const a = (i / 9) * Math.PI * 2, x = 300 + Math.cos(a) * 150, y = horizon + 4 + Math.sin(a) * 18; s += `<rect x="${x - 7}" y="${y - 16}" width="14" height="16" rx="2" fill="${ink}" opacity="${i % 3 ? .35 : .85}"/>`; }
+      s += palm(170, horizon, ink) + palm(440, horizon + 2, ink);
+    } else if (k === "ruins") {
+      for (let i = 0; i < 5; i++) { const x = 160 + i * 60, h = 60 + (i % 3) * 25; s += `<path d="M${x} ${horizon} v-${h} q20 -26 40 0 v${h} h-10 v-${h - 12} q-10 -12 -20 0 v${h - 12}z" fill="${ink}" opacity=".85"/>`; }
+      s += `<path d="M300 ${horizon - 110} l8 -30 l8 30z" fill="${ink}" opacity=".85"/>`;
+    } else if (k === "market") {
+      [[80, 70], [170, 90], [270, 76], [360, 96], [460, 72]].forEach(([x, w], i) => {
+        s += `<path d="M${x} ${horizon} l${w / 2} -${38 + i % 2 * 12} l${w / 2} ${38 + i % 2 * 12}z" fill="${i % 2 ? "#d2432a" : ink}" opacity=".85"/>`;
+      });
+      s += caravan(40, horizon + 10, ink, 2);
+    } else if (k === "storm") {
+      s += `<rect width="600" height="210" fill="#2a2d45" opacity=".35"/>`;
+      s += `<path d="M0 70 q80 -40 160 -8 q60 -34 140 0 q80 -38 150 6 q70 -24 150 4 v-80 h-600z" fill="#262a44" opacity=".85"/>`;
+      for (let i = 0; i < 60; i++) s += `<line x1="${(i * 41) % 600}" y1="${60 + (i * 17) % 60}" x2="${(i * 41) % 600 - 14}" y2="${100 + (i * 17) % 90}" stroke="#e7eaf5" stroke-width="1" opacity=".5"/>`;
+      s += caravan(260, horizon + 14, "#0d1230", 5);
+    } else if (k === "city") {
+      [[180, 40, 60], [226, 30, 90], [262, 50, 70], [318, 34, 110], [358, 44, 76], [408, 30, 56]].forEach(([x, w, h]) => {
+        s += `<rect x="${x}" y="${horizon - h}" width="${w}" height="${h}" fill="${ink}" opacity=".85"/><path d="M${x} ${horizon - h} q${w / 2} -${w / 1.6} ${w} 0z" fill="${ink}" opacity=".85"/>`;
+      });
+      s += `<rect x="0" y="${horizon + 30}" width="600" height="40" fill="#2f8fbf" opacity=".25"/>`;
+    } else if (k === "lake") {
+      s += `<rect y="${horizon}" width="600" height="${210 - horizon}" fill="${bottom}" opacity=".9"/>`;
+      s += `<circle cx="${sunX}" cy="${2 * horizon - sunY}" r="22" fill="${sun}" opacity=".5"/>`;
+      for (let i = 0; i < 8; i++) s += `<line x1="${40 + i * 70}" y1="${horizon + 10 + i * 7}" x2="${80 + i * 70}" y2="${horizon + 10 + i * 7}" stroke="#ffffff" opacity=".5"/>`;
+      s += `<path d="M300 ${horizon - 70} v70" stroke="${ink}" stroke-width="3" opacity=".8"/>`;
+    }
+    return s;
+  }
+  function caravan(x, y, ink, n) {
+    let s = "";
+    for (let i = 0; i < n; i++) {
+      const cx = x + i * 26;
+      s += `<path d="M${cx} ${y} v-9 q2 -9 9 -9 q2 -6 6 -3 q5 -4 7 4 q4 0 5 3 l3 -4 l2 2 l-2 6 v10 h-3 v-8 h-12 v8 h-3z" fill="${ink}" opacity=".9"/>`;
+    }
+    return s;
+  }
+  function palm(x, y, ink) {
+    return `<path d="M${x} ${y} q4 -30 0 -56" stroke="${ink}" stroke-width="4" fill="none"/>` +
+      [-60, -25, 15, 50].map(a => `<path d="M${x} ${y - 56} q${a * .5} -18 ${a} ${Math.abs(a) * .2}" stroke="${ink}" stroke-width="3" fill="none"/>`).join("");
+  }
+
+  // ---------------------------------------------------------------- boot
+  const ENDINGS = Object.values(SCENES).filter(s => s.ending).map(s => s.ending);
+  function restart() { S = freshState(); render(); store.set(SAVE, S); }
+  $("restart").addEventListener("click", restart);
+  addEventListener("keydown", e => {
+    if (e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA")) return;
+    const n = Number(e.key);
+    if (n >= 1 && n <= 9) { const b = $("choices").children[n - 1]; if (b && !b.disabled) b.click(); }
+  });
+
+  // Validate the story graph once, so a typo shows up in the console instead of mid-game.
+  for (const [id, sc] of Object.entries(SCENES)) {
+    for (const ch of sc.choices || []) {
+      for (const t of [ch.go, ch.check && ch.check.ok, ch.check && ch.check.fail]) {
+        if (typeof t === "string" && !SCENES[t]) console.error(`Scene "${id}" points to missing scene "${t}"`);
+      }
+    }
+  }
+
+  const saved = store.get(SAVE);
+  S = saved && saved.scene && SCENES[saved.scene] ? Object.assign(freshState(), saved) : freshState();
+  render();
+})();
+</script>
+</body>
+</html>
