@@ -7422,6 +7422,184 @@
   };
   ACHIEVEMENTS.push(["creed", "A Courier's Creed", "Answer all seven questions by the fire.", () => Object.keys(G.flags.creed || {}).length >= 7], ["teodor", "Who Stays Below", "Learn the Salt Hermit's name.", () => !!G.flags.hermitDone]);
 
+  // ================================================================== THE ARCHER AND THE COURIER
+  // A love story with Rook, built on his bonds. Five quiet scenes at the fire. If Sable gives him her whistle
+  // before the marsh, the whistle is how she finds him inside Old Gulp, and he lives. Otherwise he dies as before,
+  // and the ending remembers who leaves the arrows on his grave.
+  const LOVE = () => G.flags.love || (G.flags.love = { n: 0 });
+  const loveOn = () => { const l = LOVE(); return l.n > 0 && !l.declined; };
+  const HEARTS = [
+    { id: "h1", title: "Night Watch", when: () => G.stage >= 4 && (G.flags.bonds || {}).rook >= 1, lines: [
+      [null, "(It's Rook's watch, but he hasn't moved from the fire in an hour. He sees you awake and doesn't pretend he wasn't looking.)"],
+      ["rook", "Can't sleep either? Sit. The salt's warm here. ...Can I ask you something? Why a courier? You could have done anything. You're fast, you're stubborn, you can take a hit."],
+      ["sable", "Nadia found me on a rock in the salt when I was two. No name, no letter, nothing. Everything else in the world seemed to have somewhere it was going. Letters always do. I wanted to be near things that had somewhere to go."],
+      ["rook", "(He's quiet for a while.) You've got somewhere now. Five of them, snoring. Six, counting me. I don't snore."]],
+      opts: [["\"Sit with me till your watch ends.\"", true, "(He does. Neither of you says anything else. It's the best conversation you've had in years.)"],
+        ["\"You snore, archer. Get some sleep.\"", false, "(He laughs, properly, for the first time since the grove.) Liar. ...Goodnight, courier."]] },
+    { id: "h2", title: "The Blue Thread", when: () => G.stage >= 5 && (G.flags.bonds || {}).rook >= 2, lines: [
+      [null, "(Rook is fletching arrows. You notice the thread is blue, the same blue as your scarf, which tore on a pillar in the Cathedral.)"],
+      ["rook", "I, ah. Picked up the bit that tore off. Good thread. Waste not. (He holds out one arrow.) This one's yours. Fletched it straightest. Don't shoot anything you like with it."],
+      ["rook", "Ilse told me about the medicine. The girl in the storm. I'm sorry. You carry everybody's letters, courier, and you carry that. Who carries yours?"]],
+      opts: [["\"Maybe you could.\"", true, "(He looks at the arrow in your hands instead of at you, which is how you know he heard it.) ...Yeah. Maybe I could."],
+        ["\"Nobody. That's the job.\"", false, "Then it's a bad job. (He goes back to his fletching.) Keep the arrow anyway."]] },
+    { id: "h3", title: "Lanterns over Oru", when: () => G.stage >= 7 && (G.flags.bonds || {}).rook >= 3 && !G.flags.gulpDead, lines: [
+      [null, "(The roof tiles are still warm from the day. You and Rook sit with your legs over the edge, watching the lanterns climb, not saying much.)"],
+      ["rook", "Never thought I'd see them from up here. From the high streets. We always figured the people up here didn't look."],
+      ["rook", "Steady hands, no questions. That's what Voss said about me. I've got a question now. (He doesn't look at you.) When this is over, when there's no Bell to carry... do you want me to stay?"]],
+      opts: [["\"Stay.\"", true, "(He lets out a breath he has clearly been holding since the Grove. His hand finds yours on the warm tiles, and stays there.) ...Okay. Okay. I'll stay."],
+        ["\"Ask me again when this is over. I'll say yes.\"", true, "(He laughs, shaky.) You can't tell a man the answer and make him wait for it. That's cruel. ...I'll ask. Every day, if I have to."],
+        ["\"You're my friend, Rook. The best I have.\"", "decline", "(A pause. Then he bumps your shoulder with his.) Best you have. That's not nothing. That's a lot, actually, for a man like me. ...Look, there goes another one."]] },
+    { id: "h4", title: "The Whistle", when: () => G.stage >= 7 && !G.flags.gulpDead && loveOn() && LOVE().h3, lines: [
+      [null, "(The marsh is close. You can smell it. You take the tin whistle from around your neck: the one Nadia tied to your wrist on the rock, the only thing you had.)"],
+      ["sable", "Couriers use these in salt-storms. Three short notes. I've never lost a letter, Rook. I always find where things are going."],
+      ["sable", "So if you're ever lost, blow it, and I'll come."],
+      ["rook", "(He turns it over in his fingers like it might break.) And if I'm somewhere you can't follow?"]],
+      opts: [["\"Then blow it anyway.\"", true, "(He puts the cord over his head and tucks the whistle inside his shirt, over his heart.) Anyway. Got it. (Quietly.) Nobody ever gave me anything I didn't have to thank the Guild for."]],
+      done: () => { LOVE().token = true; } },
+    { id: "h5", title: "What I Thought About", when: () => G.stage >= 9 && LOVE().saved && G.members.includes("rook"), lines: [
+      [null, "(Rook's hands still shake. He shoots anyway. Tonight he holds a cup of tea with both of them and doesn't drink it.)"],
+      ["rook", "When I was inside it. In the dark, with the others. I thought I'd think something clever. Some last line. Ilse would've liked a last line."],
+      ["rook", "I didn't think anything clever. Just your name. Over and over, like a stupid song. And then I remembered the whistle."]],
+      opts: [["(Kiss him.)", true, "(He goes very still, like a man who has been shot, and then he kisses you back, carefully, like you are the one who might break. Across the fire, Ilse pointedly turns around. Maru, who is blind, says \"Finally.\")"],
+        ["(Take his shaking hands in yours until they stop.)", true, "(It takes a long time. Neither of you minds. When they stop, he leans his forehead against yours and says, \"There. Steady hands. Still got the questions, though.\")"]] },
+  ];
+  for (const h of HEARTS) {
+    const base = `love_${h.id}_`;
+    h.lines.forEach(([who, text], i) => { D[base + i] = say(who, text, i < h.lines.length - 1 ? base + (i + 1) : base + "ask"); });
+    D[base + "ask"] = { who: "sable", text: "(What do you say?)", choices: h.opts.map(([t], j) => ({ t, go: base + "r" + j })) };
+    h.opts.forEach(([, warm, reply], j) => {
+      const narration = reply.startsWith("(") && !/\)\s*\S/.test(reply);   // wholly in parentheses: a stage direction, not Rook
+      D[base + "r" + j] = say(narration ? null : "rook", reply, null, () => {
+        const l = LOVE(); l[h.id] = true;
+        if (warm === "decline") l.declined = true; else if (warm) l.n++;
+        if (h.done) h.done();
+        save(); updateHud(); toast(warm === "decline" ? "Rook: a friend, the best kind." : `♥ ${h.title}`);
+      });
+    });
+  }
+  const heartReady = () => G.members.includes("rook") && !LOVE().declined && HEARTS.find(h => !LOVE()[h.id] && h.when());
+  const _campSceneL = campScene;
+  campScene = function () {
+    const h = heartReady();
+    if (h) { setTimeout(() => { card("By the fire", h.title, "Rook, Sable, and a fire that nobody else seems to need tonight."); const w = () => { if (mode === "card") { setTimeout(w, 200); return; } openDialog(`love_${h.id}_0`); }; setTimeout(w, 200); }, 400); return true; }
+    return _campSceneL();
+  };
+  const _updateL = update;
+  update = function (dt) {   // a nudge, once per scene, so a player who never rests doesn't miss it
+    _updateL(dt);
+    if (mode !== "play" || !G || !G.stage) return;
+    const h = heartReady(); if (h && !LOVE()[h.id + "n"]) { LOVE()[h.id + "n"] = true; setTimeout(() => toast("Rook keeps glancing at you. Maybe rest at a fire tonight."), 1500); }
+  };
+
+  // ---- Old Gulp: the whistle
+  Object.assign(D, {
+    gulp_love0: say(null, "(From inside Old Gulp: three short notes of a courier's whistle. Weaker now.)", "gulp_love1"),
+    gulp_love1: say(null, "(You don't wait for it to finish dying. You go in through the throat sac with a knife and both arms, into the heat and the acid and the faces, and you find a hand holding a tin whistle, and you pull.)", "gulp_love2"),
+    gulp_love2: say("rook", "(He comes out burned white, bow snapped, coughing black water, alive.) Told you I could make the shot. Didn't say from which side. (He opens one eye.) ...You came in after me. You absolute idiot.", "gulp_love3"),
+    gulp_love3: say("sable", "You blew it. I said I'd come.", "gulp_love4"),
+    gulp_love4: say("rook", "You said blow it anyway. So I did. (His laugh turns into coughing, and then into something that isn't either.) Ilse. Ilse, I held the torch, that night on the Flats. I never said sorry properly. I'm saying it now. I'm going to keep saying it, because I get to.", "gulp_love5"),
+    gulp_love5: say("ilse", "(Ilse sits down hard in the mud next to him, and puts her ruined hand on his chest, over the whistle, to feel it rise and fall.) ...Say it tomorrow, archer. Say it every day. I'll get sick of it eventually.", null, () => {
+      const l = LOVE(); l.saved = true; G.flags.rookSaved = true; const h = G.party.rook; if (h) { h.hp = Math.max(1, Math.round(h.maxHp * 0.3)); h.maxHp = Math.max(10, h.maxHp - 4); }
+      save(); updateHud(); card("He lives", "Rook", "His hands shake now, and there are white burns up both his arms that will never fade. He wears your whistle on its cord and does not take it off, not to wash, not to sleep. When anyone asks about the scars, he says: \"Somebody came back for me.\"");
+      setTimeout(() => { const w = () => { if (mode === "card") { setTimeout(w, 200); return; } openDialog("warden2_love"); }; w(); }, 400);
+    }),
+    warden2_love: say("warden2", "(The ground trembles. The Warden walks out of the rain, crystal steaming, and looks at Rook, alive and shaking in the mud, for a long moment.) I remember him. He was a child at my steps once. He threw stones at pigeons and apologised to each one. ...Good. Good.", "warden2_1"),
+  });
+  // if love was spoken but the whistle never given, he still dies, and knows it
+  Object.assign(D, {
+    gulp_after3l: { who: "rook", text: "(His hand finds yours. It is already cold.) I was going to ask you again. When this was over. ...Tell me it was enough. It doesn't have to be true.", choices: [
+      { t: "\"Yes. I would have said yes.\"", go: "rook_die1" }, { t: "\"It was enough, Rook. You were enough.\"", go: "rook_die2" } ] },
+  });
+  const _openDialogL = openDialog;
+  openDialog = function (id) {
+    if (id === "gulp_after" && LOVE().token && G.members.includes("rook")) id = "gulp_love0";
+    return _openDialogL(id);
+  };
+  Object.defineProperty(D.gulp_after2, "go", { get: () => loveOn() ? "gulp_after3l" : "gulp_after3", configurable: true });
+  if (CINE_BEFORE.gulp_after) { const w = CINE_BEFORE.gulp_after.when; CINE_BEFORE.gulp_after.when = () => w() && !LOVE().token; }
+
+  // ---- Aba's widow: if he lives, he carries his own letter
+  Object.assign(D, {
+    rookaba_0: say(null, "(Rook stops at the widow's door for a long time. Then he knocks, and when she opens it, he kneels in the salt.)", "rookaba_1"),
+    rookaba_1: say("rook", "My name is Rook. I was Voss's archer. I held the torch on the Flats the night your husband died. He threw your grandson onto a rock and then he looked at me. I have a letter, but I thought... he looked at me. You should get to, too.", "rookaba_2"),
+    rookaba_2: say("abawidow", "(She looks at him for a long, long time, exactly the way Aba must have.) ...The boy says a man in a Guild coat carried him to Kessa on his back, the next morning. Wouldn't give his name. Was that you?", "rookaba_3"),
+    rookaba_3: say("rook", "(He can't answer. He nods.)", "rookaba_4"),
+    rookaba_4: say("abawidow", "Then get up off my step. I'm not going to forgive you today. Come back next year, and the year after, and bring your courier, and we'll see.", null, () => { G.flags.rookAba = true; save(); updateHud(); toast("Rook will come back next year. And the year after."); }),
+  });
+  const _dialogForL = dialogFor;
+  dialogFor = function (n) {
+    if (n.id === "abawidow" && G.flags.rookSaved && G.members.includes("rook") && G.flags.rookLetter && !G.flags.rookAba) return "rookaba_0";
+    return _dialogForL(n);
+  };
+
+  // ---- pixel cinema: lanterns over Oru, and the whistle in the dark
+  const ROOK_L = () => HEROES.rook.look, SABLE_L = () => HEROES.sable.look;
+  const lanterns = (g2, t, n = 22) => { for (let i = 0; i < n; i++) { const life = (t * 0.07 + hash(i, 41)) % 1, x = (hash(i, 43) * VIEW_W + Math.sin(t + i) * 6) | 0, y = 170 - life * 190; PR(g2, x - 1, y - 1, 5, 6, "#3a1a10"); PR(g2, x, y, 3, 4, i % 3 ? "#ffcf4a" : "#ff9a3a"); PR(g2, x + 1, y + 1, 1, 2, "#fff4c8"); } };
+  const LANTERNS = [
+    { dur: 5.0, fadeIn: 0.8, line: [null, "The night the gates open, the poor quarter of Oru lets paper lanterns go, one for everyone the gate kept out."], draw: (g2, t) => {
+      nightBg(g2, t); PX.moon(g2, 60, 30, 10); lanterns(g2, t);
+      PX.village(g2, 150, "#141024"); PR(g2, 0, 152, VIEW_W, 40, "#1a1430");
+      PR(g2, 110, 132, 120, 22, "#2a2040"); for (let x = 110; x < 230; x += 6) PR(g2, x, 132, 5, 2, "#3a2e58");   // the roof ridge
+      chibi(g2, SABLE_L(), { dir: "up" }, 2, 150, 150); chibi(g2, ROOK_L(), { dir: "up" }, 2, 186, 150);
+    } },
+    { dur: 4.4, line: ["Rook", "I grew up four streets that way. We used to count the lanterns from the orphanage and guess who they were for."], draw: portraitShot(HEROES.rook.look, { eyes: "down", light: "#ffcf4a", lightFrom: "left" }, (g2, t) => { nightBg(g2, t); lanterns(g2, t, 14); }) },
+  ];
+  const WHISTLE = [
+    { dur: 4.2, fadeIn: 0.5, sound: "hit", line: [null, "Old Gulp shudders and goes still."], draw: (g2, t) => { AREA_BG.marsh(g2, t); PX.rain(g2, t, 90); monster(g2, "gulp", 1, 160, 176, { hurt: t < 0.6 }); } },
+    { dur: 4.0, line: [null, "And from somewhere inside it, faint and wet: three short notes of a courier's whistle."], draw: (g2, t) => {
+      AREA_BG.marsh(g2, t); monster(g2, "gulp", 1, 160, 176);
+      for (let i = 0; i < 3; i++) { const a = t - i * 0.7; if (a > 0) drawEmote(g2, 150 + i * 12, 96 - a * 10, "note", Math.max(0, 1 - a / 3)); }
+    } },
+    { dur: 3.6, shake: 2, line: ["Sable", "(You don't wait for it to finish dying.)"], draw: portraitShot(HEROES.sable.look, { brows: "fierce", mouth: "grit", smudge: true }, AREA_BG.marsh) },
+    { dur: 4.4, fadeOut: 1.0, line: [null, "You drag him out into the rain. He is burned white, and his bow is snapped, and he is breathing."], draw: (g2, t) => {
+      AREA_BG.marsh(g2, t); PX.rain(g2, t, 140);
+      chibi(g2, ROOK_L(), { rot: 1 }, 2, 176, 176); chibi(g2, SABLE_L(), { dir: "left" }, 2, 204, 172);
+      if (Math.sin(t * 3) > 0) drawEmote(g2, 170, 132, "heart");
+    } },
+  ];
+  CINE_BEFORE.love_h3_0 = { shots: LANTERNS, music: "cine_lullaby" };
+  CINE_BEFORE.gulp_love0 = { shots: WHISTLE, music: "cine_storm" };
+
+  // ---- the journal, the Chronicle and the ending
+  let endKindL = null;
+  const _endingL = ending;
+  ending = function (kind) { endKindL = kind; return _endingL(kind); };
+  const _extraJournalL = extraJournalHtml;
+  extraJournalHtml = function () {
+    const l = G.flags.love; if (!l || (!l.n && !l.declined)) return _extraJournalL();
+    const seen = HEARTS.filter(h => l[h.id]).map(h => h.title);
+    const state = l.declined ? "Rook is your friend. The best kind." : l.saved ? "Rook wears your whistle over his heart. Somebody came back for him." : G.flags.rookDead ? "You would have said yes." : l.token ? "Rook wears your whistle over his heart." : "Something is growing between you and Rook.";
+    return _extraJournalL() + `<h3>♥ The Archer and the Courier</h3><p>${state}</p><p class="dim" style="font-size:13px">${seen.join(" · ")}</p>`;
+  };
+  const _chronicleL = chronicle;
+  chronicle = function () {
+    const P = _chronicleL(), l = G.flags.love;
+    if (l && l.n >= 2 && !l.declined) P.splice(P.length - 1, 0, ["The Archer and the Courier", l.saved
+      ? "The courier gave the archer her whistle before the marsh, the only thing she had owned as a foundling. When Old Gulp swallowed him, he blew it from inside the dark, and she went in after him. I am told the burns on her arms match his. I am told neither of them minds."
+      : G.flags.rookDead ? "The archer loved the courier, and I think she loved him, and he died in the marsh before either of them said it plainly. Every spring there is a new arrow on his grave at Reedholm, fletched with blue thread. Everyone knows who leaves them."
+      : "Somewhere between the Grove and the gate, the courier and the archer stopped sitting on opposite sides of the fire."]);
+    return P;
+  };
+  const _extraFatesL = extraFates;
+  extraFates = function () {
+    const out = _extraFatesL(), l = G.flags.love; if (!l || l.declined || l.n < 2) return out;
+    const k = endKindL;
+    if (l.saved && G.members.includes("rook")) out.push({
+      ring: "Rook asks Sable the same question every morning for a year, on the steps of the rebuilt bell tower. Every morning she says yes. On the last dry day of the year they are married under the Rain Bell, and it rings on its own.",
+      sleep: "Rook asks Sable the same question every morning for a year. Every morning she says yes. They are married at the gate of Oru, under Aurel's name, and every year they take Aba's widow a letter, and every year she forgives him a little more.",
+      keeper: "Every night, Rook rows out to where the whirlpool used to be and shoots one lantern-arrow high over the water, so Sable, below, can see which way is up. He is an old man before he misses a night. He never does.",
+      crown: "Rook is the last to go under. He does not fight the water. He blows the whistle, three short notes, and waits for her to come. She does not come. She is the sea now. It sounds, very faintly, like a whistle forever.",
+      seat: "Rook leaves the high ground the week Sable takes the Guild's seat. He leaves the whistle on her desk. She keeps it in a drawer she never opens, and never closes.",
+    }[k] || "Rook and Sable walk home together. That is the whole story, and it is enough.");
+    else if (G.flags.rookDead) out.push("Every spring there is a new arrow on Rook's grave at Reedholm, fletched with blue thread. Everyone knows who leaves them.");
+    return out;
+  };
+  // his epitaph and the dream remember the whistle, if it was given
+  const _rookDiesL = rookDies;
+  rookDies = function () { _rookDiesL(); if (loveOn()) G.flags.epitaphs = { ...(G.flags.epitaphs || {}), rook: "Rook, the deserter archer. Held the torch on the Flats; made the shot from inside the Bog King. Loved, and would have been asked again." }; save(); };
+  ACHIEVEMENTS.push(["lanterns", "Lanterns over Oru", "Answer Rook's question on the rooftop.", () => !!(G.flags.love && G.flags.love.h3 && !G.flags.love.declined)],
+    ["whistle", "Somebody Came Back", "Save Rook from inside Old Gulp.", () => !!G.flags.rookSaved]);
+
   // ================================================================== BOOT
   const saved = load();          // read the save before a fresh game could overwrite it
   newGame(false);
@@ -7459,7 +7637,7 @@
     const spots = { ...Object.fromEntries(NPCS.map(n => [n.id, [n.x, n.y]])), ...Object.fromEntries(CHESTS.map(c => ["chest_" + c.id, [c.x, c.y]])), ...Object.fromEntries(LORE.map(l => ["lore" + l.id, [l.x, l.y]])),
       ...Object.fromEntries(SHARDS.map(c => ["shard" + c.id, [c.x, c.y]])), key: [40, 17], charm: [11, 15], mother: [62, 43], voss: [34, 8], hollis: [61, 12], bell: [34, 6], gaterest: [56, 15], groverest: [60, 44], wyrm: [7, 11] };
     return Object.entries(spots).filter(([, [x, y]]) => ![[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => seen.has((x + dx) + "," + (y + dy)))).map(([k]) => k);
-  }, props: () => PROPS.length, battleState: () => battle && battle.foes.map(f => f.name + ":" + f.hp + "/" + f.maxHp).join(" "), clearField: () => { field = []; }, rest: () => restParty(), fish: () => fishing, field: () => field, storm: () => { stormWait = 0; return storm; }, cineTest: k => playCine({ crown: CROWN_END, keeper: KEEPER_END, butcher: CINE_BEFORE.maru_scene0.shots, quill: CINE_BEFORE.quill_scene.shots, maw: CINE_BEFORE.maw_scene.shots, vela: CINE_BEFORE.vela_scene.shots, corvin: CINE_BEFORE.corvin_scene.shots, mother: CINE_BEFORE.mother_scene.shots, maru: MARU_SONG, rook: ROOK_LAST, ren: REN_DOOR, hollis: HOLLIS_UNMASKED, king: KING_RISES, salt: SALT_CHILD, teodor: CINE_BEFORE.hermit5_0.shots }[k], null, { music: "cine_deep" }), propsList: () => PROPS.map(p => [p.type, p.x, p.y, get(p.x, p.y)]), bopts: () => battle && JSON.stringify(battle.opts), tile: (x, y) => get(x, y), win: () => battle && battle.foes.forEach(f => { f.hp = 1; }), end: k => ending(k), ach: () => achGot(), tp: (x, y) => { G.px = x * TILE + 8; G.py = y * TILE + 8; } };
+  }, props: () => PROPS.length, battleState: () => battle && battle.foes.map(f => f.name + ":" + f.hp + "/" + f.maxHp).join(" "), clearField: () => { field = []; }, rest: () => restParty(), fish: () => fishing, field: () => field, storm: () => { stormWait = 0; return storm; }, cineTest: k => playCine({ crown: CROWN_END, keeper: KEEPER_END, butcher: CINE_BEFORE.maru_scene0.shots, quill: CINE_BEFORE.quill_scene.shots, maw: CINE_BEFORE.maw_scene.shots, vela: CINE_BEFORE.vela_scene.shots, corvin: CINE_BEFORE.corvin_scene.shots, mother: CINE_BEFORE.mother_scene.shots, maru: MARU_SONG, rook: ROOK_LAST, ren: REN_DOOR, hollis: HOLLIS_UNMASKED, king: KING_RISES, salt: SALT_CHILD, teodor: CINE_BEFORE.hermit5_0.shots, lanterns: CINE_BEFORE.love_h3_0.shots, whistle: CINE_BEFORE.gulp_love0.shots }[k], null, { music: "cine_deep" }), propsList: () => PROPS.map(p => [p.type, p.x, p.y, get(p.x, p.y)]), bopts: () => battle && JSON.stringify(battle.opts), tile: (x, y) => get(x, y), win: () => battle && battle.foes.forEach(f => { f.hp = 1; }), end: k => ending(k), ach: () => achGot(), tp: (x, y) => { G.px = x * TILE + 8; G.py = y * TILE + 8; } };
 })();
 </script>
 </body>
