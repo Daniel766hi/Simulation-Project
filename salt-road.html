@@ -1205,7 +1205,7 @@
     G.flags.lore = G.flags.lore || [];
     const fresh = !G.flags.lore.includes(l.id);
     if (fresh) { G.flags.lore.push(l.id); G.coins += 4; burst(l.x * TILE + 8, l.y * TILE, "#9ef0f5", 16); Music.sound("item"); }
-    D.__lore = say(null, `SALT TABLET · ${l.title.toUpperCase()}\n${l.text}${fresh ? `\n(Tablet ${G.flags.lore.length}/${LORE.length} recorded in your journal. +4 coin.)` : ""}`, null, () => {
+    D.__lore = say(null, `SALT TABLET · ${l.title.toUpperCase()}\n${val(l.text)}${fresh ? `\n(Tablet ${G.flags.lore.length}/${LORE.length} recorded in your journal. +4 coin.)` : ""}`, null, () => {
       if (fresh && G.flags.lore.length >= 16 && !G.flags.loreBonus2) {
         G.flags.loreBonus2 = true; for (const id of G.members) { G.party[id].maxSp += 2; G.party[id].sp += 2; G.party[id].def += 1; }
         toast("All sixteen tablets read. The salt remembers everything: +2 max SP and +1 defence for the party."); Music.sound("victory");
@@ -1503,7 +1503,7 @@
   function closeJournal() { $("journalUI").hidden = true; mode = "play"; }
   function renderJournal() {
     const esc = t => t.replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]);
-    const story = CHAPTER_LOG.filter(([st]) => G.stage >= st - 1 && (st > 1 || G.stage >= 1)).map(([, t, x]) => `<p><b>${t}.</b> ${x}</p>`).join("") || `<p class="dim">Nothing yet. Talk to Elder Nadia.</p>`;
+    const story = CHAPTER_LOG.filter(([st]) => G.stage >= st - 1 && (st > 1 || G.stage >= 1)).map(([, t, x]) => `<p><b>${t}.</b> ${val(x)}</p>`).join("") || `<p class="dim">Nothing yet. Talk to Elder Nadia.</p>`;
     const lore = G.flags.lore || [], chests = Object.keys(G.flags.chests || {}).length, shards = (G.flags.shards || []).length, camps = (G.flags.camps || []).length;
     const q = [
       [G.flags.charmReturned, G.flags.benoQuest || G.flags.charmReturned, "Find Beno's charm, lost on the salt north-west of Kessa, and return it to him."],
@@ -1514,7 +1514,7 @@
       [G.flags.tamThanked, G.flags.tamQuest, G.flags.wyrmDead ? "Take Pell's satchel back to his sister Tam in Kessa." : "Find Tam's brother Pell at the old watchtower in the far north-west. Something lives under it."],
       [forgeTier("atk") + forgeTier("def") === 8, true, `The forge in Odo's shop: blades ${forgeTier("atk")}/4, leathers ${forgeTier("def")}/4.`],
     ].filter(([, show]) => show).map(([done, , t]) => `<li class="${done ? "done" : ""}">${done ? "✓ " : ""}${t}</li>`).join("");
-    const tabs = LORE.filter(l => lore.includes(l.id)).map(l => `<li><b>${esc(l.title)}.</b> ${esc(l.text)}</li>`).join("") || `<li class="dim">None yet. Look for glowing stones.</li>`;
+    const tabs = LORE.filter(l => lore.includes(l.id)).map(l => `<li><b>${esc(l.title)}.</b> ${esc(val(l.text))}</li>`).join("") || `<li class="dim">None yet. Look for glowing stones.</li>`;
     const kills = G.flags.kills || {};
     const beasts = Object.keys(BESTIARY).filter(k => kills[k]).map(k => `<li><b>${esc(MONSTERS[k].name)}</b> ×${kills[k]}. ${esc(BESTIARY[k])}</li>`).join("") || `<li class="dim">No monsters defeated yet.</li>`;
     const rel = (G.relics || []).map(r => `<li><b>${RELICS[r].name}</b>: ${RELICS[r].desc}${Object.entries(G.equip || {}).find(([, x]) => x === r) ? ` <span class="done">(worn by ${G.party[Object.entries(G.equip).find(([, x]) => x === r)[0]].name})</span>` : ""}</li>`).join("") || `<li class="dim">Bosses drop relics. None yet.</li>`;
@@ -1567,9 +1567,12 @@
 
   // ================================================================== DIALOGUE ENGINE
   let dlg = null, sel = 0, typed = 0;
+  // a node's text and go may be functions, for lines that depend on the story so far; text is resolved once on open
+  const val = v => typeof v === "function" ? v() : v;
+  const nodeOf = id => { const n = D[id]; return typeof n.text === "function" ? { ...n, text: n.text() } : n; };
   function openDialog(id) {
     if (!id || !D[id]) return;
-    mode = "dialog"; dlg = D[id]; sel = 0; typed = REDUCED ? 9999 : 0;
+    mode = "dialog"; dlg = nodeOf(id); sel = 0; typed = REDUCED ? 9999 : 0;
     $("dialog").hidden = false;
     renderDialog();
   }
@@ -1597,16 +1600,16 @@
     if (!dlg || !dlg.choices || typed < dlg.text.length) return;
     const c = dlg.choices[i]; if (!c || (c.req && !c.req())) return;
     Music.sound("click");
-    closeDialogFor(c.go, c.act);
+    closeDialogFor(val(c.go), c.act);
   }
   function dialogAdvance() {
     if (!dlg) return;
     if (typed < dlg.text.length) { typed = dlg.text.length; renderDialog(); return; }
     if (dlg.choices) { pickChoice(sel); return; }
-    closeDialogFor(dlg.go, dlg.act);
+    closeDialogFor(val(dlg.go), dlg.act);
   }
   function closeDialogFor(next, act) {
-    if (next && D[next]) { if (act) act(); if (mode === "dialog") { dlg = D[next]; sel = 0; typed = REDUCED ? 9999 : 0; renderDialog(); } return; }
+    if (next && D[next]) { if (act) act(); if (mode === "dialog") { dlg = nodeOf(next); sel = 0; typed = REDUCED ? 9999 : 0; renderDialog(); } return; }
     dlg = null; $("dialog").hidden = true;
     if (mode === "dialog") mode = "play";
     if (act) act();
@@ -3149,7 +3152,7 @@
       f.tamThanked ? "Tam carves Pell's name on the courier's cairn." : "",
       f.tobinThanked ? "Tobin becomes the most feared auditor in Oru. He is scrupulously kind." : "",
       f.benoFollows ? "Beno grows up to find things for a living. The first thing he finds is Rook's lost quiver." : "",
-      ...extraFates(),
+      ...extraFates(kind),
     ].filter(Boolean).join(" ");
     let title, text;
     if (kind === "ring") {
@@ -3565,7 +3568,7 @@
   );
   CHAPTER_LOG.push(
     [8, "VII · The Open Gate", "I rang the Bell once and the gates opened, but something under the sea rang back. In Oru we exposed Treasurer Quill's forged ledgers. Ren confessed his bribes. Kest, who built the Iron Clerks, joined us."],
-    [9, "VIII · The Drowning Marsh", "We brought Reedholm's lost home and killed Old Gulp at the Bog Heart. Rook died making the shot from inside it. The Warden found us, remembering everything, and told us of the Drowned King."],
+    [9, "VIII · The Drowning Marsh", () => `We brought Reedholm's lost home and killed Old Gulp at the Bog Heart. ${G.flags.rookSaved ? "It swallowed Rook. I heard my whistle from inside it, and went in after him. He came out alive." : "Rook died making the shot from inside it."} The Warden found us, remembering everything, and told us of the Drowned King.`],
   );
   CAMPS.push(
     { id: "camp6", when: () => G.members.includes("kest") && G.stage >= 8, node: "camp6_0" },
@@ -4230,7 +4233,7 @@
         ["ilse", "When this is over, I want to make something that can't hurt anybody. A bell, maybe. A plough. A cradle for the Reedholm babies, on stilts, so the water can never reach them."],
         ["ilse", "I've spent my whole life making things strong. I want to spend what's left making things gentle. Is that stupid? It feels stupid, saying it out loud."],
         ["sable", "It sounds like the bravest thing you've said."],
-        ["ilse", "Then here's a braver one: I'm scared I won't get to. Rook didn't get to. The dead don't get an after. So I'm going to say it now, in case: you're the best thing that happened to my hands since Dario and his spoon. There. Forged. Can't unforge it."],
+        ["ilse", () => `Then here's a braver one: I'm scared I won't get to. ${G.flags.rookDead ? "Rook didn't get to. The dead don't get an after." : "Not everybody gets an after. You've seen that out here."} So I'm going to say it now, in case: you're the best thing that happened to my hands since Dario and his spoon. There. Forged. Can't unforge it.`],
       ] },
     ] },
     maru: { gates: [3, 6, 9], talks: [
@@ -5403,6 +5406,7 @@
     ren: "Ren: \"No more fines. No more debts. I'm going to find out what I'm like when I don't owe anybody anything. Probably insufferable.\"",
     kest: "Kest: \"I'm opening an apothecary in Oru. Real medicine. No poisons, no Guild contracts. You'll get a discount. Fifty percent. Don't tell anyone.\"",
     warden: "The Warden: \"Four hundred years I guarded a door. Now there is no door. I think I'll learn to garden. Grass is patient. So am I.\"",
+    rook: () => loveOn() ? "Rook: (He doesn't make a speech. He sits down next to you, close enough that your shoulders touch, and stays there.)" : "Rook: \"Kessa, if there's still room. I'll carry water up from the well for Aba's widow. It's a start.\"",
     nell: "Nell: \"I'm building a new diving bell. Not for fighting. For looking. There's a whole drowned city down there, courier, and for the first time nobody's asking it for anything.\"",
   };
   let epiEnding = null;
@@ -5676,7 +5680,7 @@
   let banterQ = [], banterT = 0, banterIdle = 20;
   function banterReady() {
     const seen = G.flags.banter || [], here = regionOf(Math.floor(G.px / TILE), Math.floor(G.py / TILE));
-    return BANTER.find(b => !seen.includes(b.id) && b.need.every(id => G.members.includes(id)) && (!b.where || b.where === here) && (!b.night || isNight()) && (!b.dead || (G.flags.fallen || []).includes(b.dead)));
+    return BANTER.find(b => !seen.includes(b.id) && b.need.every(id => G.members.includes(id)) && (!b.where || b.where === here) && (!b.night || isNight()) && (!b.dead || (G.flags.fallen || []).includes(b.dead)) && (!b.when || b.when()));
   }
   const _updateB = update;
   update = function (dt) {
@@ -7327,21 +7331,27 @@
     me: "that if someone must stay below, it should be someone who chose it",
     climbers: "that whoever reaches the high ground owes a trip back down for everyone else",
   };
-  function buildQuestion(q) {
-    const base = `cq_${q.id}_`;
-    q.talk.forEach(([who, text], i) => { D[base + i] = say(who, text, i < q.talk.length - 1 ? base + (i + 1) : base + "ask"); });
-    D[base + "ask"] = { who: "sable", text: `(${q.ask})`, choices: q.opts.map(([key, t], j) => ({ t, go: base + "r" + j, act: () => { G.flags.creed = { ...(G.flags.creed || {}), [q.axis]: key }; save(); } })) };
-    q.opts.forEach(([key, , who, reply], j) => { D[base + "r" + j] = say(who, reply, null, () => { toast(`The Courier's Creed: "${q.title}" written in the journal.`); updateHud(); }); });
+  // lines -> Sable's choice -> a reply, each reply running its own act when the talk ends
+  function buildTalk(base, lines, ask, choices) {
+    lines.forEach(([who, text], i) => { D[base + i] = say(who, text, i < lines.length - 1 ? base + (i + 1) : base + "ask"); });
+    D[base + "ask"] = { who: "sable", text: ask, choices: choices.map((c, j) => ({ t: c.t, go: base + "r" + j })) };
+    choices.forEach((c, j) => { D[base + "r" + j] = say(c.who, c.reply, null, c.act); });
   }
-  QUESTIONS.forEach(buildQuestion);
+  QUESTIONS.forEach(q => buildTalk(`cq_${q.id}_`, q.talk, `(${q.ask})`, q.opts.map(([key, t, who, reply]) => ({ t, who, reply, act: () => {
+    G.flags.creed = { ...(G.flags.creed || {}), [q.axis]: key }; save(); updateHud(); toast(`The Courier's Creed: "${q.title}" written in the journal.`);
+  } }))));
   const questionReady = () => QUESTIONS.find(q => G.stage >= q.stage && !(G.flags.creed || {})[q.axis] && q.need.every(id => G.members.includes(id)));
-  const _campSceneQ = campScene;
-  campScene = function () {
-    if (_campSceneQ()) return true;
-    const q = questionReady(); if (!q) return false;
-    setTimeout(() => { card("By the fire", q.title, "The road asks a question. Everyone answers it differently."); const w = () => { if (mode === "card") { setTimeout(w, 200); return; } openDialog(`cq_${q.id}_0`); }; setTimeout(w, 200); }, 400);
-    return true;
-  };
+  // Rest scenes compete for the same fire. Each registers once with a priority; a scene that is about to become
+  // impossible (it needs Rook, and Old Gulp is near) jumps the queue, so nothing is silently missed.
+  function cardThen(kicker, title, text, node) {
+    setTimeout(() => { card(kicker, title, text); const w = () => mode === "card" ? setTimeout(w, 200) : openDialog(node); setTimeout(w, 200); }, 400);
+  }
+  const beforeGulp = () => G.stage >= 8 && !G.flags.gulpDead;
+  const REST_SCENES = [{ id: "story", prio: () => 50, run: campScene }];   // camp talks and dreams, as they were
+  campScene = function () { return [...REST_SCENES].sort((a, b) => b.prio() - a.prio()).some(r => r.run()); };
+  REST_SCENES.push({ id: "questions", prio: () => { const q = questionReady(); return q && q.need.includes("rook") && beforeGulp() ? 60 : 30; },
+    run: () => { const q = questionReady(); if (!q) return false; cardThen("By the fire", q.title, "The road asks a question. Everyone answers it differently.", `cq_${q.id}_0`); return true; } });
+
 
   // ---- the Salt Hermit: an old man who only asks questions, and who he turns out to be
   const HERMIT_LOOK = { robe: "#6a6a7a", hair: "#e8e4f0", skin: "#c8a888", style: { hair: "hood", hood: "#4a4a5a", beard: true, eye: "#8a8aa8" } };
@@ -7360,7 +7370,7 @@
   npc2({ id: "hermit5", name: "The Salt Hermit", x: 13, y: 45, look: HERMIT_LOOK, show: () => G.flags.kingDead && (G.flags.hermit || []).length >= 4 && !G.flags.hermitDone });
   Object.assign(D, {
     hermit5_0: say("hermit5", "(The old man is sitting by Kessa's well, the way you always do.) You went down. You came back. You answered him. I have waited four hundred years to see someone do that.", "hermit5_1"),
-    hermit5_1: say("hermit5", "My name was Teodor. Aurel was my older brother. When the sea came, he stayed below with the ones who couldn't climb, and sang to them. I climbed. I took the high ground with the others, and I did not look back.", "hermit5_2"),
+    hermit5_1: say("hermit5", "My name was Teodor. Aurel was my older brother. When the sea came, he stayed below with the ones who couldn't climb, and sang to them. I climbed. I took the high ground with the others, and I did not look back.", "hermit5_1b"),
     hermit5_2: say("hermit5", "I have been asking questions for four hundred years, because I never asked the only one that mattered, while it mattered. Who stays below? I let my brother answer it for me. Everyone did.", "hermit5_3"),
     hermit5_3: { who: "hermit5", text: "(He holds out his hands. They are made of salt, and they are crumbling.) I am tired, courier. Will you let an old coward rest?", choices: [
       { t: "\"You asked every question except one. It's answered now. Rest.\"", go: "hermit5_4" },
@@ -7416,8 +7426,8 @@
     return P;
   };
   const _extraFatesC = extraFates;
-  extraFates = function () {
-    const out = _extraFatesC(), b = (G.flags.creed || {}).below;
+  extraFates = function (k) {
+    const out = _extraFatesC(k), b = (G.flags.creed || {}).below;
     if (b) out.push({ nobody: "Years later, children in Kessa learn one sentence before they learn to read: nobody stays below. They don't know who said it first.", me: "Years later, Sable still walks down to the shore on the last dry night of every year, and sits a while, in case someone below needs company.", climbers: "Years later, there is a custom in the valley: whoever builds a house on high ground must first carry one stone down to the lowest house they can find." }[b]);
     return out;
   };
@@ -7427,67 +7437,58 @@
   // A love story with Rook, built on his bonds. Five quiet scenes at the fire. If Sable gives him her whistle
   // before the marsh, the whistle is how she finds him inside Old Gulp, and he lives. Otherwise he dies as before,
   // and the ending remembers who leaves the arrows on his grave.
-  const LOVE = () => G.flags.love || (G.flags.love = { n: 0 });
-  const loveOn = () => { const l = LOVE(); return l.n > 0 && !l.declined; };
+  const love = () => G.flags.love || {};
+  const setLove = o => { G.flags.love = { ...love(), ...o }; save(); };
+  const loveOn = () => love().n > 0 && !love().declined;
+  const rookSavable = () => love().token && loveOn() && G.members.includes("rook");
   const HEARTS = [
     { id: "h1", title: "Night Watch", when: () => G.stage >= 4 && (G.flags.bonds || {}).rook >= 1, lines: [
       [null, "(It's Rook's watch, but he hasn't moved from the fire in an hour.)"],
       ["rook", "Can I ask you something? Why a courier? You're fast, you're stubborn, you can take a hit. The Guild would have paid you triple."],
       ["sable", "Nadia found me on a rock in the salt when I was two. No name, no letter. Just a tin whistle on a string round my wrist. Everything else in the world seemed to have somewhere it was going. Letters always do."],
       ["rook", "(He's quiet for a while.) Voss found me when I was ten. You were found at two. I think you got the better finder."]],
-      opts: [["\"Sit with me till your watch ends.\"", true, "(He moves over to make room on the warm salt. Neither of you says anything else.)"],
-        ["\"Get some sleep, Rook.\"", false, "(He nods. He's still awake when you close your eyes.)"]] },
+      opts: [["\"Sit with me till your watch ends.\"", true, "(He moves over to make room on the warm salt. Neither of you says anything else.)", null],
+        ["\"Get some sleep, Rook.\"", false, "(He nods. He's still awake when you close your eyes.)", null]] },
     { id: "h2", title: "The Blue Thread", when: () => G.stage >= 5 && (G.flags.bonds || {}).rook >= 2, lines: [
       [null, "(Rook is fletching arrows. The thread is blue, the same blue as your scarf, which tore on a pillar in the Cathedral. He doesn't mention it.)"],
       ["rook", "Ilse told me about the medicine. The girl in the storm. (He doesn't look up.) You carry everybody's letters, and you carry that too. Who carries yours?"]],
-      opts: [["\"Maybe you could.\"", true, "(He doesn't answer. He finishes the arrow, and puts it in your quiver instead of his.)"],
-        ["\"Nobody. That's the job.\"", false, "Then it's a bad job. (He goes back to his fletching.)"]] },
+      opts: [["\"Maybe you could.\"", true, "(He doesn't answer. He finishes the arrow, and puts it in your quiver instead of his.)", null],
+        ["\"Nobody. That's the job.\"", false, "Then it's a bad job. (He goes back to his fletching.)", "rook"]] },
     { id: "h3", title: "Lanterns over Oru", when: () => G.stage >= 7 && (G.flags.bonds || {}).rook >= 3 && !G.flags.gulpDead, lines: [
       [null, "(The roof tiles are still warm from the day. You and Rook sit with your legs over the edge, watching the lanterns climb.)"],
       ["rook", "Never thought I'd see them from up here. From the high streets. We always figured the people up here didn't look."],
       ["rook", "I can't stay in Oru, after. They hang Guild deserters in that square. I was thinking of Kessa. (A pause.) If there's room."]],
-      opts: [["\"There's room. Stay.\"", true, "(He lets out a breath he's been holding since the Grove. His hand finds yours on the tiles, and stays there.)"],
-        ["\"Ask me again when the Bell is home.\"", true, "(He nods slowly.) When the Bell is home. ...I'll ask."],
-        ["\"Kessa takes anyone in. It took me. You'll have friends there.\"", "decline", "(A pause. Then he bumps your shoulder with his.) Friends. That's more than a man like me gets to expect. ...Thank you, courier."]] },
-    { id: "h4", title: "The Whistle", when: () => G.stage >= 7 && !G.flags.gulpDead && loveOn() && LOVE().h3, lines: [
+      opts: [["\"There's room. Stay.\"", true, "(He lets out a breath he's been holding since the Grove. His hand finds yours on the tiles, and stays there.)", null],
+        ["\"Ask me again when the Bell is home.\"", true, "(He nods slowly.) When the Bell is home. ...I'll ask.", "rook"],
+        ["\"Kessa takes anyone in. It took me. You'll have friends there.\"", "decline", "(A pause. Then he bumps your shoulder with his.) Friends. That's more than a man like me gets to expect. ...Thank you, courier.", "rook"]] },
+    { id: "h4", title: "The Whistle", when: () => G.stage >= 7 && !G.flags.gulpDead && loveOn() && love().h3, lines: [
       [null, "(The marsh is close. You can smell it. You take the tin whistle from around your neck: the one you were found with. The only thing that was ever yours before you were anybody.)"],
       ["sable", "Couriers use these in salt-storms. Three short notes. I've never lost a letter, Rook. I always find where things are going. If you're ever lost, blow it, and I'll come."],
       ["rook", "(He turns it over in his fingers.) And if I'm somewhere you can't follow?"]],
-      opts: [["\"Then blow it anyway.\"", true, "(He doesn't thank you. In the orphanage they thanked the Guild for everything, every meal and every beating. He just puts the cord over his head, and tucks the whistle inside his shirt.)"]],
-      done: () => { LOVE().token = true; } },
-    { id: "h5", title: "Down There", when: () => G.stage >= 9 && LOVE().saved && G.members.includes("rook"), lines: [
+      opts: [["\"Then blow it anyway.\"", true, "(He doesn't thank you. In the orphanage they thanked the Guild for everything, every meal and every beating. He just puts the cord over his head, and tucks the whistle inside his shirt.)", null]],
+      done: () => ({ token: true }) },
+    { id: "h5", title: "Down There", when: () => G.stage >= 9 && G.flags.rookSaved && G.members.includes("rook"), lines: [
       [null, "(Rook's hands still shake. He shoots anyway. Tonight he's holding a cup of tea with both of them, and not drinking it.)"],
       ["rook", "When I was inside it, in the dark, with the others... I kept thinking about Aba. The way he looked at me. And I thought: that's fair. That's where I belong. Down here, with the ones I let die."],
       ["rook", "Then I heard you coming."]],
-      opts: [["\"Nobody belongs down there. Not even you.\"", true, "(He looks at you for a long time. Then he leans his forehead against yours, and stays there until the fire burns down.)"],
-        ["(Say nothing. Take his hands until they stop shaking.)", true, "(It takes a long time. When they're still, he doesn't let go.)"]] },
+      opts: [["\"Nobody belongs down there. Not even you.\"", true, "(He looks at you for a long time. Then he leans his forehead against yours, and stays there until the fire burns down.)", null],
+        ["(Say nothing. Take his hands until they stop shaking.)", true, "(It takes a long time. When they're still, he doesn't let go.)", null]] },
   ];
-  for (const h of HEARTS) {
-    const base = `love_${h.id}_`;
-    h.lines.forEach(([who, text], i) => { D[base + i] = say(who, text, i < h.lines.length - 1 ? base + (i + 1) : base + "ask"); });
-    D[base + "ask"] = { who: "sable", text: "(What do you say?)", choices: h.opts.map(([t], j) => ({ t, go: base + "r" + j })) };
-    h.opts.forEach(([, warm, reply], j) => {
-      const narration = reply.startsWith("(") && !/\)\s*\S/.test(reply);   // wholly in parentheses: a stage direction, not Rook
-      D[base + "r" + j] = say(narration ? null : "rook", reply, null, () => {
-        const l = LOVE(); l[h.id] = true;
-        if (warm === "decline") l.declined = true; else if (warm) l.n++;
-        if (h.done) h.done();
-        save(); updateHud();
-      });
-    });
-  }
-  const heartReady = () => G.members.includes("rook") && !LOVE().declined && HEARTS.find(h => !LOVE()[h.id] && h.when());
-  const _campSceneL = campScene;
-  campScene = function () {
-    const h = heartReady();
-    if (h) { setTimeout(() => { card("By the fire", h.title, "Rook"); const w = () => { if (mode === "card") { setTimeout(w, 200); return; } openDialog(`love_${h.id}_0`); }; setTimeout(w, 200); }, 400); return true; }
-    return _campSceneL();
-  };
+  // each option: [text, warm (true, false or "decline"), reply, who speaks the reply (null for a stage direction)]
+  HEARTS.forEach(h => buildTalk(`love_${h.id}_`, h.lines, "(What do you say?)", h.opts.map(([t, warm, reply, who]) => ({ t, who, reply, act: () => {
+    const l = love(); setLove({ [h.id]: true, n: (l.n || 0) + (warm === true ? 1 : 0), declined: l.declined || warm === "decline", ...(h.done ? h.done() : {}) });
+    updateHud();
+  } }))));
+  const heartReady = () => G.members.includes("rook") && !love().declined && HEARTS.find(h => !love()[h.id] && h.when());
+  REST_SCENES.push({ id: "rook", prio: () => beforeGulp() ? 70 : 40,
+    run: () => { const h = heartReady(); if (!h) return false; cardThen("By the fire", h.title, "Rook", `love_${h.id}_0`); return true; } });
+  let nudgeT = 0;
   const _updateL = update;
-  update = function (dt) {   // a nudge, once per scene, so a player who never rests doesn't miss it
+  update = function (dt) {   // a nudge, once per scene, so a player who never rests doesn't miss it; checked every few seconds
     _updateL(dt);
-    if (mode !== "play" || !G || !G.stage) return;
-    const h = heartReady(); if (h && !LOVE()[h.id + "n"]) { LOVE()[h.id + "n"] = true; setTimeout(() => toast("Rook has been quiet all day. Maybe rest at a fire tonight."), 1500); }
+    if (mode !== "play" || !G || !G.stage || (nudgeT -= dt) > 0) return;
+    nudgeT = 3;
+    const h = heartReady(); if (h && love().nudged !== h.id) { setLove({ nudged: h.id }); setTimeout(() => toast("Rook has been quiet all day. Maybe rest at a fire tonight."), 1500); }
   };
 
   // ---- Old Gulp: the whistle
@@ -7498,9 +7499,9 @@
     gulp_love3: say("sable", "You blew it. I said I'd come.", "gulp_love4"),
     gulp_love4: say("rook", "You said anyway. (He turns his head, and finds Ilse.) Ilse. I held the torch, that night on the Flats. I never said sorry properly. I'm saying it now. I'll keep saying it. Turns out I get to.", "gulp_love5"),
     gulp_love5: say("ilse", "(Ilse sits down hard in the mud next to him, and puts her ruined hand on his chest, over the whistle, to feel it rise and fall.) ...Say it tomorrow, archer. Say it every day. I'll get sick of it eventually.", null, () => {
-      const l = LOVE(); l.saved = true; G.flags.rookSaved = true; const h = G.party.rook; if (h) { h.hp = Math.max(1, Math.round(h.maxHp * 0.3)); h.maxHp = Math.max(10, h.maxHp - 4); }
-      save(); updateHud(); card("He lives", "Rook", "His hands shake now, and there are white burns up both his arms that will never fade. He wears your whistle on its cord and does not take it off. When anyone asks about the scars, he says somebody came back for him, and leaves it at that.");
-      setTimeout(() => { const w = () => { if (mode === "card") { setTimeout(w, 200); return; } openDialog("warden2_love"); }; w(); }, 400);
+      G.flags.rookSaved = true; const h = G.party.rook; if (h) { h.hp = Math.max(1, Math.round(h.maxHp * 0.3)); h.maxHp = Math.max(10, h.maxHp - 4); }
+      save(); updateHud();
+      cardThen("He lives", "Rook", "His hands shake now, and there are white burns up both his arms that will never fade. He wears your whistle on its cord and does not take it off. When anyone asks about the scars, he says somebody came back for him, and leaves it at that.", "warden2_love");
     }),
     warden2_love: say("warden2", "(The ground trembles. The Warden walks out of the rain, crystal steaming, and looks at Rook alive in the mud, and then at the burns on your arms.) Four hundred years ago, a king went down into the water after his people. He did not come back up. ...You did. Remember that, courier, when you meet him.", "warden2_1"),
   });
@@ -7512,11 +7513,10 @@
   });
   const _openDialogL = openDialog;
   openDialog = function (id) {
-    if (id === "gulp_after" && LOVE().token && G.members.includes("rook")) id = "gulp_love0";
+    if (id === "gulp_after" && rookSavable()) id = "gulp_love0";
     return _openDialogL(id);
   };
-  Object.defineProperty(D.gulp_after2, "go", { get: () => loveOn() ? "gulp_after3l" : "gulp_after3", configurable: true });
-  if (CINE_BEFORE.gulp_after) { const w = CINE_BEFORE.gulp_after.when; CINE_BEFORE.gulp_after.when = () => w() && !LOVE().token; }
+  D.gulp_after2.go = () => loveOn() ? "gulp_after3l" : "gulp_after3";
 
   // ---- Aba's widow: if he lives, he carries his own letter
   Object.assign(D, {
@@ -7534,15 +7534,15 @@
 
   // ---- pixel cinema: lanterns over Oru, and the whistle in the dark
   const ROOK_L = () => HEROES.rook.look, SABLE_L = () => HEROES.sable.look;
-  const lanterns = (g2, t, n = 22) => { for (let i = 0; i < n; i++) { const life = (t * 0.07 + hash(i, 41)) % 1, x = (hash(i, 43) * VIEW_W + Math.sin(t + i) * 6) | 0, y = 170 - life * 190; PR(g2, x - 1, y - 1, 5, 6, "#3a1a10"); PR(g2, x, y, 3, 4, i % 3 ? "#ffcf4a" : "#ff9a3a"); PR(g2, x + 1, y + 1, 1, 2, "#fff4c8"); } };
+  PX.lanterns = (g2, t, n = 22) => { for (let i = 0; i < n; i++) { const life = (t * 0.07 + hash(i, 41)) % 1, x = (hash(i, 43) * VIEW_W + Math.sin(t + i) * 6) | 0, y = 170 - life * 190; PR(g2, x - 1, y - 1, 5, 6, "#3a1a10"); PR(g2, x, y, 3, 4, i % 3 ? "#ffcf4a" : "#ff9a3a"); PR(g2, x + 1, y + 1, 1, 2, "#fff4c8"); } };
   const LANTERNS = [
     { dur: 5.0, fadeIn: 0.8, line: [null, "The night the gates open, the poor quarter of Oru lets paper lanterns go, one for everyone the gate kept out."], draw: (g2, t) => {
-      nightBg(g2, t); PX.moon(g2, 60, 30, 10); lanterns(g2, t);
+      nightBg(g2, t); PX.moon(g2, 60, 30, 10); PX.lanterns(g2, t);
       PX.village(g2, 150, "#141024"); PR(g2, 0, 152, VIEW_W, 40, "#1a1430");
       PR(g2, 110, 132, 120, 22, "#2a2040"); for (let x = 110; x < 230; x += 6) PR(g2, x, 132, 5, 2, "#3a2e58");   // the roof ridge
       chibi(g2, SABLE_L(), { dir: "up" }, 2, 150, 150); chibi(g2, ROOK_L(), { dir: "up" }, 2, 186, 150);
     } },
-    { dur: 4.4, line: ["Rook", "I grew up four streets that way. We used to count the lanterns from the orphanage and guess who they were for."], draw: portraitShot(HEROES.rook.look, { eyes: "down", light: "#ffcf4a", lightFrom: "left" }, (g2, t) => { nightBg(g2, t); lanterns(g2, t, 14); }) },
+    { dur: 4.4, line: ["Rook", "I grew up four streets that way. We used to count the lanterns from the orphanage and guess who they were for."], draw: portraitShot(HEROES.rook.look, { eyes: "down", light: "#ffcf4a", lightFrom: "left" }, (g2, t) => { nightBg(g2, t); PX.lanterns(g2, t, 14); }) },
   ];
   const WHISTLE = [
     { dur: 4.2, fadeIn: 0.5, sound: "hit", line: [null, "Old Gulp shudders and goes still."], draw: (g2, t) => { AREA_BG.marsh(g2, t); PX.rain(g2, t, 90); monster(g2, "gulp", 1, 160, 176, { hurt: t < 0.6 }); } },
@@ -7560,30 +7560,26 @@
   CINE_BEFORE.gulp_love0 = { shots: WHISTLE, music: "cine_storm" };
 
   // ---- the journal, the Chronicle and the ending
-  let endKindL = null;
-  const _endingL = ending;
-  ending = function (kind) { endKindL = kind; return _endingL(kind); };
   const _extraJournalL = extraJournalHtml;
   extraJournalHtml = function () {
-    const l = G.flags.love; if (!l || (!l.n && !l.declined)) return _extraJournalL();
+    const l = love(); if (!l.n && !l.declined) return _extraJournalL();
     const seen = HEARTS.filter(h => l[h.id]).map(h => h.title);
-    const state = l.declined ? "A friend. He'll come to Kessa." : l.saved ? "He wears your whistle. His hands shake. He shoots anyway." : G.flags.rookDead ? "There would have been room." : l.token ? "He wears your whistle, under his shirt." : l.h3 ? "He asked if there was room in Kessa." : "Some nights he doesn't wake you for your watch.";
+    const state = l.declined ? "A friend. He'll come to Kessa." : G.flags.rookSaved ? "He wears your whistle. His hands shake. He shoots anyway." : G.flags.rookDead ? "There would have been room." : l.token ? "He wears your whistle, under his shirt." : l.h3 ? "He asked if there was room in Kessa." : "Some nights he doesn't wake you for your watch.";
     return _extraJournalL() + `<h3>Rook</h3><p>${state}</p><p class="dim" style="font-size:13px">${seen.join(" · ")}</p>`;
   };
   const _chronicleL = chronicle;
   chronicle = function () {
-    const P = _chronicleL(), l = G.flags.love;
-    if (l && l.n >= 2 && !l.declined) P.splice(P.length - 1, 0, ["The Archer and the Courier", l.saved
+    const P = _chronicleL(), l = love();
+    if (l.n >= 2 && !l.declined) P.splice(P.length - 1, 0, ["The Archer and the Courier", G.flags.rookSaved
       ? "Before the marsh, the courier gave the archer the tin whistle she had been found with. When Old Gulp swallowed him, he blew it from inside the dark, and she went in after him. Of everything in this chronicle, it is the only time I know of that someone went back down into the water for another, and came up again."
       : G.flags.rookDead ? "The archer asked the courier if there was room for him in Kessa. He died in the marsh before he could find out. Every spring there is a new arrow on his grave at Reedholm, fletched with blue thread. Everyone knows who leaves them."
       : "Somewhere between the Grove and the gate, the courier and the archer stopped sitting on opposite sides of the fire. Nobody remarked on it."]);
     return P;
   };
   const _extraFatesL = extraFates;
-  extraFates = function () {
-    const out = _extraFatesL(), l = G.flags.love; if (!l || l.declined || l.n < 2) return out;
-    const k = endKindL;
-    if (l.saved && G.members.includes("rook")) out.push({
+  extraFates = function (k) {
+    const out = _extraFatesL(k), l = love(); if (l.declined || !(l.n >= 2)) return out;
+    if (G.flags.rookSaved && G.members.includes("rook")) out.push({
       ring: "Rook comes to Kessa. He re-hangs the bell-rope Lio died holding, and teaches the village children to shoot at targets and never at people. Some evenings he and Sable walk out to the edge of the salt and don't say much.",
       sleep: "Rook comes to Kessa. Every year he and Sable carry a letter to Aba's widow, and every year she lets him a little further past the door.",
       keeper: "Rook lives out his life in a hut at the end of Nell's pier. On quiet nights he sits with his feet in the water, so that someone below knows someone above is still there.",
@@ -7608,24 +7604,19 @@
     { id: "s3", need: ["warden", "ilse"], when: () => G.stage >= 9, lines: [["warden", "Smith. The four notes you hum. Where did you learn them?"], ["ilse", "My father. He said they came up out of the anvil if you struck it right."], ["warden", "They came up out of the ground. I heard them when I was built, under the water. Many voices at once. It is not a forging song. It is a question, and the living have been humming it for four hundred years without knowing they were asked."]] },
     { id: "s4", need: ["rook", "ilse"], when: () => G.flags.rookSaved, lines: [["rook", "(Rook is humming. He stops when he notices.) ...Inside the toad. They were all doing it. The dead. Four notes."], ["ilse", "My song."], ["rook", "I don't think it was ever yours, smith."]] },
   );
-  banterReady = function () {
-    const seen = G.flags.banter || [], here = regionOf(Math.floor(G.px / TILE), Math.floor(G.py / TILE));
-    return BANTER.find(b => !seen.includes(b.id) && b.need.every(id => G.members.includes(id)) && (!b.where || b.where === here) && (!b.night || isNight()) && (!b.dead || (G.flags.fallen || []).includes(b.dead)) && (!b.when || b.when()));
-  };
   const heardSong = () => (G.flags.banter || []).some(id => ["b1", "s1", "s2", "s3", "s4"].includes(id)) || (G.flags.fallen || []).includes("maru");
   const kingText = D.king_scene.text;
-  Object.defineProperty(D.king_scene, "text", { configurable: true, get: () => kingText + (heardSong()
+  D.king_scene.text = () => kingText + (heardSong()
     ? " And all of them, every drowned mouth, are humming. Four notes, rising at the end, never answered. Ilse's forging song. Ada's grandmother's washing song. It was never theirs."
-    : " And all of them, every drowned mouth, are humming four notes, rising at the end, never answered.") });
+    : " And all of them, every drowned mouth, are humming four notes, rising at the end, never answered.");
   const _extraFatesS = extraFates;
-  extraFates = function () {
-    const out = _extraFatesS();
-    if ((endKindL === "ring" || endKindL === "sleep") && heardSong()) out.push("Children in Kessa still hum the four notes. They have added a fifth, now, at the end. It goes down instead of up. It sounds like an answer.");
+  extraFates = function (k) {
+    const out = _extraFatesS(k);
+    if ((k === "ring" || k === "sleep") && heardSong()) out.push("Children in Kessa still hum the four notes. They have added a fifth, now, at the end. It goes down instead of up. It sounds like an answer.");
     return out;
   };
 
   // ---- Teodor carried Aurel's refusal to the Guild, and sold it
-  D.hermit5_1.go = "hermit5_1b";
   Object.assign(D, {
     hermit5_1b: say("hermit5", "I was a courier, before the valley had a word for it. Aurel gave me his answer to carry to the Guild council: he would not sell the lowlands. Corvin met me on the road, before the council ever sat. He asked what I was carrying.", "hermit5_1c"),
     hermit5_1c: say("hermit5", "He offered me a house on the hill for the letter. Dry ground, for me and mine, forever. I gave it to him. The council never read it. Three weeks later Corvin opened the sluice, and my brother went down into the water with his people, still waiting for an answer I had sold.", "hermit5_1d"),
@@ -7634,7 +7625,7 @@
   D.corvin_scene2.go = "corvin_scene2b";
   D.corvin_scene2b = say("corvin", "Aurel sent his refusal by courier, you know. His own brother, a boy with a satchel. I met him on the road and offered him a house on the hill for it. He took it. Couriers are the most reasonable people in the world. They know exactly what everything weighs.", "corvin_scene3");
   const cairn = LORE.find(l => l.id === 6);
-  if (cairn) { const t0 = cairn.text; Object.defineProperty(cairn, "text", { configurable: true, get: () => t0 + (G && G.flags.hermitDone ? " At the very bottom, under all the others, is the oldest stone. Someone has finally scratched a name into it: TEODOR." : "") }); }
+  if (cairn) { const t0 = cairn.text; cairn.text = () => t0 + (G && G.flags.hermitDone ? " At the very bottom, under all the others, is the oldest stone. Someone has finally scratched a name into it: TEODOR." : ""); }
 
   // ================================================================== BOOT
   const saved = load();          // read the save before a fresh game could overwrite it
