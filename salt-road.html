@@ -7703,6 +7703,11 @@
   // 1. Break the charge. A foe winding up a big attack can be staggered by dealing enough damage before it lands:
   //    it loses the attack, is stunned, and is Exposed (takes 25% more) for 2 rounds. The intent shows what's needed.
   // 2. Bosses shake off stuns: after losing a turn to a stun, a boss can't be stunned again for 2 rounds.
+  // the prologue is a tutorial: its fights keep their hand-tuned numbers on every difficulty
+  const _unitFromMonsterX = unitFromMonster;
+  unitFromMonster = function (id, i, n) { const u = _unitFromMonsterX(id, i, n); if (G.stage === 0) u.maxHp = u.hp = MONSTERS[id].hp; return u; };
+  const _foeAtkX = foeAtk;
+  foeAtk = function (f) { return _foeAtkX(f) / (G.stage === 0 ? DIFFS[difficulty].dmg : 1); };
   const breakNeed = f => Math.round(f.maxHp * (f.boss ? 0.15 : 0.3));
   const winding = f => f.charged || (f.intent && f.intent.release);
   const _damageX = damage;
