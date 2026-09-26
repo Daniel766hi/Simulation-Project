@@ -76,14 +76,14 @@ def test(d):
 def ours_members(windows):
     """This pipeline's members (MEMBERS) for the given windows: 0.5 recursive + 0.5 multi-horizon,
     aligned to store x department, then store calibration pooled over the earlier windows among
-    `windows` (walk-forward in ORIGINS order; the first is uncalibrated). A window's forecast
+    `windows` (walk-forward in time order; the first is uncalibrated). A window's forecast
     therefore depends on which earlier windows are passed in."""
     full, calendar, _ = load_raw()
     cal = reconcile.calendar_frame(calendar)
     S9, A, keys = reconcile.aggregate_series(full)
     codes = calibrate.group_codes(full, calibrate.GRAINS["store"])
     n = codes.max() + 1
-    order = [o for o in ORIGINS if o in windows]
+    order = sorted(windows)   # time order; the same as ORIGINS order for the nine registered windows
     acts = {o: full[[f"d_{d}" for d in range(o + 1, o + HORIZON + 1)]].to_numpy(float) for o in order}
     out = {o: {} for o in order}
     for label, (rec, mh) in MEMBERS.items():
