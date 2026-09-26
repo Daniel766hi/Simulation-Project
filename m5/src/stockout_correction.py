@@ -19,11 +19,10 @@ never change the reported result.
 import json
 
 import numpy as np
-import pandas as pd
 
 from config import HORIZON, OUTPUTS
 from score import evaluator
-from stockouts import LOOKBACK, MAX_RUN, MIN_RATE, MIN_RUN, PERIOD, zero_runs
+from stockouts import LOOKBACK, MAX_RUN, MIN_RATE, MIN_RUN, zero_runs
 from wrmsse import load_raw
 
 ORIGINS = [1773, 1801, 1829, 1857, 1885, 1913, 1941]

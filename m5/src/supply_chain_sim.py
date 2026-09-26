@@ -197,7 +197,8 @@ def simulate(full, fc, sigma_fc, price, windows, sharing, beta=1.0, sigma_dc=Non
     keep = slice(WARMUP_WEEKS, weeks)
     dem, so, do = w_dem[:, keep], w_sord[:, keep], w_dord[:, keep]
     v_dem = dem.var(axis=1).sum()
-    safe = lambda x: float(x / v_dem) if v_dem > 0 else float("nan")
+    def safe(x):
+        return float(x / v_dem) if v_dem > 0 else float("nan")
     days = T - measure_from
     hold = HOLD_PER_WEEK * (s_inv_val + d_inv_val) / 7
     lost_value = (lost * price).sum()

@@ -1,0 +1,8 @@
+# Lint settings for the M5 project (run: cd m5 && ruff check src tests).
+line-length = 130
+
+[lint.per-file-ignores]
+# These files are loaded by the pre-registered nine-window test while it runs, so they stay
+# byte-for-byte frozen until it finishes; remove these entries then and fix the imports.
+"src/reconcile.py" = ["F401"]
+"src/stockouts.py" = ["F401"]

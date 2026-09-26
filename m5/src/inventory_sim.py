@@ -136,7 +136,8 @@ def main():
         chosen = json.loads(unc.read_text())["choice"]["L12"]["chosen"]
         if chosen.startswith("nb"):
             nb_r = float(chosen.split("=")[1].rstrip(")"))
-    cols = lambda o: [f"d_{d}" for d in range(o + 1, o + HORIZON + 1)]
+    def cols(o):
+        return [f"d_{d}" for d in range(o + 1, o + HORIZON + 1)]
     act_sigma = full[cols(ORIGIN_SIGMA)].to_numpy(float)
     demand = full[cols(ORIGIN_EVAL)].to_numpy(float)
     price = unit_prices(full, calendar, prices, ORIGIN_EVAL)
