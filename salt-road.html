@@ -160,6 +160,7 @@
   .screen .big:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
   #cardArt { width: min(480px, 88%); height: auto; image-rendering: pixelated; border-radius: 8px; border: 2px solid var(--edge); box-shadow: 0 10px 40px -10px #000; }
   @media (max-height: 560px) { #cardArt { width: min(300px, 60%); } }
+  @media (max-height: 460px) { #dialog { grid-template-columns: 44px 1fr; gap: 8px; padding: 8px 10px; max-height: 58%; overflow-y: auto; } #dialog canvas { width: 44px; height: 44px; } #dialog .line { font-size: 13px; line-height: 1.35; } #dialog .next { font-size: 11px; } }
   @media (max-height: 460px) { .screen { gap: 6px; padding: 10px 16px; overflow-y: auto; } .screen h1 { font-size: clamp(24px, 9vh, 40px); } .screen h2 { font-size: 11px; } .screen p { font-size: 12.5px; line-height: 1.35; } .screen .big { padding: 7px 18px; font-size: 16px; } .screen p.diffNote { font-size: 11.5px; } }
   .screen .ghost { font: 500 14px var(--font); color: var(--muted); background: transparent; border: 1px solid var(--edge); border-radius: 8px; padding: 7px 14px; cursor: pointer; }
 
@@ -1254,7 +1255,7 @@
     { x: 89, y: 52, to: [117, 84] },
     { x: 38, y: 29, to: [135, 16], req: () => G.flags.minesOpen },
     { x: 133, y: 16, to: [37, 29] },
-    { x: 166, y: 4, to: [165, 22] }, { x: 167, y: 22, to: [165, 4] },
+    { x: 166, y: 4, to: [165, 22] }, { x: 167, y: 22, to: [166, 5] },
     { x: 134, y: 34, to: [135, 40] }, { x: 133, y: 40, to: [135, 34] },
   ];
   let warpFade = 0;
@@ -1434,7 +1435,9 @@
   stickEl.addEventListener("pointermove", e => { if (e.pointerId === stickId) stickMove(e); });
   const stickEnd = () => { stickId = null; stick.x = stick.y = 0; knob.style.transform = ""; };
   stickEl.addEventListener("pointerup", stickEnd); stickEl.addEventListener("pointercancel", stickEnd);
-  $("bA").addEventListener("pointerdown", e => { e.preventDefault(); Music.init(); if (mode === "dialog") dialogAdvance(); else if (mode === "play") interact(); else if (mode === "title") startGame(); else if (mode === "card") $("cardBtn").click(); });
+  $("bA").addEventListener("pointerdown", e => {   // on touch, ACT moves a scene or cinematic on by one line, where E on a keyboard skips it
+     e.preventDefault(); Music.init(); if (mode === "scene" && scene) scene.t = 1e9; else if (mode === "cine" && cine) cine.t = cine.shots[cine.i].dur; else if (mode === "dialog") dialogAdvance(); else if (mode === "play") interact(); else if (mode === "title") startGame(); else if (mode === "card") $("cardBtn").click(); });
+  $("dialog").addEventListener("pointerdown", e => { if (mode === "dialog" && !e.target.closest("button")) { e.preventDefault(); dialogAdvance(); } });
   $("bB").addEventListener("pointerdown", e => { e.preventDefault(); Music.init(); player.sprintTouch = true; if (mode === "play") dash(); $("bB").style.borderColor = "var(--gold)"; });
   const runEnd = () => { player.sprintTouch = false; $("bB").style.borderColor = ""; };
   $("bB").addEventListener("pointerup", runEnd); $("bB").addEventListener("pointercancel", runEnd); $("bB").addEventListener("pointerleave", runEnd);
@@ -1569,10 +1572,15 @@
   let dlg = null, sel = 0, typed = 0;
   // a node's text and go may be functions, for lines that depend on the story so far; text is resolved once on open
   const val = v => typeof v === "function" ? v() : v;
-  const nodeOf = id => { const n = D[id]; return typeof n.text === "function" ? { ...n, text: n.text() } : n; };
+  const nodeOf = id => {
+    const n = D[id]; if (!n) return null;
+    const r = typeof n.text === "function" ? { ...n, text: n.text() } : n;
+    if (typeof r.text !== "string") { console.warn(`dialogue node ${id} has no text; skipped`); return null; }
+    return r;
+  };
   function openDialog(id) {
-    if (!id || !D[id]) return;
-    mode = "dialog"; dlg = nodeOf(id); sel = 0; typed = REDUCED ? 9999 : 0;
+    const n = id && nodeOf(id); if (!n) return;
+    mode = "dialog"; dlg = n; sel = 0; typed = REDUCED ? 9999 : 0;
     $("dialog").hidden = false;
     renderDialog();
   }
@@ -1609,7 +1617,8 @@
     closeDialogFor(val(dlg.go), dlg.act);
   }
   function closeDialogFor(next, act) {
-    if (next && D[next]) { if (act) act(); if (mode === "dialog") { dlg = nodeOf(next); sel = 0; typed = REDUCED ? 9999 : 0; renderDialog(); } return; }
+    const nn = next && nodeOf(next);
+    if (nn) { if (act) act(); if (mode === "dialog") { dlg = nn; sel = 0; typed = REDUCED ? 9999 : 0; renderDialog(); } return; }
     dlg = null; $("dialog").hidden = true;
     if (mode === "dialog") mode = "play";
     if (act) act();
@@ -4913,7 +4922,7 @@
     if (n.id === "ines" && f.quillDead && (!f.corvinLedger || f.apology)) { D.__rumor = say("ines", rumorLine("ines_after")); return "__rumor"; }
     if (n.id === "oskar" && f.gulpDead) { D.__rumor = say("oskar", rumorLine("oskar_after")); return "__rumor"; }
     if (n.id === "tobin" && f.tobinThanked && !(!delivered("bram") && carrying("bram"))) { D.__rumor = say("tobin", rumorLine("tobin_after")); return "__rumor"; }
-    if (n.id === "abawidow" && !carrying("rook")) { D.__rumor = say("abawidow", rumorLine("aba_idle")); return "__rumor"; }
+    if (n.id === "abawidow" && !carrying("rook") && rumorLine("aba_idle")) { D.__rumor = say("abawidow", rumorLine("aba_idle")); return "__rumor"; }
     if (n.id === "pip" && f.choirDone && (f.pipAda || !G.members.includes("ada"))) { D.__rumor = say("pip", rumorLine("pip_q3")); return "__rumor"; }
     if (n.id === "sela" && f.selaDone) { D.__rumor = say("sela", rumorLine("sela_after")); return "__rumor"; }
     return null;
@@ -7726,7 +7735,7 @@
     const spots = { ...Object.fromEntries(NPCS.map(n => [n.id, [n.x, n.y]])), ...Object.fromEntries(CHESTS.map(c => ["chest_" + c.id, [c.x, c.y]])), ...Object.fromEntries(LORE.map(l => ["lore" + l.id, [l.x, l.y]])),
       ...Object.fromEntries(SHARDS.map(c => ["shard" + c.id, [c.x, c.y]])), key: [40, 17], charm: [11, 15], mother: [62, 43], voss: [34, 8], hollis: [61, 12], bell: [34, 6], gaterest: [56, 15], groverest: [60, 44], wyrm: [7, 11] };
     return Object.entries(spots).filter(([, [x, y]]) => ![[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => seen.has((x + dx) + "," + (y + dy)))).map(([k]) => k);
-  }, props: () => PROPS.length, battleState: () => battle && battle.foes.map(f => f.name + ":" + f.hp + "/" + f.maxHp).join(" "), clearField: () => { field = []; }, rest: () => restParty(), fish: () => fishing, field: () => field, storm: () => { stormWait = 0; return storm; }, cineTest: k => playCine({ crown: CROWN_END, keeper: KEEPER_END, butcher: CINE_BEFORE.maru_scene0.shots, quill: CINE_BEFORE.quill_scene.shots, maw: CINE_BEFORE.maw_scene.shots, vela: CINE_BEFORE.vela_scene.shots, corvin: CINE_BEFORE.corvin_scene.shots, mother: CINE_BEFORE.mother_scene.shots, maru: MARU_SONG, rook: ROOK_LAST, ren: REN_DOOR, hollis: HOLLIS_UNMASKED, king: KING_RISES, salt: SALT_CHILD, teodor: CINE_BEFORE.hermit5_0.shots, lanterns: CINE_BEFORE.love_h3_0.shots, whistle: CINE_BEFORE.gulp_love0.shots }[k], null, { music: "cine_deep" }), propsList: () => PROPS.map(p => [p.type, p.x, p.y, get(p.x, p.y)]), bopts: () => battle && JSON.stringify(battle.opts), tile: (x, y) => get(x, y), win: () => battle && battle.foes.forEach(f => { f.hp = 1; }), end: k => ending(k), ach: () => achGot(), tp: (x, y) => { G.px = x * TILE + 8; G.py = y * TILE + 8; } };
+  }, props: () => PROPS.length, battleState: () => battle && battle.foes.map(f => f.name + ":" + f.hp + "/" + f.maxHp).join(" "), clearField: () => { field = []; }, rest: () => restParty(), fish: () => fishing, field: () => field, storm: () => { stormWait = 0; return storm; }, cineTest: k => playCine({ crown: CROWN_END, keeper: KEEPER_END, butcher: CINE_BEFORE.maru_scene0.shots, quill: CINE_BEFORE.quill_scene.shots, maw: CINE_BEFORE.maw_scene.shots, vela: CINE_BEFORE.vela_scene.shots, corvin: CINE_BEFORE.corvin_scene.shots, mother: CINE_BEFORE.mother_scene.shots, maru: MARU_SONG, rook: ROOK_LAST, ren: REN_DOOR, hollis: HOLLIS_UNMASKED, king: KING_RISES, salt: SALT_CHILD, teodor: CINE_BEFORE.hermit5_0.shots, lanterns: CINE_BEFORE.love_h3_0.shots, whistle: CINE_BEFORE.gulp_love0.shots }[k], null, { music: "cine_deep" }), propsList: () => PROPS.map(p => [p.type, p.x, p.y, get(p.x, p.y)]), bopts: () => battle && JSON.stringify(battle.opts), tile: (x, y) => get(x, y), win: () => battle && battle.foes.forEach(f => { f.hp = 1; }), end: k => ending(k), ach: () => achGot(), tp: (x, y) => { G.px = x * TILE + 8; G.py = y * TILE + 8; }, blocked: (x, y) => blocked(x, y), goal: () => goal(), warps: () => WARPS, dialogs: () => D, dlg: () => dlg, talkTo: id => { const n = NPCS.find(n => n.id === id); return n && npcVisible(n) ? dialogFor(n) : undefined; }, npcIds: () => NPCS.filter(n => npcVisible(n)).map(n => n.id) };
 })();
 </script>
 </body>
