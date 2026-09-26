@@ -26,12 +26,9 @@ import sys
 import numpy as np
 from scipy import optimize
 
-import calibrate
-import reconcile
-from config import HORIZON, OUTPUTS
-from extended_comparison import ALPHA, MEMBERS, ORIGINS, agg_forecast, complete, load
+from config import OUTPUTS
+from extended_comparison import complete, load, ours_members
 from score import evaluator
-from wrmsse import load_raw
 
 FIT_WINDOWS = [1689, 1717, 1745, 1773, 1801, 1829]
 HOLDOUT = [1605, 1633, 1661]
@@ -41,27 +38,11 @@ DIR = [f"direct_win_{p}" for p in ("store", "store_cat", "store_dept")]
 
 
 def members(windows):
-    """Member forecasts for the given windows (calibration walks forward in ORIGINS order)."""
-    full, calendar, _ = load_raw()
-    cal = reconcile.calendar_frame(calendar)
-    S9, A, keys = reconcile.aggregate_series(full)
-    codes = calibrate.group_codes(full, calibrate.GRAINS["store"])
-    n = codes.max() + 1
-    order = [o for o in ORIGINS if o in windows]
-    acts = {o: full[[f"d_{d}" for d in range(o + 1, o + HORIZON + 1)]].to_numpy(float) for o in order}
-    out = {o: {} for o in order}
-    for label, (rec, mh) in MEMBERS.items():
-        aligned = {}
-        for i, o in enumerate(order):
-            ens = 0.5 * load(rec, o) + 0.5 * load(mh, o)
-            aligned[o] = reconcile.align(ens, S9, agg_forecast(A, keys, cal, o), ALPHA)
-            f_sum, a_sum = np.zeros(n), np.zeros(n)
-            for p in order[:i]:
-                np.add.at(f_sum, codes, aligned[p].sum(axis=1))
-                np.add.at(a_sum, codes, acts[p].sum(axis=1))
-            f = np.clip(np.where(f_sum > 0, a_sum / np.maximum(f_sum, 1e-9), 1.0), 0.8, 1.25)
-            out[o][label] = aligned[o] * f[codes][:, None]
-    for o in order:
+    """Member forecasts for the given windows. Store calibration walks forward over the windows
+    passed in (see extended_comparison.ours_members), so on the holdout a window's score depends on
+    which earlier holdout windows are complete; only the result on all three is registered."""
+    out = ours_members(windows)
+    for o in out:
         out[o]["win_rec"] = np.mean([load(c, o) for c in REC], axis=0)
         out[o]["win_dir"] = np.mean([load(c, o) for c in DIR], axis=0)
     return out

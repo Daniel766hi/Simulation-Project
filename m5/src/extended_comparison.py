@@ -73,28 +73,37 @@ def test(d):
             "supported": bool(w < 0.05 and t < 0.05)}
 
 
-def main():
+def ours_members(windows):
+    """This pipeline's members (MEMBERS) for the given windows: 0.5 recursive + 0.5 multi-horizon,
+    aligned to store x department, then store calibration pooled over the earlier windows among
+    `windows` (walk-forward in ORIGINS order; the first is uncalibrated). A window's forecast
+    therefore depends on which earlier windows are passed in."""
     full, calendar, _ = load_raw()
     cal = reconcile.calendar_frame(calendar)
     S9, A, keys = reconcile.aggregate_series(full)
     codes = calibrate.group_codes(full, calibrate.GRAINS["store"])
     n = codes.max() + 1
-    windows = [o for o in ORIGINS if complete(o)]
-    print("complete windows:", windows)
-    acts = {o: full[[f"d_{d}" for d in range(o + 1, o + HORIZON + 1)]].to_numpy(float)
-            for o in windows}
-    fc = {o: {} for o in windows}
+    order = [o for o in ORIGINS if o in windows]
+    acts = {o: full[[f"d_{d}" for d in range(o + 1, o + HORIZON + 1)]].to_numpy(float) for o in order}
+    out = {o: {} for o in order}
     for label, (rec, mh) in MEMBERS.items():
         aligned = {}
-        for i, o in enumerate(windows):
+        for i, o in enumerate(order):
             ens = 0.5 * load(rec, o) + 0.5 * load(mh, o)
             aligned[o] = reconcile.align(ens, S9, agg_forecast(A, keys, cal, o), ALPHA)
             f_sum, a_sum = np.zeros(n), np.zeros(n)
-            for p in windows[:i]:
+            for p in order[:i]:
                 np.add.at(f_sum, codes, aligned[p].sum(axis=1))
                 np.add.at(a_sum, codes, acts[p].sum(axis=1))
             f = np.clip(np.where(f_sum > 0, a_sum / np.maximum(f_sum, 1e-9), 1.0), 0.8, 1.25)
-            fc[o][label] = aligned[o] * f[codes][:, None]
+            out[o][label] = aligned[o] * f[codes][:, None]
+    return out
+
+
+def main():
+    windows = [o for o in ORIGINS if complete(o)]
+    print("complete windows:", windows)
+    fc = ours_members(windows)
     rows = {}
     for o in windows:
         win = np.mean([load(c, o) for c in WIN_COMPONENTS], axis=0)
