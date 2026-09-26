@@ -57,16 +57,17 @@ def to_weights(z):
     return e / e.sum()
 
 
-def fit():
-    assert all(complete(o) for o in FIT_WINDOWS)
-    m = members(FIT_WINDOWS)
-    evs = {o: evaluator(o) for o in FIT_WINDOWS}
+def fit_weights(windows):
+    """Blend weights on the simplex that minimise mean WRMSSE over `windows` (three Nelder-Mead starts)."""
+    assert all(complete(o) for o in windows)
+    m = members(windows)
+    evs = {o: evaluator(o) for o in windows}
     calls = [0]
 
     def loss(z):
         w = to_weights(z)
         calls[0] += 1
-        return float(np.mean([evs[o].score(blend(m[o], w))[0] for o in FIT_WINDOWS]))
+        return float(np.mean([evs[o].score(blend(m[o], w))[0] for o in windows]))
 
     best = None
     for start in (np.zeros(4), np.array([1.0, 0, 0.5, 0.5]), np.array([0, 1.0, 0.5, 0.5])):
@@ -74,7 +75,12 @@ def fit():
         if best is None or r.fun < best.fun:
             best = r
         print("start", start, "->", round(r.fun, 5), flush=True)
-    w = to_weights(best.x)
+    return to_weights(best.x), m, evs, calls[0]
+
+
+def fit():
+    w, m, evs, n_calls = fit_weights(FIT_WINDOWS)
+    calls = [n_calls]
     per = {}
     for o in FIT_WINDOWS:
         win = 0.5 * m[o]["win_rec"] + 0.5 * m[o]["win_dir"]
