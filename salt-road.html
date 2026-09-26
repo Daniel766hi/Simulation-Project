@@ -3107,11 +3107,15 @@
     else if (coarse || narrow) { availW = iw - 8; availH = ih - 150; }
     else { availW = Math.min(iw - 32, 1400); availH = ih - 70; }
     const scale = Math.max(0.8, Math.min(availW / VIEW_W, availH / VIEW_H));
-    // Whole device pixels per game pixel, so every pixel is the same size and edges stay crisp.
-    const dpr = window.devicePixelRatio || 1, dev = Math.max(1, Math.floor(scale * dpr));
+    // "Fill" (default): render at the next whole-number scale up, then let the browser shrink it smoothly to fit
+    // the window (sharp-bilinear): the game fills the screen and every pixel stays even. "Pixel-perfect": round
+    // down to a whole number of device pixels per game pixel instead (smaller, but exact).
+    const dpr = window.devicePixelRatio || 1, fill = (typeof SETTINGS === "undefined" || SETTINGS.screen !== "exact");
+    const dev = fill ? Math.max(1, Math.ceil(scale * dpr - 0.01)) : Math.max(1, Math.floor(scale * dpr));
     canvas.width = VIEW_W * dev; canvas.height = VIEW_H * dev;
-    const cssW = canvas.width / dpr, cssH = canvas.height / dpr;
+    const cssW = fill ? Math.floor(VIEW_W * scale) : canvas.width / dpr, cssH = fill ? Math.round(cssW * VIEW_H / VIEW_W) : canvas.height / dpr;
     canvas.style.width = cssW + "px"; canvas.style.height = cssH + "px";
+    canvas.style.imageRendering = fill && Math.abs(cssW * dpr - canvas.width) > 1 ? "auto" : "pixelated";
     frame.style.maxWidth = cssW + "px";
   }
   const SAVE_KEY = "salt-road-six";
@@ -4643,7 +4647,7 @@
     }
     else if (a === "save") { saveSlot(Number(b.dataset.slot)); showSlots(); }
     else if (a === "load") { if (loadSlot(Number(b.dataset.slot))) resumeGame(); }
-    else if (b.dataset.set) { SETTINGS[b.dataset.set] = b.dataset.v === "true" ? true : b.dataset.v === "false" ? false : b.dataset.v; saveSettings(); showSettings(b.dataset.set); }
+    else if (b.dataset.set) { SETTINGS[b.dataset.set] = b.dataset.v === "true" ? true : b.dataset.v === "false" ? false : b.dataset.v; saveSettings(); if (b.dataset.set === "screen") resize(); showSettings(b.dataset.set); }
     else if (b.dataset.diff) { difficulty = b.dataset.diff; try { localStorage.setItem("salt-road-diff", difficulty); } catch { /* storage unavailable */ } renderDiff(); showSettings("diff"); }
   });
   $("pauseUI").addEventListener("input", e => {
@@ -6921,6 +6925,9 @@
     _showSettingsV(focusKey);
     const game = [...$("pausePanel").querySelectorAll("h3")].find(h => h.textContent === "Game"); if (!game) return;
     const row = document.createElement("div"); row.className = "setrow";
+    const row2 = document.createElement("div"); row2.className = "setrow";
+    row2.innerHTML = `<span>Screen</span><div class="seg">${[["fill", "Fill"], ["exact", "Pixel-perfect"]].map(([v, l]) => `<button type="button" data-set="screen" data-v="${v}" class="${(SETTINGS.screen || "fill") === v ? "on" : ""}">${l}</button>`).join("")}</div><span></span>`;
+    game.after(row2);
     row.innerHTML = `<span>Voices</span><div class="seg">${[["blips", "Blips"], ["spoken", "Spoken"], ["off", "Off"]].map(([v, l]) => `<button type="button" data-set="voice" data-v="${v}" class="${SETTINGS.voice === v ? "on" : ""}">${l}</button>`).join("")}</div><span></span>`;
     game.after(row);
     if (focusKey === "voice") { const f = row.querySelector(".on"); if (f) f.focus({ preventScroll: true }); }
