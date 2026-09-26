@@ -160,6 +160,7 @@
   .screen .big:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
   #cardArt { width: min(480px, 88%); height: auto; image-rendering: pixelated; border-radius: 8px; border: 2px solid var(--edge); box-shadow: 0 10px 40px -10px #000; }
   @media (max-height: 560px) { #cardArt { width: min(300px, 60%); } }
+  #card { background: radial-gradient(ellipse at 50% 45%, rgba(10,8,22,.84), rgba(10,8,22,.95)); }
   @media (max-height: 460px) { #dialog { grid-template-columns: 44px 1fr; gap: 8px; padding: 8px 10px; max-height: 58%; overflow-y: auto; } #dialog canvas { width: 44px; height: 44px; } #dialog .line { font-size: 13px; line-height: 1.35; } #dialog .next { font-size: 11px; } }
   @media (max-height: 460px) { .screen { gap: 6px; padding: 10px 16px; overflow-y: auto; } .screen h1 { font-size: clamp(24px, 9vh, 40px); } .screen h2 { font-size: 11px; } .screen p { font-size: 12.5px; line-height: 1.35; } .screen .big { padding: 7px 18px; font-size: 16px; } .screen p.diffNote { font-size: 11.5px; } }
   .screen .ghost { font: 500 14px var(--font); color: var(--muted); background: transparent; border: 1px solid var(--edge); border-radius: 8px; padding: 7px 14px; cursor: pointer; }
@@ -1627,16 +1628,19 @@
 
   // ================================================================== CHAPTER CARDS
   let cardQueue = [];
+  let cardHeldToast = null;
   function card(kicker, title, text) { cardQueue.push({ kicker, title, text }); if (mode !== "card") showNextCard(); }
   function showNextCard() {
     const c = cardQueue.shift(); if (!c) return;
     mode = "card";
+    if (!$("toast").hidden) { cardHeldToast = $("toast").textContent; $("toast").hidden = true; }   // a card is read on its own; the toast returns after
     $("cardKicker").textContent = c.kicker; $("cardTitle").textContent = c.title; $("cardText").textContent = c.text; setScene(c.title);
     $("card").hidden = false; $("cardBtn").focus({ preventScroll: true });
   }
   function closeCard() {
     if (cardQueue.length) { showNextCard(); return; }
     $("card").hidden = true; mode = battle ? "battle" : "play";
+    if (cardHeldToast) { const t = cardHeldToast; cardHeldToast = null; setTimeout(() => toast(t), 200); }
   }
   $("cardBtn").addEventListener("click", () => { if ($("cardBtn").dataset.ending) return; closeCard(); });
 
@@ -7888,12 +7892,12 @@
   let rake = null;
   const panAt = (px, py) => PANS.findIndex(([x, y]) => px >= (x - 1) * TILE && px <= (x + 5) * TILE && py >= (y - 1) * TILE && py <= (y + 4) * TILE);
   function startRake(i) {
-    rake = { i, stroke: 0, got: 0, pos: 0, dir: 1, speed: 0.9, zone: 0.35 + rnd(i, G.day || 1) * 0.3, w: 0.2, prev: mode };
+    rake = { i, stroke: 0, got: 0, pos: 0, dir: 1, speed: 0.9, zone: 0.35 + rnd(i, G.day || 1) * 0.3, w: 0.2, prev: mode, t0: performance.now() };
     mode = "rake"; rakeEl.hidden = false; drawRake(); $("rakeMsg").textContent = "Five strokes. Wait for the crust...";
   }
   function drawRake() { const z = rakeEl.querySelector(".rzone"), m = rakeEl.querySelector(".rmark"); z.style.left = `${rake.zone * 100}%`; z.style.width = `${rake.w * 100}%`; m.style.left = `calc(${rake.pos * 100}% - 2px)`; }
   function rakeStroke() {
-    if (!rake) return;
+    if (!rake || performance.now() - rake.t0 < 300) return;   // the press that opened the pans isn't a stroke
     const c = rake.zone + rake.w / 2, d = Math.abs(rake.pos - c), hit = d <= rake.w / 2, perfect = d <= rake.w / 6;
     rake.got += perfect ? 2 : hit ? 1 : 0; rake.stroke++; Music.sound(hit ? "item" : "miss");
     $("rakeMsg").textContent = perfect ? "A clean sheet of salt! +2" : hit ? "Good crust. +1" : "Too soon, or too late. Mud.";
