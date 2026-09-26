@@ -8044,6 +8044,43 @@
     ["stars", "The Reed-Boat Sky", "See all five constellations from the star stones.", () => (G.flags.stars || []).length >= 5],
     ["toll", "Nothing Passes Free", "Defeat the Tollkeeper.", () => !!G.flags.tollDead]);
 
+  // ---- Aba's last run: the drover's letter, left at Tamar's table, finally carried home
+  D.tamar_0.choices.splice(2, 0, { t: () => G.flags.abaLetter ? "\"About Aba's letter...\"" : "\"I'm Kessa's courier.\"", go: () => G.flags.abaLetter ? "tamar_aba_after" : "tamar_aba0" });
+  Object.assign(D, {
+    tamar_aba0: say("tamar", "(Tamar goes still.) Kessa's courier. Then you knew Aba. The old drover. He ran salt for me forty years, and never once lost a cart.", "tamar_aba1"),
+    tamar_aba1: say("tamar", "The morning of his last run he left this on my table. Folded twice, the way he did everything. He said, 'If I'm late, give it to my wife.' (She holds it out.) He was late. And I'm a caravan master, not a courier. I never knew how to walk into that village with it.", "tamar_aba2"),
+    tamar_aba2: { who: "sable", text: "(The letter is soft from being carried. On the outside, in careful capitals: FOR MY WIFE, IN KESSA.)", choices: [
+      { t: "\"I'll take it to her.\"", go: "tamar_aba3" } ] },
+    tamar_aba3: say("tamar", "Thank you. Tell her... no. Don't tell her anything from me. Just give her his.", null, () => { G.flags.abaLetter = "carry"; save(); updateHud(); toast("You carry Aba's last letter, for his wife in Kessa."); }),
+    tamar_aba_after: say("tamar", () => G.flags.abaLetter === "delivered" ? "You gave it to her. (She nods, and looks at the road east for a while.) Good. Forty years he never lost a cart. I'm glad the last thing he sent didn't get lost either." : "Kiraz. That's her name. She lives by the west edge of Kessa. Go when you're ready; it's waited a year, it can wait for you to be ready.", "tamar_0"),
+    abaletter_0: say(null, "(You hold out the letter. The widow knows the handwriting before she has it in her hands.)", "abaletter_1"),
+    abaletter_1: say("abawidow", "(She reads it aloud, slowly, like she is walking beside him.) 'Kiraz. The salt is good this year, better than the Guild deserves. I'll bring figs from Tamar's. If I'm late, it's the dunes, not the jackals, so don't worry, and don't let the boy climb the rocks looking for me.'", "abaletter_2"),
+    abaletter_2: say("abawidow", "(She laughs, and then she doesn't.) He climbs every rock on the Flats. Every single one. I thought he was practising for the next time someone throws him to safety. He was looking for his grandfather. Of course he was.", "abaletter_3"),
+    abaletter_3: say("abawidow", "(She folds the letter twice, the way it came.) Thank you, courier. A year late, and it still came. Here. The lead goat's bell. He hung it on the cart so I could hear him coming from the edge of the salt. I don't need to hear that any more. You might.", null, () => {
+      G.flags.abaLetter = "delivered"; giveRelic("goatbell"); save(); updateHud();
+      if (G.members.includes("rook") && !G.flags.rookDead) setTimeout(() => openDialog("abaletter_rook"), 400);
+    }),
+    abaletter_rook: say(null, "(Rook doesn't say anything on the walk back through Kessa. At the well he stops, asks you to wait, and goes back to her door alone. He is there a long time. When he comes back, his eyes are red, and he says only: \"She said the boy has his grandfather's hands.\")", null, () => { G.flags.rookHeardAba = true; save(); }),
+  });
+  RELICS.goatbell = { name: "Aba's Goat Bell", from: "_aba", desc: "A dented brass bell from a salt cart. +2 defence, and heal 2 health at the start of each turn.", def: 2, regen: 2 };
+  const _dialogForAL = dialogFor;
+  dialogFor = function (n) { if (n.id === "abawidow" && G.flags.abaLetter === "carry") return "abaletter_0"; return _dialogForAL(n); };
+  const _extraFatesAL = extraFates;
+  extraFates = function (k) {
+    const out = _extraFatesAL(k);
+    if (G.flags.abaLetter !== "delivered") return out;
+    const archer = out.findIndex(t => t.startsWith("In Kessa, an old widow keeps an archer's letter"));   // Rook's letter was delivered too
+    const line = archer >= 0 ? "In Kessa, an old widow keeps two letters over her heart, an archer's and a drover's. The tall boy who used to climb every rock on the Flats drives salt for Tamar now, and he never loses a cart."
+      : "In Kessa, a widow keeps a letter folded twice in her apron. The tall boy who used to climb every rock on the Flats drives salt for Tamar now, and he never loses a cart.";
+    if (archer >= 0) out[archer] = line; else out.push(line);
+    return out;
+  };
+  const _extraJournalAL = extraJournalHtml;
+  extraJournalHtml = function () {
+    const a = G.flags.abaLetter;
+    return _extraJournalAL() + (a ? `<h3>Aba's last run</h3><p>${a === "carry" ? "A letter from the drover Aba, folded twice, for his wife in Kessa. Tamar kept it a year." : "Delivered, a year late. It still came."}</p>` : "");
+  };
+
   // ================================================================== BOOT
   const saved = load();          // read the save before a fresh game could overwrite it
   newGame(false);
