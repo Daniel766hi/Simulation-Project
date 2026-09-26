@@ -238,6 +238,7 @@
         <button type="button" data-a="slots">Save and load</button>
         <button type="button" data-a="settings">Settings</button>
         <button type="button" data-a="alchemy">Alchemy <small>Kest</small></button>
+        <button type="button" data-a="today">Today's tasks</button>
         <button type="button" data-a="ach">Achievements</button>
         <button type="button" data-a="chronicle">Chronicle</button>
         <button type="button" data-a="fullscreen">Full screen</button>
@@ -881,7 +882,7 @@
     { id: "pilgrim", name: "A hanged driver", x: 44, y: 24, look: { robe: "#6b5a3a", hair: "#3a2a1e", skin: "#b8a898", dead: true } },
   ].map(n => ({ ...n, px: n.x * TILE + 8, py: n.y * TILE + 8, bob: hash(n.x, n.y) * 6 }));
   const npcVisible = n => {
-    if (n.hidden) return false;
+    if (n.hidden || npcAsleep(n)) return false;
     if (n.show) return n.show();
     if (["ilse", "maru", "rook", "ada", "ren"].includes(n.id)) return !G.members.includes(n.id);
     if (n.id === "ada") return G.stage >= 4;
@@ -1537,7 +1538,7 @@
     for (const n of NPCS) {
       if (!npcVisible(n) || (n.id === "beno" && G.flags.benoFollows)) continue;
       if (n.id === "ada" && G.stage < 4) continue;
-      const d = Math.hypot(n.px - G.px, n.py - G.py);
+      const d = Math.hypot(n.px - G.px, n.py - G.py) + (n.wander ? 12 : 0);   // named people first, passers-by second
       if (d < bd) { bd = d; best = n; }
     }
     return best;
@@ -1724,7 +1725,7 @@
       const lead = battle.heroes.find(h => h.id === "sable") || battle.heroes[0];
       lead.lunge = 1; flash(0.5); shake = 6; Music.sound("crit");
       const hits = battle.foes.map(f => { const d = damage(f, Math.max(3, Math.round((lead.ref.atk + rstat(lead, "atk")) * 0.8 - f.def * 0.3))); gore(f, 14); return d; });
-      G.flags.didAmbush = true;
+      G.flags.didAmbush = true; G.flags.ambushCount = (G.flags.ambushCount || 0) + 1;
       blog(`Ambush! ${lead.name} dashes through the pack (${hits.join(", ")}). Your party moves first.`);
       renderCards(); await wait(1100);
       if (battle !== token || checkEnd()) return;
@@ -5502,6 +5503,7 @@
     }
     for (const n of NPCS) if (n.show === undefined || n.show()) hole(n.px - ox, n.py - oy - 10, 14, 0.5);
     for (const f of field) if (f.night) hole(f.px - ox, f.py - oy - 10, 16, 0.6);
+    if (typeof sceneLights === "function") for (const a of sceneLights()) hole(a.px - ox + 7, a.py - oy - 22 - (a.lift || 0), a.torch ? 40 : 22, 0.9);
     g.drawImage(light, 0, 0);
     g.globalCompositeOperation = "lighter";
     for (const [x, y] of lit) { const gr = g.createRadialGradient(x, y, 1, x, y, 14); gr.addColorStop(0, `rgba(255,180,90,${0.28 * nt})`); gr.addColorStop(1, "rgba(255,180,90,0)"); g.fillStyle = gr; g.fillRect(x - 14, y - 14, 28, 28); }
@@ -5803,10 +5805,10 @@
     _updateJ(dt);
     const j = G && G.flags.job;
     if (!j) { if (!jobBadge.hidden) jobBadge.hidden = true; return; }
-    if (mode === "play") { const was = j.left > 0; j.left -= dt; if (was && j.left <= 0) toast("The parcel's late. Deliver it anyway: half pay is still pay."); }
+    if (mode === "play" && !npcAsleep(NPCS.find(x => x.id === j.to) || {})) { const was = j.left > 0; j.left -= dt; if (was && j.left <= 0) toast("The parcel's late. Deliver it anyway: half pay is still pay."); }
     const n = NPCS.find(x => x.id === j.to);
     jobBadge.hidden = mode === "title" || !!battle;
-    jobBadge.textContent = `📦 ${n ? n.name : j.to}: ${j.left > 0 ? Math.ceil(j.left) + "s" : "late"}`;
+    jobBadge.textContent = `📦 ${n ? n.name : j.to}: ${n && npcAsleep(n) ? "asleep until dawn (clock paused)" : j.left > 0 ? Math.ceil(j.left) + "s" : "late"}`;
     jobBadge.style.color = j.left > 10 ? "var(--gold)" : "#ff6b6b";
   };
   const _goalJ = goal;
@@ -6226,7 +6228,11 @@
       if (n.hx === undefined) { n.hx = n.px; n.hy = n.py; }
       if (dlg && mode === "dialog") continue;
       const near = Math.hypot(n.hx - G.px, n.hy - G.py) < 30;
-      if (near) { n.walking = false; continue; }      // stop and face you when you come close
+      if (near) {   // come back to their post and face you when you come close
+        const dx = n.hx - n.px; n.px += dx * Math.min(1, dt * 6); n.walking = Math.abs(dx) > 1;
+        if (!n.walking) n.dir = Math.abs(G.px - n.px) > Math.abs(G.py - n.py) ? (G.px > n.px ? "right" : "left") : (G.py > n.py ? "down" : "up");
+        continue;
+      }
       const t = time * 0.7 + (n.bob || 0), s = Math.sin(t), c = Math.cos(t);
       n.px = n.hx + s * a.pace; n.walking = Math.abs(c) > 0.25; n.dir = n.walking ? (c > 0 ? "right" : "left") : (a.look || "down");
     }
@@ -6289,7 +6295,7 @@
     } });
   };
   const _renderWorldC = renderWorld;
-  renderWorld = function () { _renderWorldC(); if (scene) { if (scene.fade > 0.01) { g.fillStyle = `rgba(6,4,16,${scene.fade})`; g.fillRect(0, 0, VIEW_W, VIEW_H); } g.fillStyle = "#000"; g.fillRect(0, 0, VIEW_W, 14); g.fillRect(0, VIEW_H - 14, VIEW_W, 14); } };
+  renderWorld = function () { _renderWorldC(); if (scene) { if (scene.fade > 0.01) { g.fillStyle = `rgba(6,4,16,${scene.fade})`; g.fillRect(0, 0, VIEW_W, VIEW_H); } } };
   const _nearestNpcC = nearestNpc;
   nearestNpc = function () { return mode === "scene" ? null : _nearestNpcC(); };
 
@@ -6311,8 +6317,9 @@
   function theftArrive(then) {
     playScene([
       { cam: [15, 37], add: {
-          thief1: { x: 14, y: 37, look: GUILD_LOOK, dir: "up" }, thief2: { x: 17, y: 37, look: GUILD_LOOK, dir: "up" }, limp: { x: 16, y: 38, look: LIMP_LOOK, dir: "up" },
-          lio: { x: 15, y: 38, look: LIO_LOOK, lift: 30, dir: "down", emote: "bang" } }, line: [null, "Torches on the tower. Men in Guild coats, hauling the Rain Bell down on ropes. And Lio, halfway up, holding the bell-rope with both hands."], sound: "encounter" },
+          thief1: { x: 14, y: 37, look: GUILD_LOOK, dir: "up", torch: true }, thief2: { x: 17, y: 37, look: GUILD_LOOK, dir: "up", torch: true }, limp: { x: 16, y: 38, look: LIMP_LOOK, dir: "up" },
+          fire: { x: 15, y: 39, embers: true, draw: () => {} },
+          lio: { x: 15, y: 38, look: LIO_LOOK, lift: 30, dir: "down", emote: "bang" } }, zoom: 1.22, line: [null, "Torches on the tower. Men in Guild coats, hauling the Rain Bell down on ropes. And Lio, halfway up, holding the bell-rope with both hands."], sound: "encounter" },
       { line: ["Lio", "SABLE! I'm holding on! I'm holding on like a courier!"] },
       { fn: () => { scene.actors.limp.dir = "down"; }, line: ["The limping man", "(Tiredly, almost gently.) Let go of the rope, boy. It isn't yours."] },
       { line: ["Lio", "It IS mine! I'm ringing it at the first rain! I'm ringing it for everyone!"] },
@@ -6322,14 +6329,15 @@
   function theftFall(then) {
     playScene([
       { cam: [15, 37], add: {
-          thief1: { x: 14, y: 37, look: GUILD_LOOK, dir: "up" }, thief2: { x: 17, y: 37, look: GUILD_LOOK, dir: "up" }, limp: { x: 16, y: 38, look: LIMP_LOOK, dir: "up" },
-          lio: { x: 15, y: 38, look: LIO_LOOK, lift: 30, dir: "down" } }, line: [null, "You reach the foot of the stairs as the Bell swings out over the dark on its ropes. The limping man looks straight at you. He has very tired eyes."] },
+          thief1: { x: 14, y: 37, look: GUILD_LOOK, dir: "up", torch: true }, thief2: { x: 17, y: 37, look: GUILD_LOOK, dir: "up", torch: true }, limp: { x: 16, y: 38, look: LIMP_LOOK, dir: "up", torch: true },
+          fire: { x: 15, y: 39, embers: true, draw: () => {} },
+          lio: { x: 15, y: 38, look: LIO_LOOK, lift: 30, dir: "down" } }, zoom: 1.25, line: [null, "You reach the foot of the stairs as the Bell swings out over the dark on its ropes. The limping man looks straight at you. He has very tired eyes."] },
       { line: [null, "Then he cuts the bell-rope. Lio is still holding it."], wait: 2.2 },
-      { fn: () => { const l = scene.actors.lio; l.falling = true; l.speed = 150; l.py -= l.lift; l.lift = 0; }, move: { lio: [15, 40] }, untilStill: true, wait: 0.1 },
+      { fn: () => { const l = scene.actors.lio; l.falling = true; l.speed = 150; l.py -= l.lift; l.lift = 0; }, zoom: 1.4, move: { lio: [15, 40] }, untilStill: true, wait: 0.1 },
       { shake: 6, sound: "defeat", wait: 1.6, fn: () => { scene.actors.lio.draw = (g2, x, y) => { const P = P2(g2, x, y); P(-8, -4, 16, 6, "#1b1633"); P(-7, -3, 14, 4, "#4a7a9a"); P(5, -4, 4, 4, "#d9a070"); P(6, -5, 3, 2, "#3a2a1e"); for (let i = 0; i < 10; i++) P(-12 + i, -1 + (i % 2), 1, 1, "#8a7a5a"); }; } },
       { fn: () => { scene.actors.thief1.carry = true; scene.actors.thief2.carry = true; }, move: { thief1: [14, 30], thief2: [17, 30], limp: [16, 31] }, line: [null, "They go north into the dark with the Bell slung between them on a pole. The limping man looks back, once."] },
       { wait: 1.2, remove: ["thief1", "thief2", "limp"] },
-      { cam: [15, 40], line: [null, "You don't remember crossing the square. You remember the sound. You remember that he was still holding the rope."], wait: 3.5 },
+      { cam: [15, 40], zoom: 1.5, line: [null, "You don't remember crossing the square. You remember the sound. You remember that he was still holding the rope."], wait: 3.5 },
     ], then);
   }
   function nadiaMourns(then) {
@@ -6360,6 +6368,229 @@
     if (!req) { toast("Full screen isn't available in this browser. Try adding the page to your home screen."); return; }
     Promise.resolve(req.call(el)).then(() => { if (screen.orientation && screen.orientation.lock) screen.orientation.lock("landscape").catch(() => {}); resumeGame(); }).catch(() => toast("Full screen was blocked by the browser."));
   });
+  // ================================================================== THE DAILY ROUND
+  // Days are counted. Each dawn brings three tasks for the day; finishing them pays, and finishing all
+  // three keeps a streak going. Shops close at night (Mora opens instead), and resting at night sleeps to dawn.
+  const DAY_WORKERS = ["odo", "ama", "yusra", "dov", "hake", "abawidow"];   // shops and trades only, never anyone a quest needs
+  function npcAsleep(n) {
+    try { return !!G && G.stage >= 1 && !G.flags.epilogue && DAY_WORKERS.includes(n.id) && isNight() && !(G.flags.job && G.flags.job.to === n.id && false); } catch { return false; }
+  }
+  const talkedToday = new Set();
+  const sumFish = () => Object.values(G.flags.fishLog || {}).reduce((a, b) => a + b, 0);
+  const counters = {
+    wins: () => (G.stats && G.stats.wins) || 0, jobs: () => G.flags.jobsDone || 0, fish: sumFish, lore: () => (G.flags.lore || []).length,
+    talks: () => talkedToday.size, rests: () => G.flags.restCount || 0, steps: () => Math.floor((G.flags.walked || 0) / TILE),
+    brews: () => G.flags.brewCount || 0, pale: () => ((G.flags.kills || {}).wraith || 0) + ((G.flags.kills || {}).moonmother || 0),
+    chests: () => Object.keys(G.flags.chests || {}).length, dash: () => G.flags.ambushCount || 0,
+  };
+  const CHORES = [
+    { id: "win3", text: "Win 3 battles", c: "wins", goal: 3, ok: () => true },
+    { id: "win6", text: "Win 6 battles", c: "wins", goal: 6, ok: () => G.stage >= 4 },
+    { id: "job", text: "Deliver a parcel for Postmistress Ama", c: "jobs", goal: 1, ok: () => G.stage >= 1 && NPCS.some(n => n.id === "ama") },
+    { id: "fish2", text: "Catch 2 fish", c: "fish", goal: 2, ok: () => G.flags.hasRod },
+    { id: "talk4", text: "Talk with 4 different people", c: "talks", goal: 4, ok: () => true },
+    { id: "rest", text: "Rest at a well or campfire", c: "rests", goal: 1, ok: () => true },
+    { id: "walk", text: "Walk 400 paces", c: "steps", goal: 400, ok: () => true },
+    { id: "brew", text: "Brew something with Kest", c: "brews", goal: 1, ok: () => G.members.includes("kest") },
+    { id: "pale", text: "Lay a pale thing to rest after dark", c: "pale", goal: 1, ok: () => G.stage >= 3 && NIGHT_HUNTS.some(h => !G.defeated.includes(h.id) && G.stage >= h.minStage) },
+    { id: "ambush", text: "Ambush monsters with a dash (Shift)", c: "dash", goal: 1, ok: () => true },
+  ];
+  const choreReward = () => ({ coins: 12 + G.stage * 4, item: pick(["salve", "salve", "tonic", "gsalve", "ether", "salts"].filter(k => ITEMS[k] && (k !== "gsalve" && k !== "ether" || G.stage >= 7))) });
+  function rollDay() {
+    const pool = CHORES.filter(c => c.ok()).sort(() => Math.random() - 0.5), picked = [];
+    for (const c of pool) { if (picked.length >= 3) break; if (c.id === "win6" && picked.some(p => p.id === "win3")) continue; if (c.id === "win3" && picked.some(p => p.id === "win6")) continue; picked.push(c); }
+    talkedToday.clear();
+    G.flags.daily = { day: G.day, chores: picked.map(c => ({ id: c.id, base: counters[c.c](), done: false })), streak: (G.flags.daily && G.flags.daily.streak) || 0 };
+    save(); updateHud();
+  }
+  function choreProgress(ch) { const c = CHORES.find(x => x.id === ch.id); return c ? [Math.min(c.goal, counters[c.c]() - ch.base), c.goal, c.text] : [0, 1, ch.id]; }
+  function newDay() {
+    const d = G.flags.daily;
+    if (d && d.chores.length) { const all = d.chores.every(c => c.done); d.streak = all ? d.streak : 0; }
+    G.day = (G.day || 1) + 1;
+    rollDay();
+    const st = G.flags.daily.streak;
+    toast(`Day ${G.day}. ${st ? `A ${st}-day streak. ` : ""}New tasks for today (pause menu or journal).`);
+  }
+  function checkChores() {
+    const d = G.flags.daily; if (!d) return;
+    for (const ch of d.chores) {
+      if (ch.done) continue;
+      const [p, goal, text] = choreProgress(ch); if (p < goal) continue;
+      ch.done = true; const r = choreReward(); G.coins += r.coins; if (r.item) G.items[r.item] = (G.items[r.item] || 0) + 1;
+      Music.sound("item"); toast(`Task done: ${text}. +${r.coins} coin${r.item ? `, ${ITEMS[r.item].name}` : ""}.`);
+      if (d.chores.every(c => c.done)) {
+        d.streak = (d.streak || 0) + 1; const bonus = 20 * d.streak;
+        G.coins += bonus; for (const id of G.members) { G.party[id].hp = G.party[id].maxHp; G.party[id].sp = G.party[id].maxSp; }
+        setTimeout(() => toast(`A good day's work. Streak ${d.streak}: +${bonus} coin, and the whole party feels rested.`), 1800);
+        if (d.streak >= 7 && !(G.relics || []).includes("almanac")) setTimeout(() => giveRelic("almanac"), 3600);
+      }
+      save(); updateHud();
+    }
+  }
+  Object.assign(RELICS, { almanac: { name: "Courier's Almanac", from: "daily", desc: "Seven good days in a row. +2 speed, +2 SP each turn, +5% critical chance.", spd: 2, spRegen: 2, crit: 0.05 } });
+  // the day line in the HUD
+  const dayLine = document.createElement("div"); dayLine.className = "row"; dayLine.id = "dayLine"; dayLine.style.cssText = "color:var(--muted);margin-top:2px";
+  $("partyMini").parentNode.appendChild(dayLine);
+  const phaseName = () => { const c = G.clock ?? 0.3; return c < 0.06 ? "Dawn" : c < 0.2 ? "Morning" : c < 0.34 ? "Noon" : c < 0.45 ? "Afternoon" : c < 0.55 ? "Dusk" : c < 0.8 ? "Night" : c < 0.95 ? "Midnight" : "Before dawn"; };
+  let prevClock = null, dayTick = 0, closedToastDay = -1;
+  const _updateD = update;
+  update = function (dt) {
+    _updateD(dt);
+    if (!G || mode === "title") return;
+    if (mode === "play" && player.moving) G.flags.walked = (G.flags.walked || 0) + dt * (player.sprint ? 96 : 64);
+    const c = G.clock ?? 0.3;
+    if (prevClock !== null && c < prevClock - 0.5 && G.stage >= 1 && !G.flags.epilogue) newDay();
+    prevClock = c;
+    if (G.stage >= 1 && !G.flags.epilogue && !G.flags.daily) { G.day = G.day || 1; rollDay(); setTimeout(() => toast("New: three tasks each day. See them in the pause menu or the journal."), 1500); }
+    if (G.stage >= 1 && !G.flags.epilogue && isNight() && closedToastDay !== G.day && mode === "play") { closedToastDay = G.day; toast("Night. The shops and stalls have closed; Mora's night stall opens in Kessa."); }
+    dayTick -= dt; if (dayTick > 0) return; dayTick = 0.5;
+    if (G.stage >= 1 && G.flags.daily) checkChores();
+    const d = G.flags.daily;
+    dayLine.hidden = G.stage < 1 || !!G.flags.epilogue;
+    dayLine.textContent = `${isNight() ? "☾" : "☀"} Day ${G.day || 1} · ${phaseName()}${d ? ` · Tasks ${d.chores.filter(x => x.done).length}/${d.chores.length}${d.streak ? ` · Streak ${d.streak}` : ""}` : ""}`;
+  };
+  const _dialogForD = dialogFor;
+  dialogFor = function (n) { talkedToday.add(n.id); if (npcAsleep(n)) { D.__asleep = say(null, `${n.name}'s door is shut and the lamp is out. (Asleep until morning. Shops open at dawn.)`); return "__asleep"; } return _dialogForD(n); };
+  const _restD = restParty;
+  restParty = function () { G.flags.restCount = (G.flags.restCount || 0) + 1; _restD(); };
+  $("pauseUI").addEventListener("click", e => { const b = e.target.closest("button"); if (b && b.dataset.craft !== undefined && !b.disabled) G.flags.brewCount = (G.flags.brewCount || 0) + 1; }, true);
+  function dailyHtml() {
+    const d = G.flags.daily; if (!d) return "<p class='dim'>Tasks begin after the prologue.</p>";
+    return `<p class="dim" style="font-size:13px;margin:0 0 6px">Day ${G.day || 1}. New tasks every dawn; unfinished ones lapse. Finish all three to grow your streak (bonus coin, a full rest, and a relic at 7 days). Streak: ${d.streak || 0}.</p><ul style="list-style:none;padding:0;display:grid;gap:6px">${d.chores.map(ch => { const [p, g2, t] = choreProgress(ch); return `<li style="padding:6px 10px;border:1px solid var(--edge);border-radius:6px;${ch.done ? "border-color:var(--gold)" : ""}"><b style="color:${ch.done ? "var(--gold)" : "var(--text)"}">${ch.done ? "✔" : "○"} ${t}</b> <span class="dim" style="font-size:12px"> · ${ch.done ? "done" : `${Math.max(0, p)}/${g2}`}</span></li>`; }).join("")}</ul>`;
+  }
+  $("pauseUI").addEventListener("click", e => { const b = e.target.closest("button"); if (b && b.dataset.a === "today") showPanel("Today", dailyHtml()); });
+  const _extraJournalD = extraJournalHtml;
+  extraJournalHtml = function () { return (G.flags.daily ? `<h3>Today (Day ${G.day || 1})</h3>${dailyHtml()}` : "") + _extraJournalD(); };
+  ACHIEVEMENTS.push(["streak7", "Every Day, Again", "Finish all of a day's tasks seven days running.", () => (G.flags.daily && G.flags.daily.streak >= 7) || (G.relics || []).includes("almanac")]);
+
+  // ================================================================== CUTSCENE POLISH AND MORE SCENES
+  // Scenes hide the HUD, slide in letterbox bars, push the camera in, light torches at night, keep particles
+  // moving, and show their lines as subtitles. New scenes: leaving Kessa, and the Bell coming home at the end.
+  function sceneHud(hide) {
+    for (const id of ["hud", "corner", "minimap"]) { const e = $(id); if (e) e.style.visibility = hide ? "hidden" : ""; }
+    banterEl.classList.toggle("subtitle", hide);
+  }
+  const subStyle = document.createElement("style");
+  subStyle.textContent = "#banter.subtitle{bottom:2%;background:transparent;border:none;font-size:clamp(12px,1.9vw,18px);text-align:center;text-shadow:0 2px 0 #000,0 0 6px #000;max-width:90%}";
+  document.head.appendChild(subStyle);
+  const _playSceneP = playScene;
+  playScene = function (steps, done) {
+    _playSceneP(steps, done); if (!scene) return;
+    const st0 = steps[0] || {};
+    Object.assign(scene, { bar: 0, zoom: 1, zoomTo: st0.zoom || 1.18, rain: 0, rainTo: st0.rain || 0 }); sceneHud(true);
+  };
+  const _endSceneP = endScene;
+  endScene = function () { sceneHud(false); _endSceneP(); };
+  const _enterStepP = enterStep;
+  enterStep = function () { const st = scene && scene.steps[scene.i]; if (st && st.zoom) scene.zoomTo = st.zoom; if (st && st.rain !== undefined) scene.rainTo = st.rain; _enterStepP(); };
+  const _updateP2 = update;
+  update = function (dt) {
+    _updateP2(dt);
+    if (!scene || mode !== "scene") return;
+    scene.bar += ((scene.i >= scene.steps.length - 1 ? 0 : 22) - scene.bar) * Math.min(1, dt * 3);
+    scene.zoom += (scene.zoomTo - scene.zoom) * Math.min(1, dt * 1.2);
+    scene.rain += ((scene.rainTo || 0) - scene.rain) * Math.min(1, dt * 0.8);
+    for (const p of particles) if (p.world) { p.x += p.vx * dt; p.y += p.vy * dt; p.vy += (p.float ? -10 : 140) * dt; p.life -= dt; }
+    particles = particles.filter(p => p.life > 0);
+    for (const a of Object.values(scene.actors)) {
+      if (a.embers && Math.random() < dt * 14) particles.push({ x: a.px + rand(-10, 10), y: a.py - 40 - rand(0, 20), vx: rand(-8, 8), vy: rand(-30, -10), life: rand(0.6, 1.4), color: pick(["#ffcf4a", "#ff8a3a", "#ff5a3a"]), size: Math.random() < 0.4 ? 2 : 1, world: true, float: true });
+      if (a.dance) { a.lift = Math.abs(Math.sin(time * 6 + a.px)) * 5; a.dir = Math.sin(time * 2 + a.py) > 0 ? "left" : "right"; a.walking = true; }
+    }
+  };
+  // letterbox, rain and zoom are drawn over the finished world picture
+  const _renderWorldP2 = renderWorld;
+  renderWorld = function () {
+    _renderWorldP2();
+    if (!scene) return;
+    if (scene.rain > 0.02 && !REDUCED) { g.fillStyle = `rgba(180,200,240,${0.55 * scene.rain})`; for (let i = 0; i < 120 * scene.rain; i++) { const x = (hash(i, 41) * (VIEW_W + 60) - time * 50) % (VIEW_W + 60), y = (hash(i, 43) * VIEW_H + time * 260) % VIEW_H; g.fillRect(Math.round(x), Math.round(y), 1, 5); } g.fillStyle = `rgba(40,60,90,${0.18 * scene.rain})`; g.fillRect(0, 0, VIEW_W, VIEW_H); }
+    const b = Math.round(scene.bar); g.fillStyle = "#000"; g.fillRect(0, 0, VIEW_W, b); g.fillRect(0, VIEW_H - b, VIEW_W, b);
+  };
+  // camera push-in: crop the centre of the frame while a scene plays
+  const _renderP = render;
+  render = function () {
+    if (!scene || battle || scene.zoom < 1.005) return _renderP();
+    renderWorld();
+    const z = scene.zoom, sw = VIEW_W / z, sh = VIEW_H / z, b = scene.bar;
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(buf, (VIEW_W - sw) / 2, (VIEW_H - sh) / 2, sw, sh, 0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#000"; const k = canvas.height / VIEW_H; ctx.fillRect(0, 0, canvas.width, b * k); ctx.fillRect(0, canvas.height - b * k, canvas.width, b * k);
+    $("minimap").hidden = true;
+  };
+  // torches carried by scene actors, and the lights they make at night
+  const _actorsP2 = act2ActorsB;
+  act2ActorsB = function (actors, ox, oy) {
+    _actorsP2(actors, ox, oy);
+    if (!scene) return;
+    for (const a of Object.values(scene.actors)) if (a.torch) actors.push({ y: a.py + 1, draw: () => { const P = P2(g, a.px - ox, a.py - oy - (a.lift || 0)); P(6, -20, 2, 12, "#6b3f24"); const f = Math.sin(time * 14 + a.px); P(5, -26 - Math.abs(f) * 2, 4, 5 + Math.abs(f) * 2, "#ffcf4a"); P(6, -24, 2, 3, "#fff2c0"); } });
+  };
+  const sceneLights = () => scene ? Object.values(scene.actors).filter(a => a.torch || a.glow) : [];
+
+  const VILLAGER = id => (NPCS.find(n => n.id === id) || {}).look || { robe: "#6a5a4a", hair: "#3a2a1e", skin: "#d9a070" };
+  // Leaving Kessa: after Ilse joins, the village comes out to watch them go north.
+  function departureScene(then) {
+    const hide = ["nadia", "abawidow", "tam", "odo", "ilse"].map(id => NPCS.find(n => n.id === id)).filter(Boolean);
+    hide.forEach(n => { n.hidden = true; });
+    const sx = Math.floor(G.px / TILE), sy = Math.floor(G.py / TILE);
+    playScene([
+      { cam: [12, 38], zoom: 1.12, add: {
+          sable: { x: 12, y: 41, look: HEROES.sable.look, dir: "up", speed: 26 }, ilse: { x: 13, y: 42, look: HEROES.ilse.look, dir: "up", speed: 26 },
+          nadia: { x: 15, y: 41, look: VILLAGER("nadia"), dir: "left" }, aba: { x: 9, y: 39, look: VILLAGER("abawidow"), dir: "right" },
+          tam: { x: 10, y: 37, look: VILLAGER("tam"), dir: "right" }, odo: { x: 16, y: 37, look: VILLAGER("odo"), dir: "left" } }, line: [null, "Kessa comes out to watch them go. Nobody says much. There isn't much water to spare for crying."], wait: 3.8 },
+      { move: { sable: [12, 37], ilse: [13, 37] }, line: ["Nadia", "(She is holding a small pair of shoes.) Bring it home, Sable. Then let me ring it. Once. For him."] },
+      { fn: () => { scene.actors.tam.emote = "dots"; }, line: ["Tam", "If you go past the old watchtower... look for Pell. Please. Just look."] },
+      { fn: () => { scene.actors.tam.emote = null; scene.actors.odo.emote = "heart"; }, line: ["Odo", "Salves are half price for couriers! ...Today only. Don't tell anyone."] },
+      { fn: () => { scene.actors.odo.emote = null; }, move: { sable: [12, 31], ilse: [13, 31] }, cam: [12, 34], line: [null, "The road north runs white and straight into the Glass Flats. Behind them, the black tower. Ahead, whatever took the Bell."], wait: 4.5 },
+      { fade: 1, wait: 1.2 },
+      { remove: ["sable", "ilse", "nadia", "aba", "tam", "odo"], fn: () => { hide.forEach(n => { n.hidden = false; }); G.px = 12 * TILE + 8; G.py = 31 * TILE + 8; camX = G.px - VIEW_W / 2; camY = G.py - VIEW_H / 2; for (const f of field) f.cool = 5; }, always: true, fade: 0, wait: 0.8 },
+    ], then);
+    return [sx, sy];
+  }
+  const _joinPartyP = joinParty;
+  joinParty = function (id) {
+    _joinPartyP(id);
+    if (id === "ilse" && G.stage <= 2 && !G.flags.departed && G.flags.pro === "done") { G.flags.wantDeparture = true; save(); }
+  };
+  const _updateDep = update;
+  update = function (dt) {   // play the departure as soon as the dialogue and chapter card are out of the way
+    _updateDep(dt);
+    if (G && G.flags.wantDeparture && mode === "play" && !scene) { G.flags.wantDeparture = false; G.flags.departed = true; save(); departureScene(); }
+  };
+  // The Bell comes home: before the ending card for "A Bell for Everyone" and "The Last King Sleeps".
+  function homecomingScene(kind, then) {
+    const hide = NPCS.filter(n => ["nadia", "abawidow", "tam", "odo", "ilse", "ama"].includes(n.id)); hide.forEach(n => { n.hidden = true; });
+    G.px = 12 * TILE + 8; G.py = 45 * TILE + 8; G.clock = 0.08; field = [];
+    const dancers = {}; ["abawidow", "tam", "odo", "ama"].forEach((id, i) => { dancers["v" + i] = { x: 9 + i * 2, y: 43 + (i % 2), look: VILLAGER(id), dir: "down" }; });
+    G.members.slice(1, 5).forEach((id, i) => { dancers["h" + i] = { x: 10 + i * 2, y: 46, look: HEROES[id].look, dir: "up" }; });
+    playScene([
+      { cam: [14, 41], zoom: 1.1, fade: 1, wait: 0.1, add: { sable: { x: 12, y: 44, look: HEROES.sable.look, dir: "up" }, nadia: { x: 12, y: 40, look: VILLAGER("nadia"), dir: "down", speed: 18 }, ...dancers } },
+      { fade: 0, line: [null, kind === "ring" ? "Home. The Bell hangs in the black tower again. The sky over Kessa is the colour of wet slate." : "Home. The sea is quiet, the King is asleep, and the Bell hangs in the black tower again."], fn: () => { G.flags.bellHome = true; }, wait: 4 },
+      { move: { nadia: [15, 40] }, untilStill: true, line: ["Nadia", "(She walks to the tower with Lio's shoes under her arm.) Three times. Slow. Like the old song."] },
+      { fn: () => { scene.actors.nadia.lift = 18; scene.actors.nadia.dir = "up"; }, zoom: 1.28, cam: [15, 38], wait: 1.2 },
+      { shake: 5, sound: "victory", line: [null, "DONG."], wait: 1.6 },
+      { shake: 5, sound: "victory", line: [null, "DONG."], wait: 1.6 },
+      { shake: 7, sound: "victory", line: [null, "DONG."], rain: 1, wait: 2.2 },
+      { zoom: 1.08, cam: [13, 43], line: [null, "And it rains. Soft and ordinary and everywhere, the kind of rain that grows things."], fn: () => { for (const a of Object.values(scene.actors)) if (a !== scene.actors.nadia && a !== scene.actors.sable) a.dance = true; }, wait: 4.5 },
+      { line: [null, "Kessa goes out and dances in the mud. Nobody has to share a cup. Up in the tower an old woman holds a pair of small shoes out into the rain, so they can feel it too."], wait: 6 },
+      { fade: 1, wait: 1.5 },
+      { remove: Object.keys(dancers).concat(["sable", "nadia"]), fn: () => { hide.forEach(n => { n.hidden = false; }); }, always: true, wait: 0.1 },
+    ], then);
+  }
+  const _bellShownP = bellShown;
+  // make the tower drawing use the new rule
+  const _drawPropP2 = drawProp;
+  drawProp = function (g2, pr, x, y) {
+    if (pr.type !== "belltower" || !G.flags.bellHome || _bellShownP()) return _drawPropP2(g2, pr, x, y);
+    _drawPropP2(g2, pr, x, y);
+    const R = (dx, dy, w, h, c) => { g2.fillStyle = c; g2.fillRect(Math.round(x + dx), Math.round(y + dy), w, h); }, sw = Math.round(Math.sin(time * 3) * 2);
+    R(-5 + sw, -43, 10, 10, "#1b1633"); R(-4 + sw, -42, 8, 9, "#e8b83a"); R(-3 + sw, -41, 2, 6, "#ffe08a");
+  };
+  const _endingH = ending;
+  ending = function (kind) {
+    if ((kind === "ring" || kind === "sleep") && !G.flags.homecomingSeen) { G.flags.homecomingSeen = true; mode = "play"; homecomingScene(kind, () => _endingH(kind)); return; }
+    _endingH(kind);
+  };
+
   // ================================================================== BOOT
   const saved = load();          // read the save before a fresh game could overwrite it
   newGame(false);

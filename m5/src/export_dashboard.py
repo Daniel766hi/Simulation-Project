@@ -110,7 +110,8 @@ def simulator_items(full, calendar, prices):
     both forecasts, and each forecast's out-of-sample daily error sd from the previous window."""
     from inventory_sim import unit_prices
     o, prev = LAST_TRAIN_EVALUATION, LAST_TRAIN_VALIDATION
-    cols = lambda a, b: [f"d_{d}" for d in range(a, b + 1)]
+    def cols(a, b):
+        return [f"d_{d}" for d in range(a, b + 1)]
     demand = full[cols(o + 1, o + HORIZON)].to_numpy(float)
     hist = full[cols(o - 55, o)].to_numpy(float)
     rate = full[cols(o - 27, o)].to_numpy(float).mean(axis=1)

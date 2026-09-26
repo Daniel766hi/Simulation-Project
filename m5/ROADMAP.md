@@ -66,3 +66,27 @@ combination works at all. The plain 50/50 average stays the method under test in
   runs resumable.
 - Report inventory cost and fill rate (`inventory_sim.py`, `supply_chain_sim.py`) next to
   WRMSSE, so an "improvement" only counts if it also lowers cost.
+
+## Code review while step 1 runs (September 2026)
+
+Done now, without touching anything the running test loads:
+- Lint clean (`ruff check src tests`, settings in `ruff.toml`), now also run in CI.
+- Ten new unit tests (`tests/test_pipeline.py`) on the building blocks of the comparison:
+  top-down alignment (identity at alpha 0, exact match inside the clip at alpha 1, clipping,
+  zero-safe), the stacked blend (weights on the simplex, blend = weighted sum) and the
+  hypothesis rule (supported only when both tests agree; a single large win does not count).
+
+Frozen until the nine-window test finishes: `train.py`, `features.py`, `config.py`,
+`stockouts.py` (imported by masked training runs), `calibrate.py`, `reconcile.py`, `score.py`,
+`wrmsse.py`, `extended_comparison.py`, `stacking.py`. Changing them mid-test would mean the
+windows were not all produced by the same code.
+
+Found in review, to fix after the test (reporting will not change the registered result):
+1. `stacking.members()` calibrates walk-forward only over the windows it is given. On the
+   holdout that means window 1661 is uncalibrated while only 1661 is complete, and its score
+   changes once 1605 and 1633 exist. The interim 1661 number (stack 0.559, winner 0.656,
+   50/50 0.561) is therefore provisional; only the three-window result counts.
+2. The ensemble -> alignment -> walk-forward calibration code is duplicated in
+   `extended_comparison.main()` and `stacking.members()`. Move it into one function and check
+   it reproduces the registered numbers exactly before switching.
+3. Remove the two unused imports kept in `reconcile.py` and `stockouts.py` (see `ruff.toml`).

@@ -120,7 +120,8 @@ def main():
         "calibration strength only (none / half / full)":
             [(frozen_w, frozen_a, r) for r in (("none", 1.0), ("pooled", 0.5), ("pooled", 1.0))],
     }
-    mean_before = lambda st, t: np.mean([score[(*st, p)] for p in ORIGINS[:ORIGINS.index(t)]])
+    def mean_before(st, t):
+        return np.mean([score[(*st, p)] for p in ORIGINS[:ORIGINS.index(t)]])
     results = {}
     for label, settings in menus.items():
         rows = {}
