@@ -15,7 +15,7 @@ import json
 import numpy as np
 import pandas as pd
 
-from config import HORIZON, LAST_TRAIN_EVALUATION, OUTPUTS, RAW
+from config import HORIZON, LAST_TRAIN_EVALUATION, OUTPUTS
 from wrmsse import load_raw
 
 MIN_RUN = 7          # consecutive zero-sale days

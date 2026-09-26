@@ -24,7 +24,7 @@ import lightgbm as lgb
 import numpy as np
 import pandas as pd
 
-from config import HORIZON, OUTPUTS, RAW
+from config import HORIZON, OUTPUTS
 from wrmsse import aggregation_matrix, load_raw
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
