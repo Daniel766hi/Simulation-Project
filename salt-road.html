@@ -218,6 +218,7 @@
         <button type="button" data-a="settings">Settings</button>
         <button type="button" data-a="alchemy">Alchemy <small>Kest</small></button>
         <button type="button" data-a="ach">Achievements</button>
+        <button type="button" data-a="chronicle">Chronicle</button>
         <button type="button" data-a="controls">Controls</button>
         <button type="button" data-a="quit">Quit to title</button>
       </div>
@@ -5549,6 +5550,47 @@
   Object.assign(FISH, { mooneel: { name: "Moon Eel", where: "old", rare: 2, pay: 22, night: true, lore: "Silver-blue and faintly glowing. It only rises when the salt is dark. Old Hake says his wife used to call them 'the stars that fell in the pool'." } });
   FISH_IDS.push("mooneel");
   ACHIEVEMENTS.push(["night", "Be Kind If You Can", "Lay the Moon-Mother to rest.", () => G.flags.moonDone]);
+
+  // ================================================================== THE CHRONICLE
+  // Tobin the Clerk keeps a history of the journey, written from what you actually did. Read it from the pause menu.
+  function chronicle() {
+    const f = G.flags, P = [], has = id => G.members.includes(id), dead = id => (f.fallen || []).includes(id), nm = id => HEROES[id] ? HEROES[id].name : id;
+    P.push(["The Theft", "In the dry year, the Rain Bell was cut from its tower in Kessa, and the rains that had failed for three summers failed a fourth. The village sent its courier, Sable, a foundling of the salt, to bring it home. This history begins with her, because every true history begins with someone who was sent."]);
+    if (f.butcherDead) P.push(["The Well", `At the Well of Nine she killed the Butcher, who had been a man once. ${has("maru") || dead("maru") ? "There she met Maru, the blind storm-singer, who came with her carrying a lantern full of someone else's memory." : ""}`]);
+    if (f.motherDead) P.push(["The Grove", `In the Drowned Grove the Mother of Leeches died, and the palm-farmers wept, because some of what she had eaten were their sons. ${dead("rook") ? "The archer Rook joined the road there. He would not reach its end." : "The archer Rook joined the road there, still looking for someone to blame."}`]);
+    if (f.vossDead) P.push(["The Cathedral", `Magister Voss, who had flayed himself in salt to live forever, did not. ${f.wardenFree ? "The Warden, freed from his chains, carried the Bell out of the dark for them, and chose to follow the courier. Historians will argue for a century about whether a Warden can choose. I was there. It chose." : "The Warden stayed chained in the dark. They could not save everyone. They were learning that."}`]);
+    if (f.wyrmDead) P.push(["The Tower", "Far to the north-west, beneath the old watchtower, the Salt Wyrm died, and a boy named Pell was brought home in a satchel to his sister. It was not in any contract. The courier did it anyway. This is recorded because it is the kind of thing that is never recorded."]);
+    if (f.hollisDead) P.push(["The Guild Master", "Guild Master Hollis, who had bought the rain and sold it by the cup, was defeated in his own counting-house. The Bell came home. It rang. It did not rain. That was when everyone understood the story was not over."]);
+    if (G.stage >= 7) P.push(["Oru", `Oru, the city on the hill, kept its gates shut against the lower valley while its granaries filled. ${f.quillFate === "killed" ? "Treasurer Quill, who had counted the starving as a line item, died under Ilse's hammer. She has never spoken of it." : f.quillFate === "spared" ? "Treasurer Quill was spared by the smith whose family he had ruined, and stood trial. It was the first trial in Oru in which the accused was richer than the judge." : "Treasurer Quill's ledgers were opened at last."} The gates were opened. The lower city came in, and was loud, and was welcome.`]);
+    if (G.stage >= 8) P.push(["The Marsh", `In the Drowning Marsh the courier found Reedholm on its stilts, and ${(f.rescued || []).length >= 5 ? "brought all five of its missing home" : `brought home ${(f.rescued || []).length} of its five missing`}. ${f.selaDone === "truth" ? "She told Sela the truth about her husband Jonas, and Sela planted a tree for him." : f.selaDone === "lie" ? "She told Sela a kind lie about her husband Jonas. I record it here as a lie, because a chronicle must. I also record that it was kind." : ""}`]);
+    if (f.mawDead) P.push(["The Wreck Coast", "On the Wreck Coast, Captain Maw, the Drowned Father, sang to his lost crew from the belly of the Great Wreck until the courier made him stop. Nell the smuggler joined them there, with a diving bell and no respect for anyone."]);
+    if (G.stage >= 11) P.push(["The Spire", dead("maru") ? "At the top of the Storm Spire, Maru sang the last note of the storm-song and did not come down. Every storm since has sounded, faintly, like singing. The children say it is her, getting the ending right." : f.velaSang ? "At the top of the Storm Spire, Vela the storm-singer sang in Maru's place, and the storm listened. Maru lived. She is still, she says, annoyed about it." : "The courier climbed the Storm Spire and woke the last of the old tones."]);
+    if (dead("rook") || dead("ren")) P.push(["The Fallen", [dead("rook") ? "Rook died spending the bullet he had saved for revenge on someone else's life instead." : "", dead("ren") ? "Captain Ren died holding the gate of Oru shut behind him while the others escaped. The magistrates recorded his fine as paid." : ""].filter(Boolean).join(" ")]);
+    if (f.corvinDead) P.push(["The Hollow Beneath", `Beneath the Well, in the old salt mines, the courier found Corvin's ledger, and in it the truth of how Oru was built: on the backs of miners who were told the salt would make them free. ${f.apologyRead ? "She found the Apology of Oru, written four hundred years too late, and carried it down to the one person it was written for." : ""}`]);
+    if (f.kingDead) {
+      const e = f.epilogue;
+      P.push(["The Drowned King", f.apologyRead ? "At the bottom of the sea, the courier read the Apology to Aurel, the Drowned King. He had waited four hundred years to hear that someone was sorry. When he heard it, he slept." : "At the bottom of the sea, the courier fought Aurel, the Drowned King, who had drowned the valley because the valley let his people drown first. He was not wrong. He was not right either. That is the hardest kind of enemy."]);
+      if (e === "ring") P.push(["After", "The Bell was rung for everyone, in the three old tones. The gates stayed open. The rain came back, soft and ordinary. The valley is learning to share the hills."]);
+      if (e === "sleep") P.push(["After", "The King sleeps, and the sea is quiet. Nobody has to stay below any more. The valley is no longer afraid of water."]);
+    }
+    const kind = [f.hakeDone ? "returned a drowned boy's knife to his father" : "", f.moonDone ? "laid a pale mother to rest in the salt at night" : "", f.choirDone ? "found four lost orphans in Oru" : "", f.suriRest ? "gave a drowned woman her daughter's toy boat" : "", (f.delivered || []).length ? `delivered ${(f.delivered || []).length} letter${(f.delivered || []).length > 1 ? "s" : ""} nobody paid her to carry` : ""].filter(Boolean);
+    if (kind.length) P.push(["Small Things", `Along the way the courier ${kind.join("; ")}. These are small things. I have come to believe small things are most of what history is made of.`]);
+    if (f.motherLetter) P.push(["The Letter", "In the end she opened her mother's letter, and broke her oath to do it. It said that somebody always has to stay below so somebody else can climb, and hoped that one day someone would ask why. She asked. This chronicle is my answer to her question: nobody should. That is the whole of the lesson, and it took the valley four hundred years."]);
+    P.push(["", `The chronicle continues. (Chapter ${["Prologue", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII"][Math.min(G.stage, 12)]}.)`]);
+    return P;
+  }
+  const escC = t => String(t).replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]);
+  function showChronicle() {
+    const P = chronicle();
+    showPanel("The Chronicle", `<p class="dim" style="font-size:12px;margin:0 0 8px">From the Chronicle of Tobin, Clerk of Oru, set down in his own hand. It grows as you travel.</p><div style="max-height:52vh;overflow:auto;padding-right:6px">${P.map(([h, t]) => `${h ? `<h3 style="margin:10px 0 2px;color:var(--gold);font-size:14px">${escC(h)}</h3>` : ""}<p style="margin:0 0 6px;font-size:14px;line-height:1.45">${escC(t)}</p>`).join("")}</div>`);
+  }
+  $("pauseUI").addEventListener("click", e => { const b = e.target.closest("button"); if (b && b.dataset.a === "chronicle") showChronicle(); });
+  let chronCount = null, chronG = null;
+  setInterval(() => {
+    if (!G || mode === "title") return;
+    if (chronG !== G) { chronG = G; chronCount = chronicle().length; return; }   // new or loaded game: no notice for old pages
+    const n = chronicle().length; if (n > chronCount && mode === "play") toast("Tobin adds a page to the Chronicle (pause menu)."); chronCount = n;
+  }, 3000);
 
   // ================================================================== BOOT
   const saved = load();          // read the save before a fresh game could overwrite it
