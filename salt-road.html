@@ -38,12 +38,13 @@
 
   .hud { position: absolute; inset: 10px 10px auto 10px; display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; pointer-events: none; }
   .party-mini { display: flex; flex-direction: column; gap: 3px; }
-  .pm { display: grid; grid-template-columns: 58px 64px; align-items: center; gap: 6px; font-size: 12px; text-shadow: 0 1px 0 #000; }
+  .hud > div:first-child { background: var(--panel); border: 1px solid var(--edge); border-radius: 8px; padding: 6px 9px; }
+  .pm { display: grid; grid-template-columns: 58px 64px; align-items: center; gap: 6px; font-size: 12px; }
   .bar { height: 6px; background: #2b2350; border-radius: 3px; overflow: hidden; border: 1px solid #000; }
   .bar i { display: block; height: 100%; }
   .bar.hp i { background: linear-gradient(90deg, #ff4d6d, #ff8a5c); }
   .bar.sp i { background: var(--sp); }
-  .row { display: flex; gap: 8px; align-items: center; font-size: 12px; text-shadow: 0 2px 0 #000; margin-top: 3px; flex-wrap: wrap; max-width: 260px; }
+  .row { display: flex; gap: 8px; align-items: center; font-size: 12px; margin-top: 3px; flex-wrap: wrap; max-width: 260px; }
   .row .coins { color: var(--gold); }
   .goal { max-width: 44%; background: var(--panel); border: 1px solid var(--edge); border-radius: 8px; padding: 7px 10px; font-size: 14px; line-height: 1.3; }
   .goal b { display: block; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--scarf); margin-bottom: 2px; }
@@ -1166,7 +1167,7 @@
     for (const [x, y] of [[14, 24], [30, 33], [50, 26], [8, 20]]) addProp("cart", x, y);
     addProp("cairn", 66, 22); for (const [x, y] of [[64, 20], [65, 21], [67, 21], [66, 20], [65, 23], [67, 23]]) addProp("grave", x, y);
     addProp("tower", 5, 9);
-    addProp("campfire", 56, 14); addProp("campfire", 60, 45);
+    addProp("campfire", 56, 15); addProp("campfire", 60, 45);   // beside the gate road, not on it
     const busy = (x, y) => [...NPCS.map(n => [n.x, n.y]), ...CHESTS.map(c => [c.x, c.y]), ...LORE.map(l => [l.x, l.y]), ...SHARDS.map(c => [c.x, c.y]), ...FIELD.map(f => [f.x, f.y]),
       [11, 15], [34, 20], [36, 29], [62, 43], [61, 12], [58, 12], [40, 17], [12, 42], [7, 11], [6, 12], [8, 12]].some(([a, b]) => Math.abs(a - x) + Math.abs(b - y) < 3);
     const nearPath = (x, y) => { for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ([T.PATH, T.BRIDGE, T.DOOR, T.LDOOR, T.GATE].includes(get(x + dx, y + dy))) return true; return false; };
@@ -2481,7 +2482,7 @@
       g.fillStyle = "#1b1633"; g.fillRect(x - 2, y - 14 - bobv, 1, 2); g.fillRect(x + 1, y - 14 - bobv, 1, 2); g.fillStyle = "#c8102e"; g.fillRect(x - 2, y - 13 - bobv, 1, 1);
       g.fillStyle = "#1b1633"; g.fillRect(x - 3, y - 3, 2, 3); g.fillRect(x + 1, y - 3, 2, 3);
     }
-    if (f.group.length > 1) { g.fillStyle = "#1b1633"; g.fillRect(x + 6, y - 20, 7, 7); g.fillStyle = "#c8102e"; g.fillRect(x + 7, y - 19, 5, 5); g.fillStyle = "#fff"; g.font = "6px 'Pixelify Sans', monospace"; g.textAlign = "center"; g.fillText(f.group.length, x + 9.5, y - 14.5); }
+    if (f.group.length > 1) { g.fillStyle = "#1b1633"; g.fillRect(x + 6, y - 20, 7, 7); g.fillStyle = "#c8102e"; g.fillRect(x + 7, y - 19, 5, 5); pixGlyph(g, String(f.group.length), x + 8, y - 18, "#ffffff"); }
   }
   function drawBattleMonster(g, u, cx, cy) {
     const t = time, hurt = u.hurt > 0 && Math.floor(u.hurt * 30) % 2 === 0;
@@ -2641,10 +2642,23 @@
   const lg = light.getContext("2d");
   const heroLook = (dir, full) => ({ ...HEROES.sable.look, dir, walking: full && player.moving, walk: player.walk, glowEyes: tileAt(G.px, G.py) === T.DARK });
 
+  // Text is drawn at screen resolution on top of the scaled pixel image, never inside the tiny buffer.
+  const HI = [];
+  function hiText(text, x, y, px, color) { if (HI.length < 200) HI.push([String(text), x, y, px, color]); }
+  function flushHiText() {
+    if (!HI.length) return;
+    const k = canvas.width / VIEW_W; ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+    for (const [t, x, y, px, c] of HI) {
+      ctx.font = `${Math.round(px * k)}px 'Pixelify Sans', 'Courier New', monospace`;
+      ctx.fillStyle = "#1b1633"; ctx.fillText(t, Math.round(x * k + k * 0.75), Math.round(y * k + k * 0.75)); ctx.fillStyle = c; ctx.fillText(t, Math.round(x * k), Math.round(y * k));
+    }
+    HI.length = 0;
+  }
   function render() {
     if (battle) renderBattle(); else renderWorld();
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(buf, 0, 0, canvas.width, canvas.height);
+    flushHiText();
     if (!battle && showMap && mode !== "title") drawMinimap(); else $("minimap").hidden = true;
   }
   function renderWorld() {
@@ -2843,10 +2857,9 @@
       const bw = f.boss ? 90 : 34, by = f.boss ? p.y + 8 : p.y - 60;
       g.fillStyle = "#1b1633"; g.fillRect(p.x - bw / 2 - 1, by - 1, bw + 2, 5); g.fillStyle = "#4a0a14"; g.fillRect(p.x - bw / 2, by, bw, 3);
       g.fillStyle = "#e0243f"; g.fillRect(p.x - bw / 2, by, Math.round(bw * f.hp / f.maxHp), 3);
-      g.font = "7px 'Pixelify Sans', monospace"; g.textAlign = "center";
       const label = intentLabel(f), danger = f.intent && (f.intent.all || (f.intent.power || 0) >= 1.3 || (f.intent.charge && !f.intent.release));
       const ly = f.boss ? by + 12 : by - 4;
-      g.fillStyle = "#1b1633"; g.fillText(label, p.x + 1, ly + 1); g.fillStyle = f.st.stun ? "#ffcf4a" : danger ? "#ff6b6b" : "#f3efe6"; g.fillText(label, p.x, ly);
+      hiText(label, p.x, ly, 7, f.st.stun ? "#ffcf4a" : danger ? "#ff6b6b" : "#f3efe6");
       const sts = Object.keys(f.st).filter(k => ["bleed", "stun", "weak", "guard", "mark", "brk"].includes(k));
       sts.forEach((k, i) => { g.fillStyle = { bleed: "#c8102e", stun: "#ffcf4a", weak: "#b08aff", guard: "#6fc0d0", mark: "#ff9a3d", brk: "#aa5a5a" }[k]; g.fillRect(p.x + bw / 2 + 3 + i * 5, by, 4, 3); });
       if (B.hoverTarget === f || B.current === f) { g.strokeStyle = B.current === f ? "#ff6b6b" : "#ffcf4a"; g.lineWidth = 1; const w2 = f.boss ? 60 : 34; g.strokeRect(p.x - w2 / 2 + .5, p.y - (f.boss ? 108 : 56) + .5, w2, f.boss ? 112 : 58); }
@@ -2869,8 +2882,7 @@
     for (const p of particles) if (!p.world) { g.fillStyle = p.color; g.globalAlpha = Math.min(1, p.life * 2); g.fillRect(Math.round(p.x), Math.round(p.y), p.size, p.size); }
     g.globalAlpha = 1;
     for (const p of popups) {
-      g.font = `${p.big ? 11 : 8}px 'Pixelify Sans', monospace`; g.textAlign = "center";
-      g.fillStyle = "#1b1633"; g.fillText(p.text, Math.round(p.x) + 1, Math.round(p.y) + 1); g.fillStyle = p.color; g.fillText(p.text, Math.round(p.x), Math.round(p.y));
+      hiText(p.text, p.x, p.y, p.big ? 11 : 8, p.color);
     }
     if (B.flash > 0) { g.fillStyle = `rgba(255,255,255,${B.flash * .6})`; g.fillRect(-10, -10, VIEW_W + 20, VIEW_H + 20); }
     const vg = g.createRadialGradient(VIEW_W / 2, VIEW_H / 2, VIEW_H * 0.4, VIEW_W / 2, VIEW_H / 2, VIEW_W * 0.7);
@@ -2879,7 +2891,10 @@
     g.restore();
   }
   function questMarker(n) { const t = goal(); return (n.x === t.x && n.y === t.y) || (n.id === "beno" && G.keyItems.charm && !G.flags.charmReturned); }
-  function drawPrompt(g, x, y) { const b = Math.round(Math.sin(time * 6)); x = Math.round(x); y = Math.round(y); g.fillStyle = "#1b1633"; g.fillRect(x - 5, y - 6 + b, 10, 9); g.fillStyle = "#f3efe6"; g.fillRect(x - 4, y - 5 + b, 8, 7); g.fillStyle = "#1b1633"; g.font = "7px 'Pixelify Sans', monospace"; g.textAlign = "center"; g.fillText("E", x, y + 1 + b); }
+  function drawPrompt(g, x, y) { const b = Math.round(Math.sin(time * 6)); x = Math.round(x); y = Math.round(y); g.fillStyle = "#1b1633"; g.fillRect(x - 5, y - 6 + b, 10, 9); g.fillStyle = "#f3efe6"; g.fillRect(x - 4, y - 5 + b, 8, 7); pixGlyph(g, "E", x - 1, y - 4 + b, "#1b1633"); }
+  // a 3x5 pixel font for the tiny labels drawn inside the game image (crisp at any scale)
+  const GLYPHS = { E: "111100110100111", 0: "111101101101111", 1: "010110010010111", 2: "111001111100111", 3: "111001111001111", 4: "101101111001001", 5: "111100111001111", 6: "111100111101111", 7: "111001010010010", 8: "111101111101111", 9: "111101111001111" };
+  function pixGlyph(g2, text, x, y, col) { g2.fillStyle = col; [...text].forEach((ch, n) => { const m = GLYPHS[ch]; if (!m) return; for (let i = 0; i < 15; i++) if (m[i] === "1") g2.fillRect(Math.round(x) + n * 4 + (i % 3), Math.round(y) + Math.floor(i / 3), 1, 1); }); }
   function drawMarker(g, x, y) { const b = Math.round(Math.sin(time * 5) * 2); x = Math.round(x); y = Math.round(y); g.fillStyle = "#1b1633"; g.fillRect(x - 2, y - 9 + b, 5, 11); g.fillStyle = "#ffcf4a"; g.fillRect(x - 1, y - 8 + b, 3, 6); g.fillRect(x - 1, y - 1 + b, 3, 2); }
   function drawChest(g, x, y) { x = Math.round(x); y = Math.round(y); g.fillStyle = "#1b1633"; g.fillRect(x - 7, y - 9, 14, 11); g.fillStyle = "#8a5533"; g.fillRect(x - 6, y - 8, 12, 9); g.fillStyle = "#ffcf4a"; g.fillRect(x - 6, y - 5, 12, 1); g.fillRect(x - 1, y - 6, 2, 3); if (Math.floor(time * 3) % 2) { g.fillStyle = "#ffffff"; g.fillRect(x + 5, y - 11, 1, 1); } }
   function drawSparkle(g, x, y, c) { x = Math.round(x); y = Math.round(y); const s = 2 + Math.round(Math.abs(Math.sin(time * 4)) * 3); g.fillStyle = c; g.fillRect(x - 1, y - 1, 3, 3); g.fillStyle = "#ffffff"; g.fillRect(x, y - s - 1, 1, s); g.fillRect(x, y + 2, 1, s); g.fillRect(x - s - 1, y, s, 1); g.fillRect(x + 2, y, s, 1); }
@@ -2904,8 +2919,7 @@
     g.fillStyle = "#ffcf4a"; g.beginPath(); g.moveTo(7, 0); g.lineTo(-4, -5); g.lineTo(-2, 0); g.lineTo(-4, 5); g.closePath(); g.fill();
     g.restore();
     const dist = Math.round(Math.hypot(gx - (G.px - ox), gy - (G.py - oy)) / TILE), ly = y > VIEW_H - 24 ? y - 11 : y + 14;
-    g.font = "7px 'Pixelify Sans', monospace"; g.textAlign = "center";
-    g.fillStyle = "#1b1633"; g.fillText(`${dist}m`, Math.round(x) + 1, Math.round(ly) + 1); g.fillStyle = "#ffcf4a"; g.fillText(`${dist}m`, Math.round(x), Math.round(ly));
+    hiText(`${dist}m`, x, ly, 7, "#ffcf4a");
   }
   const MINI = { [T.SALT]: "#e3dde9", [T.BONES]: "#e3dde9", [T.SAND]: "#e6c98f", [T.GRASS]: "#4f9a57", [T.MUD]: "#4a4a3a", [T.WATER]: "#2a7fae", [T.PALM]: "#2a6f40", [T.WALL]: "#5e5680", [T.DARK]: "#332e4f", [T.HOUSE]: "#d9a86c", [T.ROOF]: "#a8403a", [T.DOOR]: "#6b3f24", [T.PATH]: "#d3c1a3", [T.ROCK]: "#857ea5", [T.BRIDGE]: "#9a6a3e", [T.CRYSTAL]: "#9ef0f5", [T.LOCKED]: "#ffcf4a", [T.WELL]: "#2a7fae", [T.GATE]: "#ffcf4a", [T.LDOOR]: "#8a1020", [T.CITY]: "#3b4f9a", [T.PEDESTAL]: "#aba4c8",
     [T.COBBLE]: "#9a94a8", [T.SHALLOW]: "#5aa0a8", [T.DECK]: "#9a6a3e", [T.HULL]: "#4a3020", [T.ABYSS]: "#1a2a4a", [T.CORAL]: "#c8506a", [T.CLIFF]: "#2a2438", [T.STONE]: "#7a7488",
@@ -3093,9 +3107,11 @@
     else if (coarse || narrow) { availW = iw - 8; availH = ih - 150; }
     else { availW = Math.min(iw - 32, 1400); availH = ih - 70; }
     const scale = Math.max(0.8, Math.min(availW / VIEW_W, availH / VIEW_H));
-    const cssW = Math.floor(VIEW_W * scale), dpr = window.devicePixelRatio || 1;
-    canvas.width = Math.round(cssW * dpr); canvas.height = Math.round(cssW * dpr * VIEW_H / VIEW_W);
-    canvas.style.width = cssW + "px"; canvas.style.height = Math.round(cssW * VIEW_H / VIEW_W) + "px";
+    // Whole device pixels per game pixel, so every pixel is the same size and edges stay crisp.
+    const dpr = window.devicePixelRatio || 1, dev = Math.max(1, Math.floor(scale * dpr));
+    canvas.width = VIEW_W * dev; canvas.height = VIEW_H * dev;
+    const cssW = canvas.width / dpr, cssH = canvas.height / dpr;
+    canvas.style.width = cssW + "px"; canvas.style.height = cssH + "px";
     frame.style.maxWidth = cssW + "px";
   }
   const SAVE_KEY = "salt-road-six";
@@ -3522,9 +3538,9 @@
 
   // ---- props, monsters and places of the rains
   addProp2 = () => {
-    for (const [x, y] of [[35, 70], [84, 78], [110, 47]]) addProp("campfire", x, y, { act2: true });
+    for (const [x, y] of [[33, 72], [84, 78], [110, 47]]) addProp("campfire", x, y, { act2: true });
     addProp("board", 86, 13); addProp("sign", 90, 29, { text: "A carved sign above the south gate: ORU. BUILT FOR FIVE THOUSAND. The number has been scratched out and replaced, in fresh chalk: TWELVE." });
-    addProp("stall", 86, 17, { color: "#8a2a6a" }); addProp("stall", 92, 17, { color: "#3a5aa8" });
+    addProp("stall", 85, 19, { color: "#8a2a6a" }); addProp("stall", 93, 19, { color: "#3a5aa8" });   // at the edge of the plaza, off the main street
     for (const [x, y] of [[80, 5], [88, 5], [80, 8], [88, 8]]) addProp("candles", x, y);
     addProp("sign", 15, 59, { text: "A half-sunk signpost: REEDHOLM, EAST. Someone has nailed a child's shoe to it." });
     for (const [x, y] of [[33, 62], [44, 62], [29, 71], [45, 71]]) addProp("lamp", x, y);
@@ -5257,7 +5273,7 @@
     g.fillStyle = f.bite > 0 ? "rgba(255,255,255,.12)" : "rgba(107,255,154,.35)"; g.fillRect(bx, zy, bw, zh); g.strokeStyle = "#6bff9a"; g.strokeRect(bx + .5, zy + .5, bw - 1, zh - 1);
     if (f.bite <= 0) { const fy = top + (1 - f.fish) * (bh - 10); g.fillStyle = f.id === "oldmouth" ? "#c8b890" : "#9ef0f5"; g.fillRect(bx + 7, fy + 2, 12, 6); g.fillRect(bx + 3, fy + 3 + Math.sin(time * 12) * 1.5, 4, 4); g.fillStyle = "#0a1a2a"; g.fillRect(bx + 16, fy + 4, 1, 1); }
     g.fillStyle = "#2a1a10"; g.fillRect(bx + bw + 10, top, 8, bh); g.fillStyle = f.prog > 0.66 ? "#6bff9a" : f.prog > 0.33 ? "#ffcf4a" : "#ff5a5a"; g.fillRect(bx + bw + 10, top + bh * (1 - f.prog), 8, bh * f.prog);
-    g.fillStyle = "#e8e2d0"; g.font = "10px monospace"; g.fillText(f.bite > 0 ? "..." : "REEL", bx + bw + 24, top + 10);
+    g.fillStyle = "#e8e2d0"; g.font = "11px 'Pixelify Sans', 'Courier New', monospace"; g.fillText(f.bite > 0 ? "..." : "REEL", bx + bw + 24, top + 10);
     const k = species().length; g.fillStyle = "#8a90b8"; g.fillText(`${k}/${FISH_IDS.length} species`, bx + bw + 24, Hc - 12);
   }
   function endFishing(caught, quiet) {
@@ -6509,11 +6525,11 @@
   // camera push-in: crop the centre of the frame while a scene plays
   const _renderP = render;
   render = function () {
-    if (!scene || battle || scene.zoom < 1.005) return _renderP();
+    if (!scene || battle || scene.zoom < 1.5) return _renderP();
     renderWorld();
-    const z = scene.zoom, sw = VIEW_W / z, sh = VIEW_H / z, b = scene.bar;
+    const z = 2, sw = VIEW_W / z, sh = VIEW_H / z, b = scene.bar;
     ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(buf, (VIEW_W - sw) / 2, (VIEW_H - sh) / 2, sw, sh, 0, 0, canvas.width, canvas.height);
+    ctx.drawImage(buf, (VIEW_W - sw) / 2, (VIEW_H - sh) / 2, sw, sh, 0, 0, canvas.width, canvas.height); HI.length = 0;
     ctx.fillStyle = "#000"; const k = canvas.height / VIEW_H; ctx.fillRect(0, 0, canvas.width, b * k); ctx.fillRect(0, canvas.height - b * k, canvas.width, b * k);
     $("minimap").hidden = true;
   };
@@ -6622,299 +6638,243 @@
     const s = cine.shots[cine.i]; if (!s) return;
     const k = Math.min(1, cine.t / s.dur);
     g.save(); g.setTransform(1, 0, 0, 1, 0, 0);
-    const z = s.zoom ? s.zoom[0] + (s.zoom[1] - s.zoom[0]) * ease(k) : 1, cx = s.focus ? s.focus[0] : VIEW_W / 2, cy = s.focus ? s.focus[1] : VIEW_H / 2;
-    const sx = shake && !REDUCED && SETTINGS.shake ? rand(-1, 1) * shake : 0, sy = shake && !REDUCED && SETTINGS.shake ? rand(-1, 1) * shake : 0;
-    g.translate(cx + sx, cy + sy); g.scale(z, z); g.translate(-cx, -cy);
+    const sx = shake && !REDUCED && SETTINGS.shake ? Math.round(rand(-1, 1) * shake) : 0, sy = shake && !REDUCED && SETTINGS.shake ? Math.round(rand(-1, 1) * shake) : 0;
+    g.translate(sx, sy); g.imageSmoothingEnabled = false; g.fillStyle = "#000"; g.fillRect(0, 0, VIEW_W, VIEW_H);
     s.draw(g, cine.t, k);
     g.restore();
     const fin = s.fadeIn ? Math.max(0, 1 - cine.t / s.fadeIn) : 0, fout = s.fadeOut ? Math.max(0, 1 - (s.dur - cine.t) / s.fadeOut) : 0, f = Math.max(fin, fout);
     if (f > 0) { g.fillStyle = `rgba(0,0,0,${f})`; g.fillRect(0, 0, VIEW_W, VIEW_H); }
     if (cine.flash > 0) { g.fillStyle = `rgba(255,255,255,${cine.flash})`; g.fillRect(0, 0, VIEW_W, VIEW_H); }
     g.fillStyle = "#000"; g.fillRect(0, 0, VIEW_W, 18); g.fillRect(0, VIEW_H - 18, VIEW_W, 18);
-    ctx.imageSmoothingEnabled = false; ctx.drawImage(buf, 0, 0, canvas.width, canvas.height); $("minimap").hidden = true;
+    ctx.imageSmoothingEnabled = false; ctx.drawImage(buf, 0, 0, canvas.width, canvas.height); HI.length = 0; $("minimap").hidden = true;
   };
   const ease = k => k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
   const wrap = (v, m) => ((v % m) + m) % m;
   shake = shake || 0;
-  // ---------------------------------------------------------------- drawing kit
-  const K = {
-    sky(g2, top, bottom, h = VIEW_H) { const gr = g2.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, top); gr.addColorStop(1, bottom); g2.fillStyle = gr; g2.fillRect(-40, -40, VIEW_W + 80, h + 80); },
-    stars(g2, t, n = 60, h = 110) { for (let i = 0; i < n; i++) { g2.fillStyle = `rgba(255,255,255,${0.35 + 0.3 * Math.sin(t * 2 + i * 1.7)})`; g2.fillRect((hash(i, 91) * VIEW_W) | 0, (hash(i, 93) * h) | 0, 1, 1); } },
-    moon(g2, x, y, r, c = "#f2e6c0") { const gr = g2.createRadialGradient(x, y, r * 0.5, x, y, r * 3); gr.addColorStop(0, "rgba(242,230,192,.25)"); gr.addColorStop(1, "rgba(242,230,192,0)"); g2.fillStyle = gr; g2.fillRect(x - r * 3, y - r * 3, r * 6, r * 6); g2.fillStyle = c; g2.beginPath(); g2.arc(x, y, r, 0, Math.PI * 2); g2.fill(); g2.fillStyle = "rgba(200,190,160,.5)"; g2.beginPath(); g2.arc(x - r * 0.3, y - r * 0.2, r * 0.22, 0, 7); g2.arc(x + r * 0.35, y + r * 0.3, r * 0.15, 0, 7); g2.fill(); },
-    glow(g2, x, y, r, col, a) { const gr = g2.createRadialGradient(x, y, 1, x, y, r); gr.addColorStop(0, col.replace(")", `,${a})`).replace("rgb", "rgba")); gr.addColorStop(1, col.replace(")", ",0)").replace("rgb", "rgba")); g2.fillStyle = gr; g2.fillRect(x - r, y - r, r * 2, r * 2); },
-    flames(g2, x, y, w, h, t, n = 7) {
-      for (let layer = 0; layer < 3; layer++) {
-        g2.fillStyle = ["#c8341e", "#ff8a3a", "#ffe08a"][layer];
-        for (let i = 0; i < n; i++) {
-          const fx = x - w / 2 + (i + 0.5) * (w / n), fh = h * (1 - layer * 0.3) * (0.6 + 0.4 * Math.abs(Math.sin(t * 7 + i * 1.9 + layer))), fw = (w / n) * (1.3 - layer * 0.3);
-          g2.beginPath(); g2.moveTo(fx - fw / 2, y); g2.quadraticCurveTo(fx - fw / 2 + Math.sin(t * 9 + i) * 2, y - fh * 0.6, fx + Math.sin(t * 5 + i) * 3, y - fh); g2.quadraticCurveTo(fx + fw / 2, y - fh * 0.5, fx + fw / 2, y); g2.fill();
-        }
-      }
+  // ---------------------------------------------------------------- pixel-art shot kit
+  // Every shot is built from the game's own art: dialogue portraits (drawBust) and chibi sprites (drawPerson),
+  // enlarged by whole numbers only, plus detail art drawn on a coarse pixel grid. Nothing anti-aliased.
+  const offC = (w, h) => { const c = document.createElement("canvas"); c.width = w; c.height = h; const x = c.getContext("2d"); x.imageSmoothingEnabled = false; return [c, x]; };
+  const [DC, dc] = offC(80, 48);      // detail grid, shown at x4 (fills the 320x192 frame)
+  const [BC, bcx] = offC(48, 48);     // one portrait
+  const [SC, scx] = offC(48, 48);     // one chibi sprite
+  const PR = (c2, x, y, w, h, col) => { c2.fillStyle = col; c2.fillRect(Math.round(x), Math.round(y), w, h); };
+  const PO = (c2, x, y, w, h, col) => { PR(c2, x - 1, y - 1, w + 2, h + 2, OUT); PR(c2, x, y, w, h, col); };
+  const blit = (g2, c, dx, dy, k, sw = c.width, sh = c.height) => { g2.imageSmoothingEnabled = false; g2.drawImage(c, 0, 0, sw, sh, Math.round(dx), Math.round(dy), sw * k, sh * k); };
+  const detail = (g2, fn, t) => { dc.clearRect(0, 0, 80, 48); fn(dc, t); blit(g2, DC, 0, 0, 4); };
+  // portrait with an expression painted in the portrait's own 48x48 grid
+  function portrait(look, ex = {}, t = 0) {
+    bcx.clearRect(0, 0, 48, 48); drawBust(bcx, look);
+    const sk = look.skin, skD = shadeHex(sk, -0.2), R = (x, y, w, h, c) => PR(bcx, x, y, w, h, c);
+    if (ex.bg === false) { /* keep the portrait background */ }
+    if (ex.brows === "worried") { R(17, 19, 6, 1, sk); R(26, 19, 6, 1, sk); R(17, 19, 2, 1, "#2b1a1a"); R(19, 18, 2, 1, "#2b1a1a"); R(21, 17, 2, 1, "#2b1a1a"); R(30, 19, 2, 1, "#2b1a1a"); R(28, 18, 2, 1, "#2b1a1a"); R(26, 17, 2, 1, "#2b1a1a"); }
+    if (ex.brows === "fierce") { R(17, 19, 6, 1, sk); R(26, 19, 6, 1, sk); R(17, 17, 2, 1, "#2b1a1a"); R(19, 18, 2, 1, "#2b1a1a"); R(21, 19, 2, 1, "#2b1a1a"); R(30, 17, 2, 1, "#2b1a1a"); R(28, 18, 2, 1, "#2b1a1a"); R(26, 19, 2, 1, "#2b1a1a"); }
+    if (ex.eyes === "closed") { R(17, 20, 6, 3, sk); R(26, 20, 6, 3, sk); R(17, 22, 6, 1, "#2b1a1a"); R(26, 22, 6, 1, "#2b1a1a"); }
+    if (ex.eyes === "wide") { R(17, 19, 6, 1, "#f4f0ea"); R(26, 19, 6, 1, "#f4f0ea"); R(20, 21, 1, 1, "#111"); R(28, 21, 1, 1, "#111"); }
+    if (ex.eyes === "down") { R(19, 20, 3, 3, "#f4f0ea"); R(27, 20, 3, 3, "#f4f0ea"); R(19, 21, 3, 2, look.style && look.style.eye || "#3a2a1a"); R(27, 21, 3, 2, look.style && look.style.eye || "#3a2a1a"); }
+    if (ex.mouth === "open") { R(21, 28, 7, 3, "#5a0f18"); R(22, 28, 5, 1, "#f4f0ea"); }
+    if (ex.mouth === "shout") { R(20, 27, 9, 5, OUT); R(21, 28, 7, 3, "#5a0f18"); R(21, 28, 7, 1, "#f4f0ea"); R(23, 30, 3, 1, "#c84a5a"); }
+    if (ex.mouth === "grit") { R(20, 28, 9, 3, OUT); R(21, 29, 7, 1, "#f4f0ea"); }
+    if (ex.mouth === "smile") { R(21, 29, 7, 1, sk); R(20, 28, 1, 1, "#8a3a3a"); R(21, 29, 7, 1, "#8a3a3a"); R(28, 28, 1, 1, "#8a3a3a"); }
+    if (ex.mouth === "sad") { R(21, 29, 7, 2, sk); R(21, 30, 1, 1, "#8a3a3a"); R(22, 29, 5, 1, "#8a3a3a"); R(27, 30, 1, 1, "#8a3a3a"); }
+    if (ex.smudge) { R(29, 25, 3, 2, "rgba(40,24,24,.45)"); R(16, 14, 2, 3, "rgba(40,24,24,.35)"); }
+    if (ex.tears) { const d = Math.floor((t * 6) % 8); for (const x of [19, 28]) { R(x, 23, 1, 3 + d % 5, "#9ad8ff"); R(x, 26 + d % 5, 2, 1, "#c8ecff"); } }
+    if (ex.light) { bcx.fillStyle = ex.light; for (let x = 0; x < 20; x++) { bcx.globalAlpha = 0.03 * (20 - x) / 20 * 10; bcx.fillRect(ex.lightFrom === "right" ? 47 - x : x, 0, 1, 48); } bcx.globalAlpha = 1; }
+    return BC;
+  }
+  function drawPortrait3(g2, look, ex, t, x, y, k = 3) {   // a framed portrait at x3 (144 px)
+    portrait(look, ex, t); const s = 48 * k;
+    PR(g2, x - 3, y - 3, s + 6, s + 6, "#0e0b1e"); PR(g2, x - 2, y - 2, s + 4, s + 4, "#5e5680"); PR(g2, x - 1, y - 1, s + 2, s + 2, "#0e0b1e");
+    blit(g2, BC, x, y, k);
+  }
+  // a chibi sprite, optionally posed, drawn at a whole-number scale with its feet at (x, y)
+  function chibi(g2, look, o, k, x, y) {
+    scx.clearRect(0, 0, 48, 48); drawPerson(scx, 24, 40, { dir: "down", walking: false, walk: 0, bob: 0, ...look, ...o });
+    if (o.pose === "hang") {   // arms up, holding a rope above the head
+      scx.clearRect(24 - 8, 40 - 13, 3, 9); scx.clearRect(24 + 5, 40 - 13, 3, 9);
+      const sl = look.robe; PO(scx, 24 - 6, 40 - 36, 2, 24, sl); PO(scx, 24 + 4, 40 - 36, 2, 24, sl); PR(scx, 24 - 6, 40 - 38, 2, 3, look.skin); PR(scx, 24 + 4, 40 - 38, 2, 3, look.skin);
+    }
+    if (o.pose === "reach") { scx.clearRect(24 + 5, 40 - 13, 3, 9); PO(scx, 24 + 4, 40 - 22, 2, 11, look.robe); PR(scx, 24 + 4, 40 - 24, 2, 3, look.skin); }
+    g2.save(); g2.imageSmoothingEnabled = false;
+    if (o.rot) { g2.translate(Math.round(x), Math.round(y - 20 * k)); g2.rotate(o.rot * Math.PI / 2); g2.drawImage(SC, -24 * k, -20 * k, 48 * k, 48 * k); }
+    else g2.drawImage(SC, Math.round(x - 24 * k), Math.round(y - 40 * k), 48 * k, 48 * k);
+    g2.restore();
+  }
+  const PX = {
+    bands(g2, cols, y0 = 0, y1 = VIEW_H) { const h = (y1 - y0) / cols.length; cols.forEach((c, i) => PR(g2, 0, y0 + Math.floor(i * h), VIEW_W, Math.ceil(h) + 1, c)); },
+    stars(g2, t, n = 50, h = 100) { for (let i = 0; i < n; i++) if (Math.sin(t * 2 + i * 1.7) > -0.3) PR(g2, (hash(i, 91) * VIEW_W) | 0, (hash(i, 93) * h) | 0, 1, 1, i % 7 ? "#c8c2e0" : "#ffffff"); },
+    moon(g2, x, y, r) { for (let dy = -r; dy <= r; dy++) { const w = Math.round(Math.sqrt(r * r - dy * dy)); PR(g2, x - w, y + dy, w * 2, 1, "#f2e6c0"); } PR(g2, x - 3, y - 2, 2, 2, "#d8ccaa"); PR(g2, x + 2, y + 3, 3, 2, "#d8ccaa"); },
+    fire(g2, x, y, w, h, t) { for (let i = 0; i < w; i += 2) { const f = Math.abs(Math.sin(t * 8 + i * 0.9)), fh = Math.round(h * (0.45 + 0.55 * f)); PR(g2, x + i, y - fh, 2, fh, "#c8341e"); PR(g2, x + i, y - Math.round(fh * 0.7), 2, Math.round(fh * 0.7), "#ff8a3a"); PR(g2, x + i, y - Math.round(fh * 0.35), 2, Math.round(fh * 0.35), "#ffe08a"); } },
+    embers(g2, t, x0, x1, y0, h, n = 26, up = true) { for (let i = 0; i < n; i++) { const ph = (t * (0.25 + hash(i, 5) * 0.3) + hash(i, 7)) % 1; PR(g2, x0 + hash(i, 3) * (x1 - x0) + Math.round(Math.sin(t * 2 + i) * 3), up ? y0 - ph * h : y0 + ph * h, 1, 1, ph < 0.5 ? "#ffcf4a" : "#ff6a3a"); } },
+    rain(g2, t, n = 120) { for (let i = 0; i < n; i++) { const x = wrap(hash(i, 41) * (VIEW_W + 40) - t * 40, VIEW_W + 40) - 20, y = wrap(hash(i, 43) * VIEW_H + t * 240, VIEW_H + 10) - 5; PR(g2, x, y, 1, 4, "#b8cef0"); } },
+    village(g2, y, col) { for (const [x, w, h] of [[-4, 44, 20], [36, 34, 28], [66, 30, 18], [214, 40, 24], [250, 38, 30], [286, 40, 20]]) { PR(g2, x, y - h, w, h, col); for (let s = 0; s < 8; s++) PR(g2, x - 2 + s, y - h - s, w + 4 - s * 2, 1, col); } },
+    tower(g2, x, y, t, o = {}) {   // the Kessa bell tower, pixel art, feet at (x, y)
+      PR(g2, x - 12, y - 70, 24, 70, "#15102a"); PR(g2, x - 11, y - 70, 22, 70, "#2a2244"); for (let r = 0; r < 70; r += 7) PR(g2, x - 11, y - 70 + r, 22, 1, "#1e1836"); PR(g2, x - 3, y - 12, 6, 12, "#0e0b1e");
+      PR(g2, x - 14, y - 90, 28, 3, "#15102a"); PR(g2, x - 13, y - 90, 3, 20, "#15102a"); PR(g2, x + 10, y - 90, 3, 20, "#15102a"); PR(g2, x - 14, y - 72, 28, 3, "#15102a");
+      for (let s = 0; s < 10; s++) PR(g2, x - 15 + s, y - 91 - s, 30 - s * 2, 1, "#3a1a24");
+      if (o.fire) { PR(g2, x - 10, y - 87, 20, 15, "rgba(255,120,40,.25)"); PX.fire(g2, x - 10, y - 72, 20, 14, t); }
+      if (o.bell) { const sx = Math.round(Math.sin(t * 1.6) * 2); for (let r = 0; r < 11; r++) { const w = 4 + Math.round(r * 0.55) + (r > 8 ? 2 : 0); PR(g2, x - w + sx, y - 86 + r, w * 2, 1, r === 0 ? "#b8902a" : "#e8b83a"); } PR(g2, x - 2 + sx, y - 84, 1, 7, "#ffe08a"); }
     },
-    embers(g2, t, x0, x1, y0, h, n = 30, up = true) { for (let i = 0; i < n; i++) { const ph = (t * (0.25 + hash(i, 5) * 0.3) + hash(i, 7)) % 1, x = x0 + hash(i, 3) * (x1 - x0) + Math.sin(t * 2 + i) * 6, y = up ? y0 - ph * h : y0 + ph * h; g2.fillStyle = `rgba(255,${150 + (i % 3) * 40},60,${1 - ph})`; g2.fillRect(Math.round(x), Math.round(y), i % 4 ? 1 : 2, i % 4 ? 1 : 2); } },
-    smoke(g2, x, y, t, n = 8) { for (let i = 0; i < n; i++) { const ph = (t * 0.12 + i / n) % 1; g2.fillStyle = `rgba(40,30,50,${0.5 * (1 - ph)})`; g2.beginPath(); g2.arc(x + Math.sin(i * 2 + t * 0.5) * 10 + ph * 30, y - ph * 90, 6 + ph * 22, 0, 7); g2.fill(); } },
-    rain(g2, t, n = 140, a = 0.6) { g2.fillStyle = `rgba(190,210,245,${a})`; for (let i = 0; i < n; i++) { const x = wrap(hash(i, 41) * (VIEW_W + 60) - t * 60, VIEW_W + 60) - 30, y = wrap(hash(i, 43) * VIEW_H + t * 300, VIEW_H + 20) - 10; g2.fillRect(Math.round(x), Math.round(y), 1, 6); } },
-    lines(g2, t, cx, cy, n = 24, a = 0.35) { g2.strokeStyle = `rgba(255,255,255,${a})`; g2.lineWidth = 1; for (let i = 0; i < n; i++) { const an = hash(i, 11) * Math.PI * 2, r0 = 60 + hash(i, 13) * 40 + ((t * 200 + i * 30) % 60); g2.beginPath(); g2.moveTo(cx + Math.cos(an) * r0, cy + Math.sin(an) * r0); g2.lineTo(cx + Math.cos(an) * (r0 + 30), cy + Math.sin(an) * (r0 + 30)); g2.stroke(); } },
-    speedLines(g2, t, dir = 1, a = 0.4) { g2.fillStyle = `rgba(255,255,255,${a})`; for (let i = 0; i < 44; i++) { const x = hash(i, 17) * VIEW_W, y = wrap(hash(i, 19) * (VIEW_H + 60) - dir * t * 700, VIEW_H + 60) - 30; g2.fillRect(Math.round(x), Math.round(y), 1, 18 + (i % 3) * 8); } },
-    // an open hand reaching toward (tx, ty): wrist at (x, y), sleeve colour sl
-    reach(g2, x, y, tx, ty, s, skin = "#e8b48a", sl = "#3b2f7a") {
-      const a = Math.atan2(ty - y, tx - x); g2.save(); g2.translate(x, y); g2.rotate(a);
-      g2.fillStyle = "#1b1633"; g2.fillRect(-s * 3.2, -s * 0.62, s * 3.2, s * 1.24); g2.fillStyle = sl; g2.fillRect(-s * 3.2, -s * 0.55, s * 3, s * 1.1);
-      g2.fillStyle = "#3ee0e8"; g2.fillRect(-s * 0.5, -s * 0.58, s * 0.35, s * 1.16);
-      g2.fillStyle = "#1b1633"; g2.beginPath(); g2.ellipse(s * 0.55, 0, s * 0.72, s * 0.62, 0, 0, 7); g2.fill();
-      g2.fillStyle = skin; g2.beginPath(); g2.ellipse(s * 0.55, 0, s * 0.66, s * 0.56, 0, 0, 7); g2.fill();
-      for (let f = 0; f < 4; f++) { const fa = -0.55 + f * 0.37, len = s * (0.95 + (f === 1 || f === 2 ? 0.2 : 0)); g2.save(); g2.translate(s * 1.05, 0); g2.rotate(fa); g2.fillStyle = "#1b1633"; g2.fillRect(0, -s * 0.15, len + 1, s * 0.3); g2.fillStyle = skin; g2.fillRect(0, -s * 0.12, len, s * 0.24); g2.restore(); }
-      g2.save(); g2.translate(s * 0.5, s * 0.45); g2.rotate(1.1); g2.fillStyle = skin; g2.fillRect(0, -s * 0.13, s * 0.8, s * 0.26); g2.restore();
-      g2.restore();
+    fist(c2, x, y, skin) {   // a small clenched hand on the detail grid, 11x8
+      PR(c2, x - 1, y - 1, 13, 10, OUT); PR(c2, x, y, 11, 8, skin); const d = shadeHex(skin, -0.28);
+      for (let r = 1; r < 8; r += 2) PR(c2, x + 3, y + r, 8, 1, d); PR(c2, x + 9, y + 1, 1, 1, "#ffffff"); PR(c2, x + 9, y + 3, 1, 1, "#ffffff"); PR(c2, x + 9, y + 5, 1, 1, "#ffffff");
+      PR(c2, x - 2, y + 2, 3, 5, OUT); PR(c2, x - 1, y + 3, 2, 3, shadeHex(skin, 0.1));
     },
-    // a small hand lying palm-up, fingers curled round a rope
-    heldHand(g2, x, y, s, skin = "#d9a070") {
-      g2.fillStyle = "#4a7a9a"; g2.fillRect(x - s * 3, y - s * 0.7, s * 2.2, s * 1.4); g2.fillStyle = "#3a6a8a"; g2.fillRect(x - s * 1.1, y - s * 0.75, s * 0.35, s * 1.5);
-      g2.fillStyle = "#1b1633"; g2.beginPath(); g2.ellipse(x, y, s * 0.95, s * 0.75, 0, 0, 7); g2.fill(); g2.fillStyle = skin; g2.beginPath(); g2.ellipse(x, y, s * 0.88, s * 0.68, 0, 0, 7); g2.fill();
-      K.rope(g2, x + s * 0.9, y - s * 2.6, y + s * 3.2, s * 0.55, 0);
-      for (let f = 0; f < 4; f++) { const fy = y - s * 0.55 + f * s * 0.36; g2.fillStyle = "#1b1633"; g2.beginPath(); g2.ellipse(x + s * 0.95, fy, s * 0.42, s * 0.2, 0, 0, 7); g2.fill(); g2.fillStyle = skin; g2.beginPath(); g2.ellipse(x + s * 0.95, fy, s * 0.38, s * 0.16, 0, 0, 7); g2.fill(); }
-      g2.fillStyle = shadeHex(skin, -0.12); g2.beginPath(); g2.ellipse(x + s * 0.2, y + s * 0.62, s * 0.45, s * 0.2, 0.4, 0, 7); g2.fill();
-      g2.strokeStyle = shadeHex(skin, -0.35); g2.lineWidth = 1; g2.beginPath(); g2.moveTo(x - s * 0.4, y - s * 0.2); g2.quadraticCurveTo(x, y + s * 0.1, x + s * 0.4, y - s * 0.3); g2.stroke();
-    },
-    shoes(g2, x, y, s) {
-      for (const dx of [-s * 1.4, s * 0.2]) {
-        g2.fillStyle = "#1b1633"; g2.beginPath(); g2.moveTo(x + dx - s * 0.2, y); g2.lineTo(x + dx + s * 1.3, y); g2.quadraticCurveTo(x + dx + s * 1.4, y - s * 0.4, x + dx + s * 1.0, y - s * 0.5); g2.lineTo(x + dx + s * 0.35, y - s * 0.55); g2.lineTo(x + dx + s * 0.3, y - s * 0.95); g2.lineTo(x + dx - s * 0.15, y - s * 0.95); g2.closePath(); g2.fill();
-        g2.fillStyle = "#6b3f24"; g2.beginPath(); g2.moveTo(x + dx - s * 0.1, y - s * 0.12); g2.lineTo(x + dx + s * 1.22, y - s * 0.12); g2.quadraticCurveTo(x + dx + s * 1.28, y - s * 0.38, x + dx + s * 0.98, y - s * 0.42); g2.lineTo(x + dx + s * 0.3, y - s * 0.46); g2.lineTo(x + dx + s * 0.24, y - s * 0.85); g2.lineTo(x + dx - s * 0.06, y - s * 0.85); g2.closePath(); g2.fill();
-        g2.fillStyle = "#3a2414"; g2.fillRect(x + dx - s * 0.2, y - s * 0.1, s * 1.5, s * 0.12);
-        g2.strokeStyle = "#e8e2d0"; g2.lineWidth = 1; for (let l = 0; l < 3; l++) { g2.beginPath(); g2.moveTo(x + dx + s * (0.4 + l * 0.15), y - s * 0.5); g2.lineTo(x + dx + s * (0.5 + l * 0.15), y - s * 0.38); g2.stroke(); }
-        g2.fillStyle = "rgba(200,220,255,.8)"; g2.fillRect(x + dx + s * 0.9, y - s * 0.36, 1, 1);
-      }
-    },
-    // a face in close-up. o: skin, hair, eye, brow ('fear'|'angry'|'sad'|'calm'|'set'), mouth ('open'|'scream'|'line'|'sad'|'smile'|'grit'), tears, child, old, lightFrom (-1 left / 1 right), light ('rgb(...)')
-    face(g2, cx, cy, r, o, t = 0) {
-      const sk = o.skin || "#d9a070", hr = o.hair || "#3a2a1e", h = r * (o.child ? 1.08 : 1.2);
-      g2.fillStyle = shadeHex(sk, -0.25); g2.fillRect(cx - r * 0.35, cy + h * 0.8, r * 0.7, r * 0.9);   // neck
-      if (o.collar) { g2.fillStyle = o.collar; g2.beginPath(); g2.moveTo(cx - r * 1.4, cy + h * 1.8); g2.lineTo(cx - r * 0.5, cy + h * 0.95); g2.lineTo(cx + r * 0.5, cy + h * 0.95); g2.lineTo(cx + r * 1.4, cy + h * 1.8); g2.fill(); }
-      g2.fillStyle = "#1b1633"; g2.beginPath(); g2.ellipse(cx, cy, r + 2, h + 2, 0, 0, 7); g2.fill();
-      g2.fillStyle = sk; g2.beginPath(); g2.ellipse(cx, cy, r, h, 0, 0, 7); g2.fill();
-      const lf = o.lightFrom || 0;
-      if (lf) { const gr = g2.createLinearGradient(cx - r * lf, cy, cx + r * lf, cy); gr.addColorStop(0, "rgba(0,0,0,0)"); gr.addColorStop(1, "rgba(10,5,25,.55)"); g2.fillStyle = gr; g2.beginPath(); g2.ellipse(cx, cy, r, h, 0, 0, 7); g2.fill();
-        if (o.light) { const gr2 = g2.createLinearGradient(cx - r * lf, cy, cx, cy); gr2.addColorStop(0, o.light.replace(")", ",.45)").replace("rgb", "rgba")); gr2.addColorStop(1, o.light.replace(")", ",0)").replace("rgb", "rgba")); g2.fillStyle = gr2; g2.beginPath(); g2.ellipse(cx, cy, r, h, 0, 0, 7); g2.fill(); } }
-      if (o.old) { g2.strokeStyle = "rgba(60,30,20,.5)"; g2.lineWidth = 1; for (const s of [-1, 1]) { g2.beginPath(); g2.moveTo(cx + s * r * 0.55, cy + h * 0.05); g2.lineTo(cx + s * r * 0.7, cy + h * 0.15); g2.stroke(); g2.beginPath(); g2.moveTo(cx + s * r * 0.25, cy + h * 0.45); g2.quadraticCurveTo(cx + s * r * 0.35, cy + h * 0.6, cx + s * r * 0.3, cy + h * 0.7); g2.stroke(); } }
-      if (o.stubble) { g2.fillStyle = "rgba(40,30,30,.45)"; for (let i = 0; i < 70; i++) { const a = hash(i, 23) * Math.PI, rr = 0.55 + hash(i, 29) * 0.4; g2.fillRect(Math.round(cx + Math.cos(a) * r * rr), Math.round(cy + h * 0.25 + Math.sin(a) * h * rr * 0.6), 1, 1); } }
-      if (o.smudge) { g2.fillStyle = "rgba(40,30,30,.35)"; g2.beginPath(); g2.ellipse(cx + r * 0.45, cy + h * 0.3, r * 0.22, r * 0.12, 0.4, 0, 7); g2.fill(); }
-      // hair
-      g2.fillStyle = hr; g2.beginPath();
-      if (o.hood) { g2.fillStyle = o.hood; g2.moveTo(cx - r * 1.35, cy + h * 1.1); g2.quadraticCurveTo(cx - r * 1.5, cy - h * 1.5, cx, cy - h * 1.3); g2.quadraticCurveTo(cx + r * 1.5, cy - h * 1.5, cx + r * 1.35, cy + h * 1.1); g2.lineTo(cx + r * 0.95, cy + h * 0.2); g2.quadraticCurveTo(cx, cy - h * 1.05, cx - r * 0.95, cy + h * 0.2); g2.closePath(); g2.fill(); }
-      else { g2.ellipse(cx, cy - h * 0.45, r * 1.05, h * 0.65, 0, Math.PI, 0); g2.fill(); for (let i = 0; i < 5; i++) { const fx = cx - r * 0.95 + i * r * 0.38; g2.beginPath(); g2.moveTo(fx, cy - h * 0.5); g2.lineTo(fx + r * 0.19, cy - h * (0.14 + (i % 2) * 0.12)); g2.lineTo(fx + r * 0.38, cy - h * 0.5); g2.fill(); }
-        if (o.long) { g2.fillRect(cx - r * 1.05, cy - h * 0.45, r * 0.3, h * 1.6); g2.fillRect(cx + r * 0.75, cy - h * 0.45, r * 0.3, h * 1.6); }
-        if (o.scarf) { g2.fillStyle = "#1b1633"; g2.beginPath(); g2.ellipse(cx, cy + h * 1.0, r * 0.78, r * 0.32, 0, 0, 7); g2.fill(); g2.fillStyle = o.scarf; g2.beginPath(); g2.ellipse(cx, cy + h * 1.0, r * 0.74, r * 0.28, 0, 0, 7); g2.fill();
-          g2.fillStyle = shadeHex(o.scarf, -0.25); g2.fillRect(cx - r * 0.6, cy + h * 0.98, r * 1.2, 1); g2.fillStyle = o.scarf; g2.beginPath(); g2.moveTo(cx + r * 0.3, cy + h * 1.05); g2.quadraticCurveTo(cx + r * 0.7, cy + h * 1.5 + Math.sin(t * 3) * 2, cx + r * 0.55, cy + h * 1.9); g2.lineTo(cx + r * 0.3, cy + h * 1.85); g2.quadraticCurveTo(cx + r * 0.4, cy + h * 1.4, cx + r * 0.1, cy + h * 1.1); g2.fill(); } }
-      // brows and eyes
-      const ey = cy - h * 0.02, ex = r * 0.42, er = r * (o.child ? 0.22 : 0.17), blink = Math.sin(t * 1.3) > 0.985;
-      const browA = { fear: -0.35, angry: 0.4, sad: -0.45, calm: 0, set: 0.2 }[o.brow || "calm"];
-      g2.strokeStyle = shadeHex(hr, 0.1); g2.lineWidth = Math.max(1, r * 0.09);
-      for (const s of [-1, 1]) { g2.beginPath(); g2.moveTo(cx + s * (ex - er * 1.3), ey - er * 1.9 + browA * er * 1.5 * -1); g2.lineTo(cx + s * (ex + er * 1.3), ey - er * 1.9 + browA * er * 1.5); g2.stroke(); }
-      for (const s of [-1, 1]) {
-        if (blink || o.closed) { g2.strokeStyle = "#1b1633"; g2.beginPath(); g2.moveTo(cx + s * ex - er, ey); g2.quadraticCurveTo(cx + s * ex, ey + er * 0.6, cx + s * ex + er, ey); g2.stroke(); continue; }
-        g2.fillStyle = "#f5f0e8"; g2.beginPath(); g2.ellipse(cx + s * ex, ey, er * 1.25, er * (o.brow === "fear" ? 1.15 : 0.9), 0, 0, 7); g2.fill();
-        g2.fillStyle = o.eye || "#3a2a1a"; const look = o.look || [0, 0]; g2.beginPath(); g2.arc(cx + s * ex + look[0] * er * 0.4, ey + look[1] * er * 0.4, er * 0.7, 0, 7); g2.fill();
-        g2.fillStyle = "#0a0a14"; g2.beginPath(); g2.arc(cx + s * ex + look[0] * er * 0.4, ey + look[1] * er * 0.4, er * 0.35, 0, 7); g2.fill();
-        g2.fillStyle = "#fff"; g2.fillRect(Math.round(cx + s * ex - er * 0.35 + look[0] * er * 0.4), Math.round(ey - er * 0.45), Math.max(1, er * 0.35), Math.max(1, er * 0.35));
-      }
-      if (o.tears) { g2.fillStyle = "rgba(160,210,255,.8)"; for (const s of [-1, 1]) { const ty = (t * 12) % (h * 0.8); g2.fillRect(Math.round(cx + s * ex - 1), Math.round(ey + er), 2, Math.round(h * 0.2 + ty * 0.3)); g2.beginPath(); g2.arc(cx + s * ex, ey + er + h * 0.2 + ty * 0.3, 1.6, 0, 7); g2.fill(); } }
-      // nose and mouth
-      g2.strokeStyle = shadeHex(sk, -0.35); g2.lineWidth = 1; g2.beginPath(); g2.moveTo(cx, cy + h * 0.12); g2.lineTo(cx - r * 0.08, cy + h * 0.3); g2.lineTo(cx + r * 0.05, cy + h * 0.32); g2.stroke();
-      const my = cy + h * 0.55, mw = r * 0.35, wob = Math.sin(t * 8) * 0.5;
-      g2.fillStyle = "#5a0f18"; g2.strokeStyle = "#3a0a10"; g2.lineWidth = Math.max(1, r * 0.06);
-      switch (o.mouth || "line") {
-        case "open": g2.beginPath(); g2.ellipse(cx, my, mw * 0.7, r * 0.18 + wob, 0, 0, 7); g2.fill(); break;
-        case "scream": g2.beginPath(); g2.ellipse(cx, my + r * 0.05, mw * 0.8, r * 0.3 + wob, 0, 0, 7); g2.fill(); g2.fillStyle = "#f5f0e8"; g2.fillRect(cx - mw * 0.6, my - r * 0.22, mw * 1.2, r * 0.07); break;
-        case "sad": g2.beginPath(); g2.moveTo(cx - mw, my + r * 0.08); g2.quadraticCurveTo(cx, my - r * 0.12, cx + mw, my + r * 0.08); g2.stroke(); break;
-        case "smile": g2.beginPath(); g2.moveTo(cx - mw, my - r * 0.04); g2.quadraticCurveTo(cx, my + r * 0.16, cx + mw, my - r * 0.04); g2.stroke(); break;
-        case "grit": g2.fillStyle = "#f5f0e8"; g2.fillRect(cx - mw, my - r * 0.06, mw * 2, r * 0.14); g2.strokeRect(cx - mw, my - r * 0.06, mw * 2, r * 0.14); break;
-        default: g2.beginPath(); g2.moveTo(cx - mw * 0.8, my); g2.lineTo(cx + mw * 0.8, my); g2.stroke();
-      }
-    },
-    // two small hands gripping a rope (close-up); slip 0..1 slides them down
-    hands(g2, x, y, s, t, slip, skin = "#d9a070") {
-      for (const [dx, dy] of [[0, -s * 1.1], [0, s * 0.35]]) {
-        const yy = y + dy + slip * s * 0.6 + Math.sin(t * 20) * s * 0.03;
-        g2.fillStyle = "#1b1633"; g2.beginPath(); g2.ellipse(x + dx, yy, s * 0.95, s * 0.62, 0, 0, 7); g2.fill();
-        g2.fillStyle = skin; g2.beginPath(); g2.ellipse(x + dx, yy, s * 0.9, s * 0.57, 0, 0, 7); g2.fill();
-        g2.strokeStyle = shadeHex(skin, -0.35); g2.lineWidth = 1;
-        for (let f = 0; f < 4; f++) { g2.beginPath(); g2.moveTo(x + dx - s * 0.2, yy - s * 0.45 + f * s * 0.28); g2.lineTo(x + dx + s * 0.75, yy - s * 0.4 + f * s * 0.28); g2.stroke(); }
-        g2.fillStyle = "rgba(255,255,255,.35)"; for (let f = 0; f < 4; f++) g2.fillRect(Math.round(x + dx + s * 0.55), Math.round(yy - s * 0.42 + f * s * 0.28), 2, 1);   // white knuckles
-        g2.fillStyle = shadeHex(skin, -0.1); g2.beginPath(); g2.ellipse(x + dx - s * 0.75, yy + s * 0.05, s * 0.28, s * 0.4, -0.3, 0, 7); g2.fill();   // thumb
-      }
-    },
-    rope(g2, x, y0, y1, w, t, broken = false) {
-      g2.fillStyle = "#6b5a44"; g2.fillRect(x - w / 2, y0, w, y1 - y0); g2.fillStyle = "#8a7a5a";
-      for (let y = y0; y < y1; y += w * 0.8) g2.fillRect(x - w / 2, Math.round(y + (t * 4) % (w * 0.8)), w, Math.max(1, w * 0.25));
-      g2.fillStyle = "rgba(0,0,0,.25)"; g2.fillRect(x + w * 0.2, y0, w * 0.3, y1 - y0);
-    },
-    tower(g2, x, y, s, t, bell = true, fire = true) {
-      g2.fillStyle = "#15102a"; g2.fillRect(x - 10 * s, y - 60 * s, 20 * s, 60 * s); g2.fillRect(x - 13 * s, y - 64 * s, 26 * s, 5 * s);
-      g2.beginPath(); g2.moveTo(x - 15 * s, y - 80 * s); g2.lineTo(x, y - 95 * s); g2.lineTo(x + 15 * s, y - 80 * s); g2.fill(); g2.fillRect(x - 12 * s, y - 80 * s, 24 * s, 3 * s); g2.fillRect(x - 11 * s, y - 80 * s, 3 * s, 17 * s); g2.fillRect(x + 8 * s, y - 80 * s, 3 * s, 17 * s);
-      if (fire) { K.glow(g2, x, y - 72 * s, 60 * s, "rgb(255,140,60)", 0.5); K.flames(g2, x, y - 64 * s, 22 * s, 18 * s, t); }
-      if (bell) { const sw = Math.sin(t * 1.6) * 0.25; g2.save(); g2.translate(x, y - 78 * s); g2.rotate(sw); g2.fillStyle = "#e8b83a"; g2.beginPath(); g2.moveTo(-5 * s, 0); g2.quadraticCurveTo(-6 * s, 9 * s, -8 * s, 11 * s); g2.lineTo(8 * s, 11 * s); g2.quadraticCurveTo(6 * s, 9 * s, 5 * s, 0); g2.fill(); g2.restore(); }
-    },
-    person(g2, x, y, h, col, o = {}) {   // a simple silhouette figure of height h, feet at (x, y)
-      g2.fillStyle = col; const hw = h * 0.18;
-      g2.beginPath(); g2.arc(x, y - h * 0.86, h * 0.12, 0, 7); g2.fill();
-      g2.beginPath(); g2.moveTo(x - hw, y - h * 0.72); g2.lineTo(x + hw, y - h * 0.72); g2.lineTo(x + hw * 1.2, y - h * 0.3); g2.lineTo(x - hw * 1.2, y - h * 0.3); g2.fill();
-      const st = o.walk ? Math.sin(o.walk) * h * 0.1 : 0; g2.fillRect(x - hw * 0.8 + st, y - h * 0.32, hw * 0.6, h * 0.32); g2.fillRect(x + hw * 0.2 - st, y - h * 0.32, hw * 0.6, h * 0.32);
-      if (o.scarf) { g2.fillStyle = o.scarf; g2.fillRect(x - hw, y - h * 0.74, hw * 2, h * 0.07); g2.beginPath(); g2.moveTo(x - hw, y - h * 0.72); g2.quadraticCurveTo(x - hw - h * 0.3, y - h * 0.7 + Math.sin((o.t || 0) * 5) * 3, x - hw - h * 0.45, y - h * 0.62); g2.lineTo(x - hw - h * 0.4, y - h * 0.58); g2.quadraticCurveTo(x - hw - h * 0.2, y - h * 0.64, x - hw, y - h * 0.66); g2.fill(); }
-      if (o.torch) { g2.fillStyle = "#3a2a1e"; g2.fillRect(x + hw * 1.1, y - h * 0.9, 2, h * 0.35); K.glow(g2, x + hw * 1.1, y - h * 0.95, h * 0.8, "rgb(255,160,70)", 0.55); K.flames(g2, x + hw * 1.1 + 1, y - h * 0.88, 6, 9, o.t || 0, 3); }
-      if (o.bundle) { g2.fillStyle = o.bundle; g2.beginPath(); g2.ellipse(x + hw * 0.2, y - h * 0.55, h * 0.16, h * 0.1, -0.3, 0, 7); g2.fill(); }
-    },
-    salt(g2, y, t, col = "#c8c2d8") { g2.fillStyle = col; g2.fillRect(-40, y, VIEW_W + 80, VIEW_H); g2.fillStyle = "rgba(255,255,255,.12)"; for (let i = 0; i < 40; i++) g2.fillRect((hash(i, 51) * VIEW_W) | 0, y + ((hash(i, 53) * (VIEW_H - y)) | 0), 6 + (i % 4) * 4, 1); },
-    village(g2, y, col = "#1a1430") { g2.fillStyle = col; for (const [x, w, h] of [[-10, 50, 22], [34, 40, 30], [70, 36, 20], [200, 48, 26], [244, 44, 34], [286, 50, 22]]) { g2.fillRect(x, y - h, w, h); g2.beginPath(); g2.moveTo(x - 4, y - h); g2.lineTo(x + w / 2, y - h - 12); g2.lineTo(x + w + 4, y - h); g2.fill(); } },
-    jackal(g2, x, y, s, t, face = 1) {
-      const b = Math.sin(t * 14) * s * 0.08; g2.save(); g2.translate(x, y); g2.scale(face, 1);
-      g2.fillStyle = "#2a1a14"; g2.beginPath(); g2.moveTo(-s, -s * 0.2 + b); g2.quadraticCurveTo(-s * 0.2, -s * 0.8 + b, s * 0.5, -s * 0.5 + b); g2.lineTo(s * 1.1, -s * 0.75 + b); g2.lineTo(s * 1.25, -s * 0.45 + b); g2.lineTo(s * 0.8, -s * 0.2 + b); g2.lineTo(s * 0.6, s * 0.2); g2.lineTo(-s * 0.8, s * 0.25); g2.closePath(); g2.fill();
-      g2.fillRect(-s * 0.8, s * 0.1, s * 0.15, s * 0.5 - b); g2.fillRect(s * 0.4, s * 0.1, s * 0.15, s * 0.5 + b); g2.beginPath(); g2.moveTo(s * 0.75, -s * 0.72 + b); g2.lineTo(s * 0.8, -s * 1.05 + b); g2.lineTo(s * 0.95, -s * 0.7 + b); g2.fill();
-      g2.fillStyle = "#c9a227"; g2.fillRect(s * 0.4, -s * 0.55 + b, s * 0.12, s * 0.35); g2.fillStyle = "#ff3a3a"; g2.fillRect(s * 0.95, -s * 0.62 + b, Math.max(1, s * 0.1), Math.max(1, s * 0.08));
-      g2.fillStyle = "#f5f0e8"; for (let i = 0; i < 3; i++) g2.fillRect(s * (0.95 + i * 0.08), -s * 0.42 + b, 1, 2);
-      g2.restore();
-    },
+    rope(c2, x, y0, y1, w, t) { PR(c2, x, y0, w, y1 - y0, "#6b5a44"); for (let y = y0; y < y1; y++) if ((y + Math.floor(t * 6)) % 3 === 0) PR(c2, x + ((y >> 1) % 2), y, w - 1, 1, "#8a7a5a"); PR(c2, x + w - 1, y0, 1, y1 - y0, "#4a3a2a"); },
   };
-  const LIO_F = { skin: "#d9a070", hair: "#3a2a1e", eye: "#3a6a8a", child: true };
-  const LIMP_F = { skin: "#b88a64", hair: "#5a3a2a", eye: "#5a4a3a", stubble: true, old: true, collar: "#c9a227", hood: "#3a2a1e" };
-  const NADIA_F = { skin: "#8a5a33", hair: "#d8d0c0", eye: "#3a2a1a", old: true, hood: "#3b2f7a" };
-  const MOTHER_F = { skin: "#e8b48a", hair: "#3a2a2a", eye: "#3a6a8a", long: true, scarf: "#3ee0e8" };
+  const LIO_LOOK_C = { robe: "#4a7a9a", hair: "#3a2a1e", skin: "#d9a070", style: { hair: "fringe", eye: "#3a6a8a" } };
+  const LIMP_LOOK_C = { robe: "#c9a227", hair: "#5a3a2a", skin: "#b88a64", style: { hair: "hood", hood: "#3a2a1e", coat: true, beard: true, eye: "#5a4a3a" } };
+  const GUILD_LOOK_C = { robe: "#3a2a1e", hair: "#1b1633", skin: "#c98d63", style: { hair: "hood", hood: "#2a2a2a", coat: true } };
+  const MOTHER_LOOK_C = { robe: "#2a2240", hair: "#3a2a2a", skin: "#e8b48a", hero: true, style: { hair: "long", dress: true, eye: "#3a6a8a" } };
+  const nadiaLook = () => (NPCS.find(n => n.id === "nadia") || {}).look || { robe: "#3b2f7a", hair: "#d8d0c0", skin: "#8a5a33", style: { hair: "bun" } };
+  const fireBg = (g2, t) => { PX.bands(g2, ["#1a0a10", "#2a0e12", "#3e1614", "#5a2014", "#7a2e16"]); for (let i = 0; i < 12; i++) { const s = 3 + (i % 3) * 2, a = Math.sin(t * 3 + i) > 0; PR(g2, (hash(i, 61) * VIEW_W) | 0, (hash(i, 63) * VIEW_H) | 0, s, s, a ? "#b8541e" : "#8a3a18"); } PX.embers(g2, t, 0, VIEW_W, 196, 190, 30); };
+  const nightBg = (g2, t) => { PX.bands(g2, ["#06050f", "#0a0818", "#120e24", "#1a1432", "#241c40"], 0, 150); PX.stars(g2, t, 70, 110); };
+  const portraitShot = (look, ex, bg, x = 88) => (g2, t) => { bg(g2, t); drawPortrait3(g2, look, ex, t, x, 24); };
 
   // ---------------------------------------------------------------- the night of the theft
   const THEFT_ARRIVE = [
-    { dur: 4.2, fadeIn: 0.8, zoom: [1, 1.18], focus: [160, 70], line: [null, "Torches on the tower. Men in Guild coats are hauling the Rain Bell down on ropes."], draw: (g2, t) => {
-      K.sky(g2, "#0a0618", "#4a1a24"); K.stars(g2, t, 40, 80); K.smoke(g2, 160, 60, t, 10);
-      K.village(g2, 170, "#120c22"); K.tower(g2, 160, 172, 1.25, t, false, true);
-      const bx = 160 + 26 + Math.sin(t * 1.5) * 4, by = 74 + Math.sin(t) * 2; g2.strokeStyle = "#6b5a44"; g2.beginPath(); g2.moveTo(160 + 10, 60); g2.lineTo(bx, by); g2.stroke();
-      g2.fillStyle = "#e8b83a"; g2.beginPath(); g2.moveTo(bx - 7, by); g2.quadraticCurveTo(bx - 8, by + 12, bx - 11, by + 15); g2.lineTo(bx + 11, by + 15); g2.quadraticCurveTo(bx + 8, by + 12, bx + 7, by); g2.fill();
-      K.person(g2, 146, 70, 16, "#0a0612", { torch: true, t }); K.person(g2, 176, 70, 16, "#0a0612", { torch: true, t: t + 1 });
-      g2.strokeStyle = "#8a7a5a"; g2.beginPath(); g2.moveTo(154, 72); g2.lineTo(154 - 2 + Math.sin(t * 2) * 2, 120); g2.stroke(); K.person(g2, 154 + Math.sin(t * 2) * 2, 118, 9, "#0a0612");
-      K.embers(g2, t, 120, 200, 110, 100, 40);
-      K.salt(g2, 172, t, "#1a1422");
+    { dur: 4.4, fadeIn: 0.8, line: [null, "Torches on the tower. Men in Guild coats are hauling the Rain Bell down on ropes."], draw: (g2, t, k) => {
+      const pan = Math.round(-24 + k * 24);
+      PX.bands(g2, ["#0a0618", "#160a20", "#2a1026", "#3e1624", "#58201e"], 0, 176); PX.stars(g2, t, 40, 70);
+      g2.save(); g2.translate(0, pan);
+      PX.village(g2, 176, "#120c22"); PX.tower(g2, 160, 176, t, { fire: true });
+      const bx = 188 + Math.round(Math.sin(t * 1.5) * 3), by = 96; for (let i = 0; i < 18; i++) PR(g2, 170 + Math.round(i * (bx - 170) / 18), 88 + Math.round(i * (by - 88) / 18), 1, 1, "#8a7a5a");
+      for (let r = 0; r < 12; r++) { const w = 4 + Math.round(r * 0.6) + (r > 9 ? 2 : 0); PR(g2, bx - w, by + r, w * 2, 1, "#e8b83a"); }
+      chibi(g2, GUILD_LOOK_C, { dir: "down" }, 1, 150, 104); chibi(g2, GUILD_LOOK_C, { dir: "down" }, 1, 172, 104);
+      PX.fire(g2, 156, 84, 3, 6, t); PX.fire(g2, 178, 84, 3, 6, t + 1);
+      PR(g2, 160, 88, 1, 34, "#8a7a5a"); chibi(g2, LIO_LOOK_C, { pose: "hang" }, 1, 160, 150);
+      PX.embers(g2, t, 130, 200, 110, 90, 30);
+      g2.restore(); PR(g2, 0, 176, VIEW_W, 16, "#1a1422");
     } },
-    { dur: 3.8, zoom: [1.05, 1.15], line: ["Lio", "SABLE! I'm holding on! I'm holding on like a courier!"], sound: "encounter", draw: (g2, t, k) => {
-      K.sky(g2, "#2a0c10", "#6a2a14"); for (let i = 0; i < 9; i++) K.glow(g2, (hash(i, 61) * VIEW_W), (hash(i, 63) * VIEW_H), 18 + (i % 3) * 8, "rgb(255,150,60)", 0.35 + 0.15 * Math.sin(t * 3 + i));
-      K.rope(g2, 160, -20, 220, 16, t); K.hands(g2, 160, 96, 26, t, Math.min(0.4, k * 0.5));
-      g2.fillStyle = "rgba(160,210,255,.8)"; if (Math.sin(t * 5) > 0.6) g2.fillRect(186, 110, 2, 3);
-      K.embers(g2, t, 0, VIEW_W, 200, 200, 30);
+    { dur: 3.6, line: ["Lio", "SABLE! I'm holding on! I'm holding on like a courier!"], sound: "encounter", draw: (g2, t, k) => {
+      fireBg(g2, t);
+      detail(g2, (c2, tt) => { PX.rope(c2, 37, 0, 48, 6, tt); const slip = Math.min(3, Math.floor(k * 4)); PX.fist(c2, 34, 11 + slip, "#d9a070"); PX.fist(c2, 34, 22 + slip, "#d9a070"); PR(c2, 33, 31 + slip, 13, 6, OUT); PR(c2, 34, 32 + slip, 11, 5, "#4a7a9a"); PR(c2, 34, 32 + slip, 11, 1, "#6a9aba"); if (Math.sin(tt * 5) > 0.5) PR(c2, 47, 18 + slip, 1, 2, "#9ad8ff"); }, t);
     } },
-    { dur: 3.8, zoom: [1.12, 1.02], focus: [160, 90], line: ["The limping man", "(Tiredly. Almost gently.) Let go of the rope, boy. It isn't yours."], draw: (g2, t) => {
-      K.sky(g2, "#120814", "#2a1418"); K.glow(g2, 250, 70, 140, "rgb(255,140,60)", 0.5); K.flames(g2, 262, 92, 14, 22, t, 4);
-      K.face(g2, 150, 96, 44, { ...LIMP_F, brow: "sad", mouth: "line", lightFrom: 1, light: "rgb(255,150,70)", look: [0.3, 0.8] }, t);
-      K.embers(g2, t, 200, 320, 190, 190, 20);
-    } },
-    { dur: 3.4, zoom: [1, 1.12], focus: [160, 100], line: ["Lio", "It IS mine! I'm going to ring it at the first rain! For everyone!"], draw: (g2, t) => {
-      K.sky(g2, "#1a0a14", "#5a2414"); K.glow(g2, 160, 0, 180, "rgb(255,150,60)", 0.45);
-      K.face(g2, 160, 104, 46, { ...LIO_F, brow: "set", mouth: "grit", tears: true, smudge: true, look: [0, -1], lightFrom: -1, light: "rgb(255,160,80)" }, t);
-      K.rope(g2, 104, -20, 220, 10, t); K.rope(g2, 216, -20, 220, 10, t);
-      K.embers(g2, t, 0, VIEW_W, 200, 200, 25);
-    } },
-    { dur: 2.6, flash: true, shake: 4, line: [null, "Two starved jackals in Guild collars come snarling down the stairs."], draw: (g2, t, k) => {
-      K.sky(g2, "#0a0612", "#2a1018"); K.glow(g2, 160, 40, 150, "rgb(255,140,60)", 0.3);
-      g2.fillStyle = "#15102a"; for (let i = 0; i < 7; i++) g2.fillRect(40 + i * 18, 150 - i * 14, 260 - i * 18, 14);
-      K.jackal(g2, 110 + k * 30, 120 + k * 20, 26 + k * 16, t, 1); K.jackal(g2, 220 - k * 30, 100 + k * 30, 22 + k * 20, t + 0.5, -1);
-      K.lines(g2, t, 160, 96, 30, 0.25);
+    { dur: 3.8, line: ["The limping man", "(Tiredly. Almost gently.) Let go of the rope, boy. It isn't yours."], draw: portraitShot(LIMP_LOOK_C, { brows: "worried", eyes: "down", light: "#ff9a4a" }, fireBg) },
+    { dur: 3.4, line: ["Lio", "It IS mine! I'm going to ring it at the first rain! For everyone!"], draw: portraitShot(LIO_LOOK_C, { brows: "fierce", mouth: "grit", tears: true, smudge: true, light: "#ff9a4a", lightFrom: "right" }, fireBg) },
+    { dur: 2.6, flash: true, shake: 3, line: [null, "Two starved jackals in Guild collars come snarling down the stairs."], draw: (g2, t, k) => {
+      PX.bands(g2, ["#0a0612", "#140a1a", "#221020", "#2e1422"]); for (let i = 0; i < 8; i++) PR(g2, 20 + i * 16, 150 - i * 14, 300 - i * 16, 14, i % 2 ? "#1e1832" : "#241c3a");
+      drawBattleMonster(g2, { sprite: "jackal", hurt: 0, st: {} }, 120 + Math.round(k * 16), 150); drawBattleMonster(g2, { sprite: "jackal", hurt: 0, st: {} }, 210 - Math.round(k * 16), 124);
+      for (let i = 0; i < 20; i++) { const a = hash(i, 11) * Math.PI * 2, r = 70 + ((t * 160 + i * 17) % 50); PR(g2, 160 + Math.cos(a) * r, 96 + Math.sin(a) * r * 0.6, 2, 2, "rgba(255,255,255,.35)"); }
     } },
   ];
   const THEFT_FALL = [
-    { dur: 3.6, fadeIn: 0.5, zoom: [1, 1.1], focus: [160, 60], line: [null, "You reach the foot of the tower as the Bell swings out over the dark. The limping man looks straight at you."], draw: (g2, t) => {
-      K.sky(g2, "#0a0618", "#4a1a24"); K.stars(g2, t, 30, 60); K.tower(g2, 160, 200, 2, t, false, true);
-      K.person(g2, 172, 38, 20, "#0a0612", { torch: true, t }); g2.fillStyle = "#e8e8f0"; if (Math.sin(t * 6) > 0.4) g2.fillRect(186, 26, 3, 1);
-      g2.strokeStyle = "#8a7a5a"; g2.beginPath(); g2.moveTo(150, 40); g2.lineTo(150, 110); g2.stroke(); K.person(g2, 150, 112, 12, "#0a0612");
-      K.person(g2, 160, 196, 60, "#05030a", { scarf: "#3ee0e8", t });
-      K.embers(g2, t, 120, 220, 120, 120, 40);
+    { dur: 3.6, fadeIn: 0.4, line: [null, "You reach the foot of the tower as the Bell swings out over the dark. The limping man looks straight at you."], draw: (g2, t) => {
+      PX.bands(g2, ["#0a0618", "#160a20", "#2a1026", "#3e1624", "#58201e"], 0, 176); PX.stars(g2, t, 30, 50);
+      PX.tower(g2, 160, 176, t, { fire: true }); chibi(g2, LIMP_LOOK_C, { dir: "down" }, 1, 166, 104); PX.fire(g2, 172, 84, 3, 6, t);
+      if (Math.sin(t * 6) > 0.3) PR(g2, 174, 94, 3, 1, "#ffffff");
+      PR(g2, 160, 88, 1, 34, "#8a7a5a"); chibi(g2, LIO_LOOK_C, { pose: "hang" }, 1, 160, 150);
+      chibi(g2, HEROES.sable.look, { dir: "up", hero: true }, 3, 160, 206);
+      PX.embers(g2, t, 120, 210, 120, 110, 30); PR(g2, 0, 176, VIEW_W, 16, "#1a1422");
     } },
-    { dur: 2.6, zoom: [1.2, 1.4], line: [null, "Then he cuts the bell-rope."], draw: (g2, t, k) => {
-      K.sky(g2, "#1a0a10", "#3a1810"); K.glow(g2, 220, 80, 120, "rgb(255,150,60)", 0.4);
-      const cut = k > 0.62, gap = cut ? (k - 0.62) * 140 : 0;
-      K.rope(g2, 160, -20, 96 - gap * 0.6, 18, t); K.rope(g2, 160, 96 + gap, 240, 18, t);
-      if (!cut) { g2.fillStyle = "#8a7a5a"; for (let i = 0; i < 8; i++) g2.fillRect(151 + i * 2, 92 + Math.sin(t * 30 + i) * 2, 1, 6 + k * 6); }
-      else { g2.strokeStyle = "#8a7a5a"; g2.lineWidth = 1; for (let i = 0; i < 10; i++) { g2.beginPath(); g2.moveTo(152 + i * 2, 96 - gap * 0.6); g2.lineTo(150 + i * 2 + Math.sin(i) * 6, 104 - gap * 0.6); g2.stroke(); g2.beginPath(); g2.moveTo(152 + i * 2, 96 + gap); g2.lineTo(150 + i * 2 + Math.cos(i) * 6, 88 + gap); g2.stroke(); } }
-      const kx = 60 + Math.min(k, 0.62) / 0.62 * 110; g2.fillStyle = "#1b1633"; g2.fillRect(kx - 70, 93, 70, 8); g2.fillStyle = "#6b3f24"; g2.fillRect(kx - 70, 93, 34, 8);
-      g2.fillStyle = "#c8c8d8"; g2.beginPath(); g2.moveTo(kx - 36, 92); g2.lineTo(kx + 8, 95); g2.lineTo(kx - 36, 101); g2.fill(); g2.fillStyle = "#fff"; g2.fillRect(kx - 30, 93, 30, 1);
-      if (cut && k < 0.72) K.lines(g2, t, 160, 96, 30, 0.6);
-    }, sound: "crit" },
+    { dur: 2.6, sound: "crit", line: [null, "Then he cuts the bell-rope."], draw: (g2, t, k) => {
+      fireBg(g2, t);
+      detail(g2, c2 => {
+        const cut = k > 0.6, gap = cut ? Math.min(14, Math.floor((k - 0.6) * 50)) : 0;
+        PX.rope(c2, 37, 0, 22 - gap, 6, 0); PX.rope(c2, 37, 25 + gap, 48, 6, 0);
+        if (!cut) PX.rope(c2, 37, 22, 25, 6, 0); else for (let i = 0; i < 6; i++) { PR(c2, 37 + i, 22 - gap, 1, 2 + (i % 3), "#8a7a5a"); PR(c2, 37 + i, 23 + gap - (i % 2), 1, 2, "#8a7a5a"); }
+        const kx = Math.round(4 + Math.min(k, 0.6) / 0.6 * 30); PR(c2, kx - 1, 21, 12, 5, OUT); PR(c2, kx, 22, 10, 3, "#6b3f24"); PR(c2, kx + 10, 21, 16, 5, OUT); PR(c2, kx + 10, 22, 15, 3, "#c8c8d8"); PR(c2, kx + 10, 22, 15, 1, "#ffffff"); PR(c2, kx + 25, 23, 1, 1, "#c8c8d8");
+      }, t);
+      if (k > 0.6 && k < 0.7) PR(g2, 0, 0, VIEW_W, VIEW_H, "rgba(255,255,255,.5)");
+    } },
     { dur: 2.8, flash: true, line: ["Sable", "LIO!"], draw: (g2, t, k) => {
-      K.sky(g2, "#2a0a10", "#8a3a14"); K.embers(g2, t, 0, VIEW_W, 200, 220, 40);
-      K.speedLines(g2, t, -1, 0.35);
-      const y = -20 + ease(k) * 150; g2.save(); g2.translate(160, y); g2.rotate(Math.sin(t * 2) * 0.4);
-      K.person(g2, 0, 20, 36, "#0a0612"); g2.strokeStyle = "#8a7a5a"; g2.lineWidth = 2; g2.beginPath(); g2.moveTo(4, -8); g2.quadraticCurveTo(14, -40, 6, -70); g2.stroke(); g2.restore();
-      K.reach(g2, 262 - k * 10, 190 - k * 20, 160, -20 + ease(k) * 150, 22);
+      PX.bands(g2, ["#2a0a10", "#3e1212", "#5a1c14", "#7a2c16", "#9a3e18"]); PX.embers(g2, t, 0, VIEW_W, 196, 200, 40);
+      for (let i = 0; i < 40; i++) PR(g2, (hash(i, 17) * VIEW_W) | 0, wrap(hash(i, 19) * 240 - t * 500, 240) - 30, 1, 12 + (i % 3) * 6, "rgba(255,220,200,.45)");
+      const y = Math.round(-10 + ease(k) * 150); chibi(g2, LIO_LOOK_C, { rot: Math.floor(t * 3) % 4 === 0 ? 0 : 1 }, 3, 150, y + 60);
+      for (let i = 0; i < 30; i++) PR(g2, 150 + Math.round(Math.sin(i * 0.4 + t * 4) * 3), y - 20 - i * 2, 1, 2, "#8a7a5a");
+      chibi(g2, HEROES.sable.look, { dir: "up", hero: true, pose: "reach" }, 3, 250, 206);
     } },
-    { dur: 1.3, shake: 8, sound: "defeat", draw: (g2, t) => { g2.fillStyle = "#000"; g2.fillRect(0, 0, VIEW_W, VIEW_H); g2.fillStyle = `rgba(200,190,170,${0.4 * Math.max(0, 1 - t)})`; for (let i = 0; i < 20; i++) { const a = hash(i, 71) * Math.PI; g2.beginPath(); g2.arc(160 + Math.cos(a) * t * 90, 150 - Math.sin(a) * t * 40, 3 + i % 4, 0, 7); g2.fill(); } } },
-    { dur: 4.6, fadeIn: 0.8, zoom: [1.35, 1.05], focus: [150, 110], line: [null, "You don't remember crossing the square. You remember that he was still holding the rope."], draw: (g2, t) => {
-      g2.fillStyle = "#2a2230"; g2.fillRect(0, 0, VIEW_W, VIEW_H); for (let y = 0; y < VIEW_H; y += 14) for (let x = (y / 14) % 2 ? -10 : 0; x < VIEW_W; x += 28) { g2.fillStyle = "#1c1624"; g2.fillRect(x, y, 27, 13); g2.fillStyle = "#332a3a"; g2.fillRect(x + 1, y + 1, 25, 11); }
-      K.glow(g2, 160, 40, 200, "rgb(255,140,60)", 0.25 + 0.08 * Math.sin(t * 6));
-      K.heldHand(g2, 176, 110, 22);
-      K.embers(g2, t, 40, 280, 0, 190, 30, false);
+    { dur: 1.3, shake: 6, sound: "defeat", draw: (g2, t) => { PR(g2, 0, 0, VIEW_W, VIEW_H, "#000"); for (let i = 0; i < 16; i++) { const a = hash(i, 71) * Math.PI; PR(g2, 160 + Math.cos(a) * t * 70, 150 - Math.sin(a) * t * 30, 3, 3, `rgba(200,190,170,${Math.max(0, 0.6 - t * 0.5)})`); } } },
+    { dur: 4.6, fadeIn: 0.8, line: [null, "You don't remember crossing the square. You remember that he was still holding the rope."], draw: (g2, t) => {
+      detail(g2, (c2, tt) => {
+        for (let y = 0; y < 48; y += 4) for (let x = (y / 4) % 2 ? -3 : 0; x < 80; x += 7) { PR(c2, x, y, 7, 4, "#1c1624"); PR(c2, x + 1, y + 1, 5, 2, "#302838"); }
+        PR(c2, 0, 18, 30, 12, OUT); PR(c2, 0, 19, 29, 10, "#4a7a9a"); PR(c2, 0, 19, 29, 1, "#6a9aba"); PR(c2, 26, 19, 3, 10, "#3a6a8a");
+        PR(c2, 29, 17, 12, 13, OUT); PR(c2, 30, 18, 10, 11, "#d9a070"); PR(c2, 30, 26, 10, 3, shadeHex("#d9a070", -0.15));
+        PX.rope(c2, 44, 0, 48, 4, 0); for (let f = 0; f < 4; f++) { PR(c2, 39, 18 + f * 3, 8, 3, OUT); PR(c2, 40, 19 + f * 3, 6, 1, "#d9a070"); PR(c2, 44, 19 + f * 3, 2, 1, shadeHex("#d9a070", -0.25)); }
+        for (let i = 0; i < 14; i++) { const ph = (tt * (0.15 + hash(i, 5) * 0.2) + hash(i, 7)) % 1; PR(c2, hash(i, 3) * 80, ph * 48, 1, 1, ph < 0.6 ? "#ffcf4a" : "#ff6a3a"); }
+        c2.fillStyle = `rgba(255,140,60,${0.08 + 0.05 * Math.sin(tt * 6)})`; c2.fillRect(0, 0, 80, 48);
+      }, t);
     } },
-    { dur: 4.6, fadeOut: 1, zoom: [1, 1.06], line: [null, "They go north into the dark with the Bell slung on a pole between them. The limping man looks back, once."], draw: (g2, t, k) => {
-      K.sky(g2, "#05040e", "#1a1030"); K.stars(g2, t, 70, 120); K.moon(g2, 250, 40, 10);
-      g2.fillStyle = "#0f0a1c"; g2.beginPath(); g2.moveTo(-10, 140); g2.quadraticCurveTo(80, 120, 160, 132); g2.quadraticCurveTo(250, 142, 330, 126); g2.lineTo(330, 200); g2.lineTo(-10, 200); g2.fill();
-      const x = 200 - k * 90, s = 26 - k * 12;
-      K.person(g2, x - s * 0.9, 134 - k * 6, s, "#05030a", { torch: true, t, walk: t * 6 }); K.person(g2, x + s * 0.9, 134 - k * 6, s, "#05030a", { walk: t * 6 + 3 });
-      g2.fillStyle = "#3a2a1e"; g2.fillRect(x - s * 1.1, 134 - k * 6 - s * 0.72, s * 2.2, 2); g2.fillStyle = "#e8b83a"; g2.beginPath(); g2.arc(x, 134 - k * 6 - s * 0.55, s * 0.28, 0, 7); g2.fill();
-      K.person(g2, x + s * 2.4, 134 - k * 6, s * 1.02, "#05030a", { walk: t * 4 });
+    { dur: 4.6, fadeOut: 1, line: [null, "They go north into the dark with the Bell on a pole between them. The limping man looks back, once."], draw: (g2, t, k) => {
+      nightBg(g2, t); PX.moon(g2, 250, 36, 9);
+      for (let x = 0; x < VIEW_W; x++) { const h = Math.round(136 + Math.sin(x * 0.02) * 6 + Math.sin(x * 0.07) * 2); PR(g2, x, h, 1, VIEW_H - h, "#0f0a1c"); }
+      const x = Math.round(210 - k * 80);
+      chibi(g2, GUILD_LOOK_C, { dir: "left", walking: true, walk: t * 1.2 }, 2, x - 16, 140); chibi(g2, GUILD_LOOK_C, { dir: "left", walking: true, walk: t * 1.2 + 0.5 }, 2, x + 16, 140);
+      PR(g2, x - 26, 104, 52, 2, "#3a2a1e"); for (let r = 0; r < 9; r++) { const w = 3 + Math.round(r * 0.5); PR(g2, x - w, 106 + r, w * 2, 1, "#e8b83a"); }
+      chibi(g2, LIMP_LOOK_C, { dir: k > 0.55 && k < 0.8 ? "right" : "left", walking: !(k > 0.55 && k < 0.8), walk: t }, 2, x + 50, 140); PX.fire(g2, x + 58, 110, 3, 6, t);
     } },
   ];
   // ---------------------------------------------------------------- the salt child (cold open)
   const SALT_CHILD = [
-    { dur: 4.4, fadeIn: 1.2, zoom: [1, 1.1], line: [null, "Twenty years ago. The last dry night of the year."], draw: (g2, t) => {
-      K.sky(g2, "#05040e", "#2a2050"); K.stars(g2, t, 90, 120); K.moon(g2, 240, 44, 14); K.salt(g2, 140, t);
-      K.person(g2, 60 + t * 16, 142, 34, "#140e22", { scarf: "#3ee0e8", bundle: "#d8d0c0", t, walk: t * 4 });
-      g2.fillStyle = "rgba(255,255,255,.08)"; for (let i = 0; i < 20; i++) g2.fillRect(((hash(i, 81) * 360 + t * 50) % 360) - 20, 120 + (i % 5) * 8, 20, 1);
+    { dur: 4.4, fadeIn: 1.2, line: [null, "Twenty years ago. The last dry night of the year."], draw: (g2, t) => {
+      nightBg(g2, t); PX.moon(g2, 240, 40, 12); PR(g2, 0, 140, VIEW_W, 52, "#c8c2d8"); for (let i = 0; i < 30; i++) PR(g2, (hash(i, 51) * VIEW_W) | 0, 142 + ((hash(i, 53) * 48) | 0), 4 + (i % 3) * 3, 1, "#e0dcea");
+      const x = Math.round(40 + t * 14); chibi(g2, MOTHER_LOOK_C, { dir: "right", walking: true, walk: t * 1.1 }, 3, x, 160); PR(g2, x + 6, 118, 8, 6, OUT); PR(g2, x + 7, 119, 6, 4, "#e8e2d0");
     } },
-    { dur: 4.2, zoom: [1.1, 1.25], focus: [160, 120], line: [null, "She sets the child down on a rock and wraps her scarf around the small neck. Twice. Tight."], draw: (g2, t, k) => {
-      K.sky(g2, "#0a0820", "#2a2050"); K.moon(g2, 280, 30, 10); K.salt(g2, 150, t);
-      g2.fillStyle = "#857ea5"; g2.beginPath(); g2.ellipse(160, 158, 50, 16, 0, 0, 7); g2.fill(); g2.fillStyle = "#6a6390"; g2.fillRect(112, 158, 96, 10);
-      g2.fillStyle = "#d8d0c0"; g2.beginPath(); g2.ellipse(160, 140, 20, 14, 0, 0, 7); g2.fill(); K.face(g2, 160, 128, 11, { ...LIO_F, hair: "#1a1020", closed: true, mouth: "line" }, t);
-      g2.fillStyle = "#3ee0e8"; const wraps = Math.min(2, k * 2.6); g2.fillRect(146, 136, 28 * Math.min(1, wraps), 4); if (wraps > 1) g2.fillRect(146, 140, 28 * (wraps - 1), 4);
-      K.reach(g2, 250 - k * 16, 80 + k * 6, 170, 132, 11, "#e8b48a", "#2a2240");
+    { dur: 4.4, line: [null, "She sets the child down on a rock and wraps her scarf around the small neck. Twice. Tight."], draw: (g2, t, k) => {
+      detail(g2, c2 => {
+        PR(c2, 0, 0, 80, 34, "#120e26"); PR(c2, 0, 34, 80, 14, "#c8c2d8"); PR(c2, 64, 5, 5, 5, "#f2e6c0");
+        PR(c2, 22, 30, 36, 9, OUT); PR(c2, 23, 31, 34, 7, "#857ea5"); PR(c2, 23, 31, 34, 1, "#a8a0c8");
+        PR(c2, 30, 20, 20, 11, OUT); PR(c2, 31, 21, 18, 9, "#e8e2d0"); PR(c2, 35, 16, 10, 8, OUT); PR(c2, 36, 17, 8, 6, "#e8b48a"); PR(c2, 36, 16, 8, 2, "#1a1020");
+        PR(c2, 37, 20, 2, 1, "#2b1a1a"); PR(c2, 41, 20, 2, 1, "#2b1a1a"); PR(c2, 39, 22, 2, 1, "#c07878");
+        const w = Math.min(2, k * 2.6); PR(c2, 33, 23, Math.round(14 * Math.min(1, w)), 2, "#3ee0e8"); if (w > 1) PR(c2, 33, 25, Math.round(14 * (w - 1)), 2, "#1fb8c2");
+        const hx = Math.round(56 - k * 6); PR(c2, hx - 1, 10, 10, 9, OUT); PR(c2, hx, 11, 8, 7, "#e8b48a"); PR(c2, hx + 8, 8, 14, 7, OUT); PR(c2, hx + 9, 9, 13, 5, "#2a2240");
+      }, t);
     } },
-    { dur: 4.4, zoom: [1, 1.08], focus: [160, 96], line: ["A woman in a cyan scarf", "Stay on the rock, love. Someone will come. Someone always comes for the ones who stay on the rock."], draw: (g2, t) => {
-      K.sky(g2, "#0a0820", "#1a1840"); K.moon(g2, 60, 40, 22);
-      K.face(g2, 170, 100, 46, { ...MOTHER_F, brow: "sad", mouth: "smile", tears: true, lightFrom: -1, light: "rgb(200,210,255)", look: [0, 0.6] }, t);
+    { dur: 4.4, line: ["A woman in a cyan scarf", "Stay on the rock, love. Someone will come. Someone always comes for the ones who stay on the rock."], draw: portraitShot(MOTHER_LOOK_C, { brows: "worried", mouth: "smile", tears: true, light: "#c8d0ff" }, (g2, t) => { nightBg(g2, t); PX.moon(g2, 40, 40, 16); PR(g2, 0, 150, VIEW_W, 42, "#141030"); }) },
+    { dur: 4.6, line: [null, "She walks on into the dark alone. The child doesn't cry. The child watches her go."], draw: (g2, t, k) => {
+      nightBg(g2, t); PX.moon(g2, 240, 40, 12); PR(g2, 0, 140, VIEW_W, 52, "#c8c2d8");
+      g2.globalAlpha = Math.max(0, 1 - k * 1.1); chibi(g2, MOTHER_LOOK_C, { dir: "up", walking: true, walk: t }, 2, Math.round(170 + k * 20), Math.round(150 - k * 16)); g2.globalAlpha = 1;
+      PR(g2, 48, 162, 44, 10, OUT); PR(g2, 49, 163, 42, 8, "#857ea5"); PR(g2, 58, 148, 24, 15, OUT); PR(g2, 59, 149, 22, 13, "#e8e2d0"); PR(g2, 63, 144, 14, 10, OUT); PR(g2, 64, 145, 12, 8, "#e8b48a"); PR(g2, 64, 144, 12, 3, "#1a1020"); PR(g2, 61, 153, 18, 3, "#3ee0e8");
+      PR(g2, 66, 148, 2, 2, "#2b1a1a"); PR(g2, 72, 148, 2, 2, "#2b1a1a"); if (Math.sin(t * 2) > 0) PR(g2, 82, 144, 3, 4, "#e8b48a");
     } },
-    { dur: 4.6, zoom: [1, 1.15], focus: [70, 150], line: [null, "She walks on into the dark alone. The child doesn't cry. The child watches her go."], draw: (g2, t, k) => {
-      K.sky(g2, "#05040e", "#1a1838"); K.stars(g2, t, 80, 120); K.moon(g2, 240, 40, 12); K.salt(g2, 140, t);
-      const s = 34 - k * 26; K.person(g2, 120 + k * 150, 142 - k * 8, s, "#140e22", { scarf: "#3ee0e8", t, walk: t * 3 });
-      g2.fillStyle = "#857ea5"; g2.beginPath(); g2.ellipse(70, 160, 30, 10, 0, 0, 7); g2.fill(); g2.fillStyle = "#d8d0c0"; g2.beginPath(); g2.ellipse(70, 150, 12, 9, 0, 0, 7); g2.fill(); g2.fillStyle = "#3ee0e8"; g2.fillRect(62, 146, 16, 3);
-      g2.fillStyle = "#e8b48a"; g2.fillRect(80, 142 - Math.abs(Math.sin(t * 2)) * 3, 3, 6);
-    } },
-    { dur: 5, fadeOut: 1.2, zoom: [1.05, 1], line: [null, "In the morning, the village of Kessa found her. They named her Sable, for the colour of the night she was left in."], draw: (g2, t) => {
-      K.sky(g2, "#f0b88a", "#f8dcc0"); K.salt(g2, 140, t, "#e8e0f0"); K.village(g2, 140, "rgba(80,60,90,.6)");
-      g2.fillStyle = "#857ea5"; g2.beginPath(); g2.ellipse(170, 160, 30, 10, 0, 0, 7); g2.fill(); g2.fillStyle = "#d8d0c0"; g2.beginPath(); g2.ellipse(170, 150, 12, 9, 0, 0, 7); g2.fill(); g2.fillStyle = "#3ee0e8"; g2.fillRect(162, 146, 16, 3);
-      K.person(g2, 140, 162, 40, "#4a3a5a"); K.person(g2, 205, 160, 36, "#5a4a6a", { torch: true, t }); K.person(g2, 110, 158, 34, "#5a4a6a");
-      K.glow(g2, 170, 150, 60, "rgb(255,240,200)", 0.35);
+    { dur: 5, fadeOut: 1.2, line: [null, "In the morning, the village of Kessa found her. They named her Sable, for the colour of the night she was left in."], draw: (g2, t) => {
+      PX.bands(g2, ["#e8a878", "#f0b88a", "#f4c8a0", "#f8dcc0"], 0, 140); PX.village(g2, 140, "#b89090"); PR(g2, 0, 140, VIEW_W, 52, "#e8e0f0");
+      PR(g2, 138, 162, 44, 10, OUT); PR(g2, 139, 163, 42, 8, "#857ea5"); PR(g2, 148, 148, 24, 15, OUT); PR(g2, 149, 149, 22, 13, "#e8e2d0"); PR(g2, 151, 153, 18, 3, "#3ee0e8"); PR(g2, 154, 144, 12, 8, "#e8b48a");
+      chibi(g2, { ...nadiaLook(), hair: "#5a3a2a" }, { dir: "right" }, 2, 118, 172); chibi(g2, { robe: "#6a5a4a", hair: "#3a2a1e", skin: "#c98d63" }, { dir: "left" }, 2, 206, 170); chibi(g2, { robe: "#5a6a4a", hair: "#1a1020", skin: "#a8784e", style: { hair: "cap" } }, { dir: "left" }, 2, 236, 174);
+      PX.fire(g2, 216, 128, 3, 6, t);
     } },
   ];
   // ---------------------------------------------------------------- the Bell rings (homecoming)
-  const bellShot = (n) => ({ dur: 2.2, shake: 5 + n, sound: "victory", flash: n === 3, line: [null, n === 3 ? "DONG. ...and the sky answers." : "DONG."], draw: (g2, t, k) => {
-    K.sky(g2, n === 3 ? "#5a6a8a" : "#6a6a7a", n === 3 ? "#9aaac0" : "#b8b0a8");
-    const sw = Math.sin(t * 3) * 0.5 * (1 - k * 0.3); g2.save(); g2.translate(160, 30); g2.rotate(sw);
-    g2.fillStyle = "#6b5a44"; g2.fillRect(-3, -40, 6, 44); g2.fillStyle = "#1b1633"; g2.beginPath(); g2.moveTo(-26, 4); g2.quadraticCurveTo(-30, 60, -44, 76); g2.lineTo(44, 76); g2.quadraticCurveTo(30, 60, 26, 4); g2.fill();
-    g2.fillStyle = "#e8b83a"; g2.beginPath(); g2.moveTo(-24, 6); g2.quadraticCurveTo(-28, 60, -41, 74); g2.lineTo(41, 74); g2.quadraticCurveTo(28, 60, 24, 6); g2.fill(); g2.fillStyle = "#ffe08a"; g2.fillRect(-14, 14, 6, 50); g2.fillStyle = "#8a6a2a"; g2.beginPath(); g2.arc(0, 80, 7, 0, 7); g2.fill(); g2.restore();
-    g2.strokeStyle = `rgba(255,240,200,${0.8 * (1 - k)})`; g2.lineWidth = 2; for (let r = 0; r < 3; r++) { g2.beginPath(); g2.arc(160, 90, 20 + k * 180 + r * 24, 0, 7); g2.stroke(); }
-    if (n === 3) K.rain(g2, t, Math.floor(k * 140), 0.7);
+  const bellShot = n => ({ dur: 2.2, shake: 3 + n, sound: "victory", flash: n === 3, line: [null, n === 3 ? "DONG. ...and the sky answers." : "DONG."], draw: (g2, t, k) => {
+    PX.bands(g2, n === 3 ? ["#4a5a78", "#5a6a88", "#6a7a98", "#7a8aa8"] : ["#5a5a6a", "#6a6a7a", "#7a7a88", "#8a8a96"]);
+    const sx = Math.round(Math.sin(t * 3) * 10 * (1 - k * 0.4));
+    PR(g2, 158, 0, 4, 26, "#6b5a44"); for (let r = 0; r < 70; r++) { const w = 18 + Math.round(r * 0.28) + (r > 60 ? 8 : 0); PR(g2, 160 - w - 1 + sx, 26 + r, w * 2 + 2, 1, OUT); PR(g2, 160 - w + sx, 26 + r, w * 2, 1, r < 3 ? "#b8902a" : "#e8b83a"); } PR(g2, 148 + sx, 34, 5, 56, "#ffe08a"); PR(g2, 154 + sx, 98, 12, 8, "#8a6a2a");
+    for (let rr = 0; rr < 3; rr++) { const R2 = Math.round(26 + k * 170 + rr * 22); for (let a = 0; a < 64; a++) PR(g2, 160 + Math.cos(a / 64 * 6.283) * R2, 70 + Math.sin(a / 64 * 6.283) * R2 * 0.6, 2, 2, `rgba(255,240,200,${0.7 * (1 - k)})`); }
+    if (n === 3) PX.rain(g2, t, Math.floor(k * 140));
   } });
   const HOMECOMING_BELL = [
-    { dur: 3.6, fadeIn: 0.6, zoom: [1.1, 1.2], line: [null, "Nadia's hands on the new rope. Old hands. They don't shake."], draw: (g2, t, k) => {
-      K.sky(g2, "#6a6a7a", "#9a9aa8"); K.rope(g2, 160, -20, 220, 14, t * 0.3); K.hands(g2, 160, 96 - k * 16, 26, t * 0.2, 0, "#8a5a33");
+    { dur: 3.6, fadeIn: 0.6, line: [null, "Nadia's hands on the new rope. Old hands. They don't shake."], draw: (g2, t, k) => {
+      PX.bands(g2, ["#5a5a6a", "#6a6a7a", "#7a7a88"]);
+      detail(g2, c2 => { PX.rope(c2, 37, 0, 48, 6, t * 0.3); const d = Math.round(k * 5); PX.fist(c2, 34, 10 - d, "#8a5a33"); PX.fist(c2, 34, 21 - d, "#8a5a33"); PR(c2, 33, 30 - d, 13, 8, OUT); PR(c2, 34, 31 - d, 11, 7, "#3b2f7a"); }, t);
     } },
     bellShot(1), bellShot(2), bellShot(3),
-    { dur: 4.2, zoom: [1.3, 1.05], focus: [160, 120], line: [null, "The rain comes down on the black tower, on the salt, on a small pair of shoes on the bottom step."], draw: (g2, t) => {
-      K.sky(g2, "#4a5a70", "#7a8aa0"); g2.fillStyle = "#5a5260"; g2.fillRect(0, 130, VIEW_W, 70); g2.fillStyle = "#6a6270"; g2.fillRect(0, 124, VIEW_W, 8);
-      K.shoes(g2, 160, 126, 18);
-      for (let i = 0; i < 12; i++) { const ph = (t * 1.3 + i / 12) % 1; g2.strokeStyle = `rgba(200,220,255,${1 - ph})`; g2.beginPath(); g2.ellipse(hash(i, 7) * VIEW_W, 150 + hash(i, 9) * 40, ph * 10, ph * 3, 0, 0, 7); g2.stroke(); }
-      K.rain(g2, t, 160, 0.7);
+    { dur: 4.2, line: [null, "The rain comes down on the black tower, on the salt, on a small pair of shoes on the bottom step."], draw: (g2, t) => {
+      detail(g2, (c2, tt) => {
+        PR(c2, 0, 0, 80, 30, "#5a6a80"); PR(c2, 0, 30, 80, 18, "#4a4250"); PR(c2, 0, 28, 80, 3, "#6a6270");
+        for (const x of [28, 42]) { PR(c2, x - 1, 22, 12, 7, OUT); PR(c2, x, 23, 10, 5, "#6b3f24"); PR(c2, x, 23, 3, 2, "#8a5a33"); PR(c2, x, 27, 11, 1, "#3a2414"); PR(c2, x + 4, 24, 1, 1, "#e8e2d0"); PR(c2, x + 6, 24, 1, 1, "#e8e2d0"); PR(c2, x + 8, 23, 1, 1, "#9ad8ff"); }
+        for (let i = 0; i < 8; i++) { const ph = (tt * 1.2 + i / 8) % 1, w = Math.round(ph * 6); PR(c2, (hash(i, 7) * 76) | 0, 36 + ((hash(i, 9) * 10) | 0), w, 1, `rgba(200,220,255,${1 - ph})`); }
+        for (let i = 0; i < 40; i++) PR(c2, wrap(hash(i, 41) * 90 - tt * 10, 90) - 5, wrap(hash(i, 43) * 50 + tt * 60, 50), 1, 2, "#b8cef0");
+      }, t);
     } },
-    { dur: 4.2, fadeOut: 0.8, zoom: [1, 1.08], line: [null, "Kessa comes out into it with their faces turned up, mouths open, laughing, crying, drinking the sky."], draw: (g2, t) => {
-      K.sky(g2, "#5a6a80", "#8a9ab0");
-      const cols = ["#8a5a33", "#d9a070", "#c98d63", "#e0a878", "#a8784e"];
-      [[60, 120, 30], [160, 110, 38], [260, 124, 30], [110, 150, 26], [215, 152, 26]].forEach(([x, y, r], i) => K.face(g2, x, y, r, { skin: cols[i], hair: ["#d8d0c0", "#3a2a1e", "#6b3f24", "#1a1020", "#5a3a2a"][i], brow: "calm", mouth: i % 2 ? "open" : "smile", look: [0, -1], closed: i === 3, child: i === 4 }, t + i));
-      K.rain(g2, t, 180, 0.65);
+    { dur: 4.2, fadeOut: 0.8, line: [null, "Kessa comes out into it with their faces turned up, mouths open, laughing, crying, drinking the sky."], draw: (g2, t) => {
+      PX.bands(g2, ["#4a5a70", "#5a6a80", "#6a7a90"]);
+      const faces = [["abawidow", { eyes: "closed", mouth: "smile" }], ["tam", { mouth: "open", tears: true }], ["odo", { mouth: "shout", eyes: "wide" }]];
+      faces.forEach(([id, ex], i) => { const n = NPCS.find(q => q.id === id); if (n) drawPortrait3(g2, n.look, ex, t + i, 16 + i * 102, 48, 2); });
+      PX.rain(g2, t, 160);
     } },
   ];
 
+  // No trees in the road: a palm with road on two sides becomes grass, so paths and boardwalks stay clear.
+  const _buildMapR = buildMap;
+  buildMap = function () {
+    _buildMapR();
+    const road = new Set([T.PATH, T.DECK, T.BRIDGE, T.COBBLE]);
+    for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) {
+      if (get(x, y) !== T.PALM) continue;
+      const n = [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([dx, dy]) => road.has(get(x + dx, y + dy))).length;
+      if (n >= 2) set(x, y, T.GRASS);
+    }
+  };
   // ================================================================== BOOT
   const saved = load();          // read the save before a fresh game could overwrite it
   newGame(false);
@@ -6952,7 +6912,7 @@
     const spots = { ...Object.fromEntries(NPCS.map(n => [n.id, [n.x, n.y]])), ...Object.fromEntries(CHESTS.map(c => ["chest_" + c.id, [c.x, c.y]])), ...Object.fromEntries(LORE.map(l => ["lore" + l.id, [l.x, l.y]])),
       ...Object.fromEntries(SHARDS.map(c => ["shard" + c.id, [c.x, c.y]])), key: [40, 17], charm: [11, 15], mother: [62, 43], voss: [34, 8], hollis: [61, 12], bell: [34, 6], gaterest: [56, 15], groverest: [60, 44], wyrm: [7, 11] };
     return Object.entries(spots).filter(([, [x, y]]) => ![[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => seen.has((x + dx) + "," + (y + dy)))).map(([k]) => k);
-  }, props: () => PROPS.length, battleState: () => battle && battle.foes.map(f => f.name + ":" + f.hp + "/" + f.maxHp).join(" "), clearField: () => { field = []; }, rest: () => restParty(), fish: () => fishing, field: () => field, storm: () => { stormWait = 0; return storm; }, bopts: () => battle && JSON.stringify(battle.opts), tile: (x, y) => get(x, y), win: () => battle && battle.foes.forEach(f => { f.hp = 1; }), end: k => ending(k), ach: () => achGot(), tp: (x, y) => { G.px = x * TILE + 8; G.py = y * TILE + 8; } };
+  }, props: () => PROPS.length, battleState: () => battle && battle.foes.map(f => f.name + ":" + f.hp + "/" + f.maxHp).join(" "), clearField: () => { field = []; }, rest: () => restParty(), fish: () => fishing, field: () => field, storm: () => { stormWait = 0; return storm; }, propsList: () => PROPS.map(p => [p.type, p.x, p.y, get(p.x, p.y)]), bopts: () => battle && JSON.stringify(battle.opts), tile: (x, y) => get(x, y), win: () => battle && battle.foes.forEach(f => { f.hp = 1; }), end: k => ending(k), ach: () => achGot(), tp: (x, y) => { G.px = x * TILE + 8; G.py = y * TILE + 8; } };
 })();
 </script>
 </body>
