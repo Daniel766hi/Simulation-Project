@@ -7655,6 +7655,40 @@
     if (n) el.textContent = el.textContent.replace(end, `The Courier's Creed: ${n} of ${QUESTIONS.length} questions answered. ${end}`);
   };
 
+  // ---- Aurel's letter: the delivery Teodor sold, finished four hundred years late by another courier
+  D.corvin_after.go = "corvin_letter";
+  Object.assign(D, {
+    corvin_letter: { who: null, text: "(Under the ledger is a letter, folded small, sealed in green wax with a king's crown. It is addressed TO THE GUILD COUNCIL OF ORU. The seal has never been broken. Aurel's refusal. The letter Teodor carried, and sold, and Corvin kept.)", choices: [
+      { t: "Take it. Late is still delivered.", go: null, act: () => { G.flags.aurelLetter = "carry"; save(); updateHud(); toast("You carry Aurel's letter to the council of Oru, four hundred years late."); } },
+      { t: "Leave it with the dead.", go: null } ] },
+    ines_aurel: say("sable", "(You hold out the green-sealed letter.) One more thing. This was addressed to the council of Oru. It never arrived. The courier who carried it sold it on the road.", "ines_aurel2"),
+    ines_aurel2: say("ines", "(She breaks the seal herself, very carefully, as if it might still be warm.) 'To the Guild: I will not sell the lowlands. My people's dead are buried there, and the dead do not move for money. Do what you will. I will not leave them. Aurel.'", "ines_aurel3"),
+    ines_aurel3: say("ines", "(For a long moment she says nothing.) I am the council. So it's arrived. (She takes up her pen again, and under the king's name, in small plain letters, writes: Received. We are sorry.) Take them down together, courier. His letter, and our answer.", "ines_ledger3", () => { G.flags.aurelLetter = "answered"; save(); }),
+    king_teodor: say("king", "My letter. (The young face looks at it for a long time.) I gave it to my brother. Teodor. He was the fastest runner in the lowlands. I waited for the answer, courier. I waited until the water was at my chin.", "king_teodor2"),
+    king_teodor2: { who: "sable", text: "(What do you tell him?)", choices: [
+      { t: "\"He sold it. And he spent four hundred years on the salt, asking questions, because of it. He's at rest now.\"", go: "king_teodor_rest", req: () => G.flags.hermitDone === "rest", reqText: "Teodor laid to rest" },
+      { t: "\"He sold it. He's on his way down to you now. He wanted to say he was sorry.\"", go: "king_teodor_down", req: () => G.flags.hermitDone === "down", reqText: "Teodor gone to the sea" },
+      { t: "\"It was never delivered. Now it is.\"", go: "king_teodor_late" } ] },
+    king_teodor_rest: say("king", "(The drowned shape shivers, all of it at once.) Then he was below too, all this time. In his own way. ...Good. Somebody in my family should rest.", "king_apology3"),
+    king_teodor_down: say("king", "(Something in the young face gives way.) Then I will wait a little longer. I have had practice.", "king_apology3"),
+    king_teodor_late: say("king", "Late. (Almost a laugh.) You couriers. Late is still delivered, is it? ...Yes. I suppose it is.", "king_apology3"),
+  });
+  D.ines_ledger2.go = () => G.flags.aurelLetter === "carry" ? "ines_aurel" : "ines_ledger3";
+  const apologyText = D.king_apology.text;
+  D.king_apology.text = () => apologyText + (G.flags.aurelLetter === "answered" ? " Folded inside it is a second letter, older, its green seal broken at last: his own refusal, and under his name, in small plain letters, the council's answer. 'Received. We are sorry.'" : "");
+  D.king_apology2.go = () => G.flags.aurelLetter === "answered" ? "king_teodor" : "king_apology3";
+  const _extraFatesA = extraFates;
+  extraFates = function (k) {
+    const out = _extraFatesA(k);
+    if (G.flags.aurelLetter === "answered" && G.flags.apologyRead) out.push("Aurel's letter hangs in the council chamber of Oru, beside its answer. Couriers touch the frame for luck before a long run.");
+    return out;
+  };
+  const _extraJournalA = extraJournalHtml;
+  extraJournalHtml = function () {
+    const a = G.flags.aurelLetter;
+    return _extraJournalA() + (a ? `<h3>Aurel's letter</h3><p>${a === "carry" ? "Sealed in green wax, addressed to the council of Oru. Four hundred years late. Take it to Mayor Ines." : G.flags.apologyRead ? "Delivered, answered, and read aloud at the bottom of the sea." : "Delivered. Answered. It goes down to the King with the Apology."}</p>` : "");
+  };
+
   // ================================================================== BOOT
   const saved = load();          // read the save before a fresh game could overwrite it
   newGame(false);
