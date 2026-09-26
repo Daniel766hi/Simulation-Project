@@ -116,6 +116,34 @@
   .journal p.dim, .journal li.dim { color: var(--muted); }
   .journal ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
   .journal .done { color: #6bff9a; }
+  #pauseBtn { position: absolute; right: 10px; top: 10px; z-index: 6; width: 34px; height: 30px; font: 700 12px var(--font); color: var(--text); background: var(--panel); border: 1px solid var(--edge); border-radius: 6px; cursor: pointer; letter-spacing: -1px; }
+  #pauseBtn:hover, #pauseBtn:focus-visible { border-color: var(--gold); outline: none; }
+  .hud .goal { margin-right: 40px; }
+  .battle-top { padding-right: 44px; }
+  #pauseUI { z-index: 9; background: rgba(10,8,22,.86); }
+  .pause { width: min(720px, 100%); }
+  .pause .ptop { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  .pause .ptop span { font-size: 12px; color: var(--muted); }
+  .pmenu { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; margin-top: 10px; }
+  .pmenu button, .pbtn { text-align: left; font: 600 15px var(--font); color: var(--text); background: rgba(255,255,255,.05); border: 1px solid var(--edge); border-radius: 6px; padding: 10px 12px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+  .pmenu button small { color: var(--muted); font-weight: 500; font-size: 11px; }
+  .pmenu button:hover, .pmenu button:focus-visible, .pbtn:hover, .pbtn:focus-visible { border-color: var(--scarf); background: rgba(62,224,232,.12); outline: none; }
+  .pmenu button:disabled, .pbtn:disabled { opacity: .4; cursor: not-allowed; }
+  #pausePanel { margin-top: 10px; }
+  #pausePanel h3 { margin: 4px 0 8px; font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--scarf); }
+  .setrow { display: grid; grid-template-columns: 140px 1fr 44px; gap: 10px; align-items: center; margin: 8px 0; font-size: 14px; }
+  .setrow input[type=range] { width: 100%; accent-color: #3ee0e8; }
+  .seg { display: flex; gap: 6px; flex-wrap: wrap; }
+  .seg button { font: 600 13px var(--font); color: var(--muted); background: transparent; border: 1px solid var(--edge); border-radius: 6px; padding: 5px 10px; cursor: pointer; }
+  .seg button.on { color: #120f24; background: var(--gold); border-color: var(--gold); }
+  .slot { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: center; padding: 8px 10px; border: 1px solid var(--edge); border-radius: 6px; margin: 6px 0; font-size: 13px; }
+  .slot b { color: var(--gold); } .slot small { display: block; color: var(--muted); }
+  .slot .pbtn { padding: 6px 12px; font-size: 13px; }
+  #worldMap { width: 100%; height: auto; image-rendering: pixelated; border: 1px solid var(--edge); border-radius: 6px; background: #0c0a18; }
+  .maplegend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .maplegend i { display: inline-block; width: 9px; height: 9px; margin-right: 4px; vertical-align: -1px; }
+  .keys { display: grid; grid-template-columns: 150px 1fr; gap: 6px 12px; font-size: 14px; }
+  .keys kbd { font: 500 12px var(--font); background: #231d45; border: 1px solid var(--edge); border-bottom-width: 2px; border-radius: 4px; padding: 1px 6px; }
   .roster .close { margin-top: 12px; width: 100%; text-align: center; }
 
   .screen { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; padding: 24px; background: radial-gradient(circle at 50% 40%, rgba(60,20,40,.78), rgba(10,8,22,.96)); border-radius: 10px; z-index: 8; }
@@ -173,6 +201,23 @@
   </div>
   <canvas id="minimap" width="72" height="54" aria-label="Minimap"></canvas>
   <div class="corner" id="corner"><button id="partyBtn" type="button">Party (P)</button><button id="journalBtn" type="button">Journal (J)</button><button id="musicBtn" type="button">♪ Music on</button></div>
+  <button id="pauseBtn" type="button" aria-label="Pause (Esc)" hidden>❚❚</button>
+  <div class="overlay" id="pauseUI" hidden>
+    <div class="roster pause">
+      <div class="ptop"><h2 id="pauseTitle">Paused</h2><span id="pauseStats"></span></div>
+      <div id="pauseMain" class="pmenu">
+        <button type="button" data-a="resume">Resume <small>Esc</small></button>
+        <button type="button" data-a="map">World map</button>
+        <button type="button" data-a="party">Party <small>P</small></button>
+        <button type="button" data-a="journal">Journal <small>J</small></button>
+        <button type="button" data-a="slots">Save and load</button>
+        <button type="button" data-a="settings">Settings</button>
+        <button type="button" data-a="controls">Controls</button>
+        <button type="button" data-a="quit">Quit to title</button>
+      </div>
+      <div id="pausePanel" hidden></div>
+    </div>
+  </div>
   <div class="toast" id="toast" hidden></div>
   <div class="splash" id="splash" hidden><small id="splashSub"></small><span id="splashName"></span></div>
   <div class="banner" id="banner" hidden><small>Entering</small><span id="bannerText"></span></div>
@@ -241,6 +286,7 @@
   <span><kbd>J</kbd> journal</span>
   <span><kbd>M</kbd> map</span>
   <span><kbd>N</kbd> music</span>
+  <span><kbd>Esc</kbd> pause</span>
 </div>
 
 <script>
@@ -249,7 +295,14 @@
   const $ = id => document.getElementById(id);
   const REDUCED = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
   const TILE = 16, W = 130, H = 90, OW = 72, OH = 54, VIEW_W = 320, VIEW_H = 192;
-  const wait = ms => new Promise(r => setTimeout(r, REDUCED ? Math.min(ms, 120) : ms));
+  const SETTINGS = { music: 0.8, sfx: 0.8, text: "normal", battle: "normal", shake: true };
+  try { Object.assign(SETTINGS, JSON.parse(localStorage.getItem("salt-road-settings") || "{}")); } catch { /* storage unavailable */ }
+  let paused = false;
+  // Battle pacing waits while paused, and runs faster on the "fast" battle speed
+  const wait = ms => new Promise(r => {
+    const go = () => { if (paused) { setTimeout(go, 100); return; } setTimeout(r, REDUCED ? Math.min(ms, 120) : SETTINGS.battle === "fast" ? ms * 0.45 : ms); };
+    go();
+  });
   const rand = (a, b) => a + Math.random() * (b - a);
   const pick = arr => arr[Math.floor(Math.random() * arr.length)];
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -263,13 +316,14 @@
       const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
       try { this.ctx = new AC(); } catch { return; }
       this.master = this.ctx.createGain(); this.master.gain.value = this.on ? 0.55 : 0; this.master.connect(this.ctx.destination);
-      this.bus = this.ctx.createGain(); this.bus.gain.value = 0.5; this.bus.connect(this.master);
-      this.sfx = this.ctx.createGain(); this.sfx.gain.value = 0.6; this.sfx.connect(this.master);
+      this.bus = this.ctx.createGain(); this.bus.gain.value = 0.5 * SETTINGS.music; this.bus.connect(this.master);
+      this.sfx = this.ctx.createGain(); this.sfx.gain.value = 0.6 * SETTINGS.sfx; this.sfx.connect(this.master);
       const len = this.ctx.sampleRate; this.noiseBuf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
       const d = this.noiseBuf.getChannelData(0); for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
       this.timer = setInterval(() => this.tick(), 25);
       if (this.pending) { const p = this.pending; this.pending = null; this.play(p); }
     },
+    volumes() { if (!this.ctx) return; this.bus.gain.setTargetAtTime(0.5 * SETTINGS.music * (paused ? 0.35 : 1), this.ctx.currentTime, 0.05); this.sfx.gain.setTargetAtTime(0.6 * SETTINGS.sfx, this.ctx.currentTime, 0.05); },
     toggle() { this.on = !this.on; if (this.master) this.master.gain.setTargetAtTime(this.on ? 0.55 : 0, this.ctx.currentTime, 0.05); try { localStorage.setItem("salt-road-music", this.on ? "1" : "0"); } catch { /* storage unavailable */ } },
     play(name) {
       if (!this.ctx) { this.pending = name; return; }
@@ -1178,6 +1232,7 @@
     let s2 = G.flags.fog || "0".repeat(FW * FH), changed = false;
     for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
       const x = cx + dx, y = cy + dy; if (x < 0 || y < 0 || x >= FW || y >= FH) continue;
+      if (regionOf(x * FOG + 5, y * FOG + 5) !== regionOf(Math.floor(G.px / TILE), Math.floor(G.py / TILE)) && (dx || dy)) continue;
       const i = y * FW + x; if (s2[i] !== "1") { s2 = s2.slice(0, i) + "1" + s2.slice(i + 1); changed = true; }
     }
     if (changed) { G.flags.fog = s2; miniDirty = true; }
@@ -1282,6 +1337,11 @@
     keys[k] = true;
     Music.init();
     if (k === "n") { toggleMusic(); return; }
+    if (k === "escape" && mode !== "title" && !(mode === "card" && $("cardBtn").dataset.ending)) {
+      if (paused) { if (!$("pausePanel").hidden) showPauseMain(); else resumeGame(); } else if (mode === "roster") closeRoster(); else if (mode === "journal") closeJournal(); else pauseGame();
+      return;
+    }
+    if (paused) { pauseKey(k); return; }
     if (mode === "card") { if (k === "e" || k === "enter" || k === " ") $("cardBtn").click(); return; }
     if (mode === "journal") { if (k === "j" || k === "escape" || k === "q" || k === "e") closeJournal(); return; }
     if (mode === "roster") { if (k === "p" || k === "escape" || k === "q" || k === "e") closeRoster(); return; }
@@ -1895,6 +1955,7 @@
     return false;
   }
   function victory() {
+    G.stats = G.stats || {}; G.stats.wins = (G.stats.wins || 0) + 1;
     if (!battle) return;
     G.flags.kills = G.flags.kills || {};
     for (const f of battle.foes) G.flags.kills[f.id] = (G.flags.kills[f.id] || 0) + 1;
@@ -1923,6 +1984,7 @@
     battle.waitingContinue = () => endBattle("won", boss);
   }
   function defeat() {
+    G.stats = G.stats || {}; G.stats.defeats = (G.stats.defeats || 0) + 1;
     if (!battle) return;
     Music.track = null; Music.sound("defeat");
     blog("Your party falls. The salt closes over you...");
@@ -2026,7 +2088,7 @@
   function update(dt) {
     time += dt;
     if (toastTimer > 0 && (toastTimer -= dt) <= 0) $("toast").hidden = true;
-    if (mode === "dialog" && dlg && typed < dlg.text.length) { typed += dt * 60; renderDialog(); }
+    if (mode === "dialog" && dlg && typed < dlg.text.length) { typed = SETTINGS.text === "instant" ? dlg.text.length : typed + dt * (SETTINGS.text === "slow" ? 30 : 60); renderDialog(); }
     for (const p of particles) { p.x += p.vx * dt; p.y += p.vy * dt; p.vy += (p.drip ? 220 : 140) * dt; p.life -= dt; }
     particles = particles.filter(p => p.life > 0);
     popups.forEach(p => { p.life -= dt; p.y -= 16 * dt; }); popups = popups.filter(p => p.life > 0);
@@ -2529,7 +2591,7 @@
     if (!battle && showMap && mode !== "title") drawMinimap(); else $("minimap").hidden = true;
   }
   function renderWorld() {
-    const sx = shake && !REDUCED ? rand(-.5, .5) * shake : 0, sy = shake && !REDUCED ? rand(-.5, .5) * shake : 0;
+    const sx = shake && !REDUCED && SETTINGS.shake ? rand(-.5, .5) * shake : 0, sy = shake && !REDUCED && SETTINGS.shake ? rand(-.5, .5) * shake : 0;
     const ox = Math.round(camX + sx), oy = Math.round(camY + sy);
     g.fillStyle = "#120f24"; g.fillRect(0, 0, VIEW_W, VIEW_H);
     const tx0 = Math.floor(ox / TILE), ty0 = Math.floor(oy / TILE);
@@ -2679,7 +2741,7 @@
   }
   function renderBattle() {
     const B = battle, area = B.opts.area || "flats";
-    const sx = shake && !REDUCED ? rand(-.5, .5) * shake : 0, sy = shake && !REDUCED ? rand(-.5, .5) * shake : 0;
+    const sx = shake && !REDUCED && SETTINGS.shake ? rand(-.5, .5) * shake : 0, sy = shake && !REDUCED && SETTINGS.shake ? rand(-.5, .5) * shake : 0;
     g.save(); g.translate(Math.round(sx), Math.round(sy));
     const sky = g.createLinearGradient(0, 0, 0, 120);
     const skies = { cathedral: ["#0c0a1c", "#2a2448"], oasis: ["#3a1f4a", "#c46a4a"], grove: ["#1a2a24", "#4a6a4a"], gate: ["#0e1a2e", "#3a5a7a"], flats: ["#2a1a3e", "#b0506a"] };
@@ -2977,7 +3039,7 @@
   function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(G)); } catch { /* storage unavailable */ } }
   function load() { try { return JSON.parse(localStorage.getItem(SAVE_KEY)); } catch { return null; } }
   function startGame() {
-    Music.init();
+    Music.init(); $("pauseBtn").hidden = false;
     $("title").hidden = true; mode = "play"; updateHud();
     if (G.stage === 0 && !G.flags.intro) { G.flags.intro = true; card("Prologue", "The Stolen Bell", "The night the Rain Bell was cut from its tower, the jackals on the salt stopped eating carrion and started hunting. Elder Nadia is waiting for you by the village well. Follow the gold arrow."); }
   }
@@ -4458,6 +4520,136 @@
     return `<h3>Bonds</h3><ul>${bonds || '<li class="dim">No companions yet.</li>'}</ul><h3>Letters</h3><ul>${letters}</ul><h3>Side quests</h3><ul>${sq}</ul>`;
   }
 
+  // ================================================================== PAUSE MENU
+  let pausedFrom = "play", quitArmed = false;
+  const fmtTime = s2 => { s2 = Math.floor(s2 || 0); const h = Math.floor(s2 / 3600), m = Math.floor(s2 / 60) % 60; return h ? `${h}h ${m}m` : `${m}m ${s2 % 60}s`; };
+  function pauseGame() {
+    if (paused || !G) return;
+    paused = true; pausedFrom = mode; quitArmed = false;
+    Music.volumes(); Music.sound("click");
+    const t = goal();
+    $("pauseStats").textContent = `${t.ch || "The Salt Road"} · played ${fmtTime(G.stats && G.stats.time)} · ${(G.stats && G.stats.wins) || 0} battles won · ${(G.stats && G.stats.defeats) || 0} defeats`;
+    const inPlay = pausedFrom === "play";
+    for (const b of $("pauseMain").querySelectorAll("button")) if (["party", "journal", "slots", "map"].includes(b.dataset.a)) b.disabled = !inPlay && b.dataset.a !== "map";
+    showPauseMain(); $("pauseUI").hidden = false;
+    $("pauseMain").querySelector("button").focus({ preventScroll: true });
+  }
+  function resumeGame() { paused = false; $("pauseUI").hidden = true; Music.volumes(); Music.sound("click"); last = performance.now(); }
+  function showPauseMain() { $("pauseMain").hidden = false; $("pausePanel").hidden = true; $("pauseTitle").textContent = "Paused"; }
+  function showPanel(title, html) { $("pauseMain").hidden = true; $("pausePanel").hidden = false; $("pauseTitle").textContent = title; $("pausePanel").innerHTML = html + `<button class="pbtn close" type="button" data-a="back" style="margin-top:12px;width:100%;justify-content:center">Back <small style="margin-left:8px">Esc</small></button>`; const f = $("pausePanel").querySelector("button,input"); if (f) f.focus({ preventScroll: true }); }
+  function pauseKey(k) {
+    const btns = [...$("pauseUI").querySelectorAll("button:not([disabled]), input")].filter(b => b.offsetParent !== null);
+    const i = btns.indexOf(document.activeElement);
+    if (["arrowdown", "s", "arrowright", "d"].includes(k) && document.activeElement.type !== "range") { (btns[(i + 1) % btns.length] || btns[0]).focus(); Music.sound("click"); }
+    if (["arrowup", "w", "arrowleft", "a"].includes(k) && document.activeElement.type !== "range") { (btns[(i - 1 + btns.length) % btns.length] || btns[0]).focus(); Music.sound("click"); }
+    if ((k === "e" || k === " ") && document.activeElement && document.activeElement.tagName === "BUTTON") document.activeElement.click();
+    if (k === "q") { if (!$("pausePanel").hidden) showPauseMain(); else resumeGame(); }
+  }
+  $("pauseBtn").addEventListener("click", () => { Music.init(); paused ? resumeGame() : pauseGame(); });
+  $("pauseUI").addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b || b.disabled) return;
+    const a = b.dataset.a; Music.sound("click");
+    if (a === "resume") resumeGame();
+    else if (a === "back") showPauseMain();
+    else if (a === "party") { resumeGame(); openRoster(); }
+    else if (a === "journal") { resumeGame(); openJournal(); }
+    else if (a === "map") showWorldMap();
+    else if (a === "slots") showSlots();
+    else if (a === "settings") showSettings();
+    else if (a === "controls") showControls();
+    else if (a === "quit") {
+      if (!quitArmed) { quitArmed = true; b.innerHTML = `Really quit? <small>progress is autosaved at every rest and story step</small>`; return; }
+      save(); location.reload();
+    }
+    else if (a === "save") { saveSlot(Number(b.dataset.slot)); showSlots(); }
+    else if (a === "load") { if (loadSlot(Number(b.dataset.slot))) resumeGame(); }
+    else if (b.dataset.set) { SETTINGS[b.dataset.set] = b.dataset.v === "true" ? true : b.dataset.v === "false" ? false : b.dataset.v; saveSettings(); showSettings(b.dataset.set); }
+    else if (b.dataset.diff) { difficulty = b.dataset.diff; try { localStorage.setItem("salt-road-diff", difficulty); } catch { /* storage unavailable */ } renderDiff(); showSettings("diff"); }
+  });
+  $("pauseUI").addEventListener("input", e => {
+    const r = e.target; if (!r.dataset.vol) return;
+    SETTINGS[r.dataset.vol] = Number(r.value) / 100; r.parentElement.querySelector("output").textContent = r.value + "%";
+    Music.volumes(); saveSettings(); if (r.dataset.vol === "sfx") Music.sound("hit");
+  });
+  function saveSettings() { try { localStorage.setItem("salt-road-settings", JSON.stringify(SETTINGS)); } catch { /* storage unavailable */ } }
+  function showSettings(focusKey) {
+    const seg = (key, opts) => `<div class="seg">${opts.map(([v, l]) => `<button type="button" data-set="${key}" data-v="${v}" class="${String(SETTINGS[key]) === String(v) ? "on" : ""}">${l}</button>`).join("")}</div>`;
+    const vol = (key, label) => `<label class="setrow"><span>${label}</span><input type="range" min="0" max="100" step="5" value="${Math.round(SETTINGS[key] * 100)}" data-vol="${key}" aria-label="${label}"><output>${Math.round(SETTINGS[key] * 100)}%</output></label>`;
+    showPanel("Settings", `
+      <h3>Sound</h3>${vol("music", "Music volume")}${vol("sfx", "Sound effects")}
+      <div class="setrow"><span>Music</span>${`<div class="seg"><button type="button" data-a="musictoggle" class="${Music.on ? "on" : ""}">${Music.on ? "On" : "Off"}</button></div>`}<span></span></div>
+      <h3>Game</h3>
+      <div class="setrow"><span>Text speed</span>${seg("text", [["slow", "Slow"], ["normal", "Normal"], ["instant", "Instant"]])}<span></span></div>
+      <div class="setrow"><span>Battle speed</span>${seg("battle", [["normal", "Normal"], ["fast", "Fast"]])}<span></span></div>
+      <div class="setrow"><span>Screen shake</span>${seg("shake", [["true", "On"], ["false", "Off"]])}<span></span></div>
+      <div class="setrow"><span>Difficulty</span><div class="seg">${["story", "normal", "hard"].map(d => `<button type="button" data-diff="${d}" class="${difficulty === d ? "on" : ""}">${d[0].toUpperCase() + d.slice(1)}</button>`).join("")}</div><span></span></div>
+      <p class="dim" style="font-size:12px;margin-top:6px">${DIFFS[difficulty].note} Difficulty applies from the next battle.</p>`);
+    const mt = $("pausePanel").querySelector('[data-a="musictoggle"]'); if (mt) mt.addEventListener("click", ev => { ev.stopPropagation(); toggleMusic(); showSettings(); });
+    if (focusKey) { const f = $("pausePanel").querySelector(`[data-set="${focusKey}"].on, [data-diff].on`); if (f) f.focus({ preventScroll: true }); }
+  }
+  function showControls() {
+    showPanel("Controls", `<div class="keys">
+      <span><kbd>WASD</kbd> <kbd>Arrows</kbd></span><span>Move, and choose in menus</span>
+      <span><kbd>Shift</kbd></span><span>Dash (hold to run). Dash into a monster to ambush it.</span>
+      <span><kbd>E</kbd> <kbd>Space</kbd></span><span>Talk, rest, read, confirm</span>
+      <span><kbd>Q</kbd></span><span>Back</span>
+      <span><kbd>P</kbd></span><span>Party: choose fighters, equip relics, talk with companions</span>
+      <span><kbd>J</kbd></span><span>Journal: story, tasks, bonds, letters, bestiary</span>
+      <span><kbd>M</kbd></span><span>Show or hide the minimap</span>
+      <span><kbd>N</kbd></span><span>Music on or off</span>
+      <span><kbd>Esc</kbd></span><span>Pause, anytime, even mid-battle</span>
+      <span><kbd>1</kbd>–<kbd>9</kbd></span><span>Pick a dialogue or battle option</span></div>
+      <p class="dim" style="font-size:12px;margin-top:10px">On a phone: the stick moves, ACT talks or confirms, DASH dashes, and ❚❚ pauses.</p>`);
+  }
+  // ---- save slots
+  const slotKey = n => `salt-road-slot-${n}`;
+  function readSlot(n) { try { return JSON.parse(localStorage.getItem(slotKey(n))); } catch { return null; } }
+  function saveSlot(n) {
+    const t = goal();
+    try { localStorage.setItem(slotKey(n), JSON.stringify({ when: Date.now(), label: t.ch || "Prologue", party: G.members.map(id => G.party[id].name + " " + G.party[id].level).join(", "), time: (G.stats && G.stats.time) || 0, G })); toast(`Saved to slot ${n}.`); Music.sound("item"); }
+    catch { toast("Couldn't save: storage is unavailable in this browser."); }
+  }
+  function loadSlot(n) {
+    const d = readSlot(n); if (!d || !d.G) return false;
+    loadState(d.G); toast(`Loaded slot ${n}: ${d.label}.`); return true;
+  }
+  function showSlots() {
+    const rows = [1, 2, 3].map(n => { const d = readSlot(n);
+      return `<div class="slot"><div><b>Slot ${n}</b> ${d ? `<small>${d.label} · ${fmtTime(d.time)} played · ${new Date(d.when).toLocaleString()}</small><small>${d.party}</small>` : `<small>Empty</small>`}</div>
+        <button type="button" class="pbtn" data-a="save" data-slot="${n}">Save</button><button type="button" class="pbtn" data-a="load" data-slot="${n}" ${d ? "" : "disabled"}>Load</button></div>`; }).join("");
+    showPanel("Save and load", `<p class="dim" style="font-size:13px;margin:0 0 6px">The game also autosaves at every rest, story step and battle. Slots let you keep a point to come back to, for example before a hard choice.</p>${rows}`);
+  }
+  function loadState(saved) {
+    if (battle) return;
+    newGame(false); Object.assign(G, JSON.parse(JSON.stringify(saved)));
+    if (!G.active || !G.active.length) G.active = G.members.slice(0, 4);
+    applyWorldState(); miniDirty = true; spawnField(); region = "";
+    camX = G.px - VIEW_W / 2; camY = G.py - VIEW_H / 2; player.scarf = [];
+    $("dialog").hidden = true; $("card").hidden = true; dlg = null; mode = "play";
+    save(); updateHud();
+  }
+  // ---- world map
+  const MAP_LABELS = [["Kessa", 14, 42], ["The Glass Flats", 18, 22], ["Well of Nine", 36, 26], ["Salt Cathedral", 34, 11], ["Drowned Grove", 60, 42], ["Gates of Oru", 60, 13],
+    ["Oru", 89, 20], ["Guild Hall", 84, 7], ["Drowning Marsh", 20, 70], ["Reedholm", 37, 67], ["Bog Heart", 13, 84], ["Wreck Coast", 95, 66], ["Lighthouse", 121, 59],
+    ["Storm Road", 116, 46], ["Storm Spire", 118, 16], ["The Deep", 89, 44]];
+  function showWorldMap() {
+    showPanel("World map", `<canvas id="worldMap" width="520" height="360" aria-label="World map"></canvas>
+      <div class="maplegend"><span><i style="background:#3ee0e8"></i>You</span><span><i style="background:#ffcf4a"></i>Goal</span><span><i style="background:#fff"></i>Open passage</span><span><i style="background:#c8102e"></i>Monsters</span><span><i style="background:#9ef0f5"></i>Unread tablet</span></div>`);
+    drawMinimap();
+    const c = $("worldMap"), m = c.getContext("2d"), S = 4, fog = G.flags.fog || "";
+    m.imageSmoothingEnabled = false; m.drawImage(miniOff, 0, 0, W, H, 0, 0, W * S, H * S);
+    const seen = (x, y) => fog[Math.floor(y / FOG) * FW + Math.floor(x / FOG)] === "1";
+    m.fillStyle = "#c8102e"; for (const f of field) if (seen(f.px / TILE, f.py / TILE)) m.fillRect(Math.floor(f.px / TILE) * S, Math.floor(f.py / TILE) * S, S, S);
+    m.fillStyle = "#9ef0f5"; for (const l of LORE) if (seen(l.x, l.y) && !(G.flags.lore || []).includes(l.id)) m.fillRect(l.x * S, l.y * S, S, S);
+    m.fillStyle = "#fff"; for (const w of WARPS) if (seen(w.x, w.y) && (!w.req || w.req())) m.fillRect(w.x * S - 1, w.y * S - 1, S + 2, S + 2);
+    m.font = "11px 'Pixelify Sans', monospace"; m.textAlign = "center";
+    for (const [n, x, y] of MAP_LABELS) if (seen(x, y)) { m.fillStyle = "rgba(12,10,24,.75)"; const w2 = m.measureText(n).width + 8; m.fillRect(x * S - w2 / 2, y * S - 10, w2, 14); m.fillStyle = "#f3efe6"; m.fillText(n, x * S, y * S + 1); }
+    const t = goal(); if (t.text) { m.strokeStyle = "#ffcf4a"; m.lineWidth = 2; m.beginPath(); m.arc(t.x * S + 2, t.y * S + 2, 7, 0, Math.PI * 2); m.stroke(); m.fillStyle = "#ffcf4a"; m.fillRect(t.x * S, t.y * S, S, S); }
+    const px = Math.floor(G.px / TILE), py = Math.floor(G.py / TILE); m.fillStyle = "#0c0a18"; m.fillRect(px * S - 3, py * S - 3, S + 6, S + 6); m.fillStyle = "#3ee0e8"; m.fillRect(px * S - 2, py * S - 2, S + 4, S + 4);
+    const pct = Math.round(fog.split("").filter(ch => ch === "1").length / (FW * FH) * 100);
+    $("pausePanel").querySelector(".maplegend").insertAdjacentHTML("beforeend", `<span>Explored: ${pct}%</span>`);
+  }
+
   // ================================================================== STORY ILLUSTRATIONS
   // Each chapter card, memorial and ending gets a small animated painting.
   const sceneCanvas = $("cardArt"), sc2 = sceneCanvas.getContext("2d");
@@ -4564,7 +4756,8 @@
   let last = performance.now();
   function loop(now) {
     const dt = Math.min(0.05, (now - last) / 1000); last = now;
-    update(dt); render(); paintScene();
+    if (!paused) { update(dt); if (G && mode !== "title") { G.stats = G.stats || {}; G.stats.time = (G.stats.time || 0) + dt; } }
+    render(); paintScene();
     requestAnimationFrame(loop);
   }
   requestAnimationFrame(loop);
