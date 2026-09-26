@@ -32,7 +32,8 @@
     display: flex; flex-direction: column; align-items: center; padding-inline: 16px; padding-block: 12px;
     overflow-x: hidden; -webkit-user-select: none; user-select: none;
   }
-  .frame { position: relative; width: 100%; max-width: 1000px; }
+  /* The frame keeps the 5:3 game shape and grows or shrinks so the frame and the key hints always fit the window. */
+  .frame { position: relative; width: 100%; }
   canvas#game { display: block; width: 100%; height: auto; image-rendering: pixelated; border-radius: 10px; background: #000; box-shadow: 0 0 0 2px var(--edge), 0 24px 60px -24px #000; touch-action: none; }
 
   .hud { position: absolute; inset: 10px 10px auto 10px; display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; pointer-events: none; }
@@ -175,7 +176,7 @@
   .rcard .relic b { color: var(--gold); font-weight: 600; }
   .rcard .talk { border-color: var(--gold); color: var(--gold); animation: furyPulse 1.6s ease-in-out infinite; }
   .rcard .bondline { font-size: 11px; color: var(--muted); padding: 0 4px; }
-  .help { width: 100%; max-width: 1000px; display: flex; flex-wrap: wrap; gap: 6px 16px; justify-content: center; margin-top: 10px; font-size: 13px; color: var(--muted); }
+  .help { width: min(100%, 1400px); display: flex; flex-wrap: wrap; gap: 6px 16px; justify-content: center; margin-top: 10px; font-size: 13px; color: var(--muted); }
   .help kbd { font: 500 12px var(--font); color: var(--text); background: #231d45; border: 1px solid var(--edge); border-bottom-width: 2px; border-radius: 4px; padding: 1px 6px; }
   .touch { display: none; width: 100%; max-width: 1000px; justify-content: space-between; align-items: center; margin-top: 10px; gap: 12px; }
   .stick { width: 124px; height: 124px; border-radius: 50%; background: rgba(255,255,255,.05); border: 2px solid var(--edge); position: relative; touch-action: none; flex: none; }
@@ -190,6 +191,26 @@
     .battle-bottom { grid-template-columns: 1fr; } .card { flex-basis: 22%; padding: 4px 5px; font-size: 10px; }
     .menu { max-height: 160px; } .blog { max-width: 60%; font-size: 12px; }
   }
+  /* Phones held sideways: the game fills the height, the stick and buttons sit in the side margins. */
+  @media (pointer: coarse) and (orientation: landscape) {
+    body { padding: 4px; justify-content: center; min-height: 100vh; min-height: 100dvh; box-sizing: border-box; }
+    .touch { position: fixed; left: 0; right: 0; bottom: 10px; margin: 0; width: auto; max-width: none; padding: 0 10px; box-sizing: border-box; pointer-events: none; }
+    .touch .stick, .touch .btns { pointer-events: auto; }
+    .stick { width: 112px; height: 112px; }
+    .btns { flex-direction: column-reverse; gap: 10px; }
+    .rotateTip { display: none !important; }
+  }
+  /* Phones held upright: full width, controls underneath. */
+  @media (pointer: coarse) and (orientation: portrait) {
+    body { padding: 6px 4px; min-height: 100vh; min-height: 100dvh; box-sizing: border-box; }
+    .touch { margin-top: auto; padding: 0 10px 18px; box-sizing: border-box; }
+    .goal { font-size: 10px; max-width: 50%; padding: 4px 6px; } .goal b { font-size: 9px; }
+    .pm { grid-template-columns: 44px 52px; font-size: 10px; } .row { font-size: 10px; max-width: 150px; }
+    #minimap { width: 64px; right: 6px; bottom: 6px; }
+    .corner { left: 6px; bottom: 6px; gap: 4px; } .corner button { font-size: 10px; padding: 3px 6px; }
+    .rotateTip { display: block !important; }
+  }
+  .rotateTip { display: none; font-size: 13px; color: var(--gold); margin: 4px 0 0; }
 </style>
 </head>
 <body>
@@ -219,6 +240,7 @@
         <button type="button" data-a="alchemy">Alchemy <small>Kest</small></button>
         <button type="button" data-a="ach">Achievements</button>
         <button type="button" data-a="chronicle">Chronicle</button>
+        <button type="button" data-a="fullscreen">Full screen</button>
         <button type="button" data-a="controls">Controls</button>
         <button type="button" data-a="quit">Quit to title</button>
       </div>
@@ -270,6 +292,7 @@
       <button type="button" data-d="story">Story</button><button type="button" data-d="normal">Normal</button><button type="button" data-d="hard">Hard</button>
     </div>
     <p class="diffNote" id="diffNote"></p>
+    <p class="rotateTip">Tip: turn your phone sideways for a bigger screen.</p>
     <button class="big" id="startBtn">Begin</button>
     <button class="ghost" id="newBtn" hidden>Start over</button>
   </div>
@@ -858,6 +881,7 @@
     { id: "pilgrim", name: "A hanged driver", x: 44, y: 24, look: { robe: "#6b5a3a", hair: "#3a2a1e", skin: "#b8a898", dead: true } },
   ].map(n => ({ ...n, px: n.x * TILE + 8, py: n.y * TILE + 8, bob: hash(n.x, n.y) * 6 }));
   const npcVisible = n => {
+    if (n.hidden) return false;
     if (n.show) return n.show();
     if (["ilse", "maru", "rook", "ada", "ren"].includes(n.id)) return !G.members.includes(n.id);
     if (n.id === "ada") return G.stage >= 4;
@@ -2655,7 +2679,8 @@
     for (const n of NPCS) {
       if (!npcVisible(n) || (n.id === "ada" && G.stage < 4)) continue;
       actors.push({ y: n.py, draw: () => {
-        drawPerson(g, n.px - ox, n.py - oy, { dir: n.dir || "down", walking: n.walking, walk: player.walk, bob: n.bob, ...n.look });
+        drawPerson(g, n.px - ox, n.py - oy, { dir: n.dir || "down", walking: n.walking, walk: n.walking ? time * 3.2 : player.walk, bob: n.bob, ...n.look });
+        if (!n.look.dead) npcActivity(g, n, n.px - ox, n.py - oy);
         if (n.id === "ada") { g.fillStyle = "#857ea5"; for (let i = 0; i < 4; i++) { g.fillRect(Math.round(n.px - ox) - 9 + i * 2, Math.round(n.py - oy) - 12 + i, 2, 1); g.fillRect(Math.round(n.px - ox) + 7 - i * 2, Math.round(n.py - oy) - 12 + i, 2, 1); } }
         const isNear = !(n.id === "beno" && G.flags.benoFollows) && Math.hypot(n.px - G.px, n.py - G.py) < 22 && mode === "play";
         if (isNear) drawPrompt(g, n.px - ox, n.py - oy - 32);
@@ -3058,10 +3083,15 @@
 
   // ================================================================== FLOW
   function resize() {
-    const frame = $("frame"); frame.style.maxWidth = "1000px";
-    const w = frame.clientWidth, coarse = matchMedia("(pointer: coarse), (max-width: 700px)").matches;
-    const maxH = window.innerHeight - (coarse ? 190 : 70);
-    const scale = Math.max(1, Math.min(w / VIEW_W, maxH / VIEW_H));
+    // Fit the 5:3 game to the window: desktops and laptops keep room for the key hints below, phones held upright
+    // keep room for the stick and buttons below, and phones held sideways put the controls in the side margins.
+    const frame = $("frame"), iw = window.innerWidth, ih = window.innerHeight;
+    const coarse = matchMedia("(pointer: coarse)").matches, narrow = matchMedia("(max-width: 700px)").matches, land = iw > ih;
+    let availW, availH;
+    if (coarse && land) { availW = iw - 260; availH = ih - 8; }
+    else if (coarse || narrow) { availW = iw - 8; availH = ih - 150; }
+    else { availW = Math.min(iw - 32, 1400); availH = ih - 70; }
+    const scale = Math.max(0.8, Math.min(availW / VIEW_W, availH / VIEW_H));
     const cssW = Math.floor(VIEW_W * scale), dpr = window.devicePixelRatio || 1;
     canvas.width = Math.round(cssW * dpr); canvas.height = Math.round(cssW * dpr * VIEW_H / VIEW_W);
     canvas.style.width = cssW + "px"; canvas.style.height = Math.round(cssW * VIEW_H / VIEW_W) + "px";
@@ -6007,8 +6037,8 @@
   };
   npc2({ id: "lio", name: "Lio", x: 16, y: 41, look: { robe: "#4a7a9a", hair: "#3a2a1e", skin: "#d9a070", style: { hair: "fringe", eye: "#3a6a8a" } }, show: () => ["morning", "dusk"].includes(G.flags.pro) });
   const abaNpc = NPCS.find(n => n.id === "abawidow"); if (abaNpc) { const s0 = abaNpc.show; abaNpc.show = () => G.flags.pro === "morning" || G.flags.pro === "dusk" || s0(); }
-  MONSTERS.houndg = { name: "Guild Hound", hp: 26, atk: 6, def: 1, spd: 9, xp: 20, coin: [4, 6], sprite: "jackal", boss: true, music: "boss",
-    moves: [{ name: "Collar-Bite", w: 3, power: 1.0 }, { name: "Savage", w: 1, power: 0.8, bleed: [2, 2] }] };
+  MONSTERS.houndg = { name: "Guild Hound", hp: 14, atk: 4, def: 0, spd: 7, xp: 20, coin: [4, 6], sprite: "jackal", boss: true, music: "boss",
+    moves: [{ name: "Collar-Bite", w: 3, power: 1.0 }, { name: "Snarl", w: 1, power: 0.5 }] };
   BESTIARY.houndg = "Jackals the Guild collars and starves until they'll bite anything they're pointed at. Somebody pointed them at a bell tower full of children's songs.";
   Object.assign(RELICS, { lioknot: { name: "Lio's Knot", from: "lio", desc: "+2 attack, +1 defence. A knot of old bell-rope. He held on.", atk: 2, def: 1 } });
   Object.assign(SCENE_BY_TITLE, { "The Last Dry Day": "bell", "That Night": "bell", "Holding On": "rookGrave" });
@@ -6101,7 +6131,7 @@
     }
     if (f.pro === "dusk") return { ch: T0, text: "Rest by the village well for the night.", x: 12, y: 42 };
     if (f.pro === "night") return { ch: "Prologue · The Stolen Bell", text: "The Bell! Run to the tower!", x: PRO_TOWER.x, y: PRO_TOWER.y + 1 };
-    return { ch: "Prologue · The Stolen Bell", text: "Elder Nadia is sitting on the tower steps.", x: 12, y: 39 };
+    return { ch: "Prologue · The Stolen Bell", text: "Elder Nadia is sitting on the tower steps.", x: G.flags.nadiaAtTower ? 15 : 12, y: G.flags.nadiaAtTower ? 42 : 39 };
   };
   const _interactP = interact;
   interact = function () {
@@ -6110,9 +6140,9 @@
     return _interactP();
   };
   const _act2TriggersP = act2Triggers;
-  act2Triggers = function () { _act2TriggersP(); if (G.stage === 0 && G.flags.pro === "night" && near({ x: PRO_TOWER.x * TILE + 8, y: (PRO_TOWER.y + 1) * TILE + 8 }, 40)) once("theftPrompt", () => openDialog("pro_theft0")); };
+  act2Triggers = function () { _act2TriggersP(); if (G.stage === 0 && G.flags.pro === "night" && !G.flags.houndsDone && near({ x: PRO_TOWER.x * TILE + 8, y: (PRO_TOWER.y + 1) * TILE + 8 }, 40)) once("theftPrompt", () => { if (G.flags.theftSeen) { openDialog("pro_theft2"); return; } G.flags.theftSeen = true; theftArrive(() => openDialog("pro_theft2")); }); };
   const _bossEndP = act2BossEndB;
-  act2BossEndB = function (boss) { if (boss === "houndg") { setTimeout(() => openDialog("pro_after0"), 400); return; } return _bossEndP(boss); };
+  act2BossEndB = function (boss) { if (boss === "houndg") { G.flags.houndsDone = true; save(); setTimeout(() => theftFall(() => openDialog("pro_after2")), 400); return; } return _bossEndP(boss); };
   // Lio is remembered everywhere afterwards
   const _chronicleP = chronicle;
   chronicle = function () { const P = _chronicleP(); if (G.flags.lioDead && P[0]) P[0] = ["The Theft", "On the last dry night of the year, men in Guild coats cut the Rain Bell from its tower in Kessa. Lio, the Elder's grandson, eight years old, held on to the bell-rope and would not let go. The village sent its courier, Sable, a foundling of the salt, to bring the Bell home. This history begins with a boy who held on, and a woman who was sent."]; return P; };
@@ -6131,6 +6161,205 @@
   const _banterReadyP = banterReady;
   banterReady = function () { const b = _banterReadyP(); return b && b.lio && !G.flags.lioDead ? null : b; };
 
+  // ================================================================== NPC ACTIVITIES
+  // Every NPC is doing something: working, pacing, fidgeting, or at least looking around. Drawn around them each frame.
+  const ICON = {
+    note: ["01100", "01010", "01000", "11000", "11000"], dots: ["00000", "00000", "10101", "00000", "00000"], bang: ["00100", "00100", "00100", "00000", "00100"],
+    heart: ["01010", "11111", "11111", "01110", "00100"], zzz: ["11110", "00100", "01000", "11110", "00000"], drop: ["00100", "01110", "01110", "11111", "01110"],
+  };
+  function drawEmote(g2, x, y, kind, a = 1) {
+    const rows = ICON[kind]; if (!rows) return; x = Math.round(x); y = Math.round(y);
+    g2.globalAlpha = a; g2.fillStyle = "#1b1633"; g2.fillRect(x - 5, y - 5, 11, 10); g2.fillStyle = "#f2ead8"; g2.fillRect(x - 4, y - 4, 9, 8); g2.fillRect(x - 1, y + 4, 2, 2);
+    g2.fillStyle = kind === "heart" ? "#c8102e" : kind === "drop" ? "#3a8fbf" : "#1b1633";
+    rows.forEach((r, j) => [...r].forEach((c, i) => { if (c === "1") g2.fillRect(x - 2 + i, y - 3 + j, 1, 1); }));
+    g2.globalAlpha = 1;
+  }
+  const P2 = (g2, x, y) => (a, b, w, h, c) => { g2.fillStyle = c; g2.fillRect(Math.round(x + a), Math.round(y + b), w, h); };
+  const sparks = (P, t, x0, y0, seed) => { const ph = (t * 1.1 + seed) % 1; if (ph < 0.25) for (let i = 0; i < 4; i++) P(x0 + Math.cos(i * 1.7) * ph * 30, y0 - Math.abs(Math.sin(i * 2.3)) * ph * 24, 1, 1, i % 2 ? "#ffcf4a" : "#ff8a3a"); return ph; };
+  const anvil = (P, dx) => { P(dx - 5, -2, 11, 3, "#1b1633"); P(dx - 4, -6, 9, 4, "#5e5680"); P(dx - 6, -7, 13, 2, "#857ea5"); P(dx - 2, -2, 5, 6, "#3a3450"); };
+  // id -> { pace: px radius (walks back and forth), draw(P, t, n) }
+  const ACTS = {
+    nadia: { draw: (P, t) => { P(9, -4, 7, 7, "#1b1633"); P(10, -3, 5, 5, "#6b3f24"); P(10, -3, 5, 1, "#3a8fbf"); const a = Math.sin(t * 2); P(5, -14 + a * 3, 6, 1, "#8a7a6a"); if (a > 0.9) P(12, -8, 1, 2, "#6fb8e8"); } },
+    nadia2: { draw: (P, t, n, g2, x, y) => { if (Math.sin(t * 0.7) > 0.6) drawEmote(g2, x + 8, y - 30, "dots", 0.9); } },
+    ilse: { draw: (P, t, n) => { anvil(P, 11); const ph = sparks(P, t, 11, -8, 0.3); P(4, -20 + (ph < 0.12 ? 8 : 0), 2, 8, "#6b3f24"); P(2, -22 + (ph < 0.12 ? 8 : 0), 6, 3, "#857ea5"); n.dir = "right"; } },
+    dov: { draw: (P, t, n) => { anvil(P, -11); const ph = sparks(P, t, -11, -8, 0.7); P(-6, -20 + (ph < 0.12 ? 8 : 0), 2, 8, "#6b3f24"); P(-8, -22 + (ph < 0.12 ? 8 : 0), 6, 3, "#857ea5"); n.dir = "left"; } },
+    odo: { draw: (P, t) => { const ph = (t * 0.8) % 1, h = Math.sin(ph * Math.PI) * 14; P(7, -16 - h, 2, 2, "#ffcf4a"); } },
+    tam: { pace: 14, look: "up", draw: (P, t, n, g2, x, y) => { if (!n.walking && Math.sin(t * 0.5) > 0.5) drawEmote(g2, x + 8, y - 30, "dots"); } },
+    abawidow: { draw: (P, t) => { for (const [dx, s] of [[-14, 0], [12, 1.7]]) { const b = Math.round(Math.abs(Math.sin(t * 3 + s)) * 1); P(dx - 4, -6, 9, 5, "#1b1633"); P(dx - 3, -5, 7, 3, "#e8e2d0"); P(dx + (s ? -5 : 3), -8 + b, 3, 3, "#d8d0c0"); P(dx + (s ? -6 : 5), -9 + b, 1, 2, "#8a7a6a"); P(dx - 3, -2, 1, 3, "#5a4a3a"); P(dx + 2, -2, 1, 3, "#5a4a3a"); } } },
+    beno: { draw: (P, t) => { const a = Math.sin(t * 2.5); P(8, -18 + a * 3, 2, 18, "#6b3f24"); P(6, -1 + a * 3, 6, 2, "#857ea5"); } },
+    lio: { pace: 12, draw: (P, t, n, g2, x, y) => { if (Math.sin(t * 1.3) > 0.4) drawEmote(g2, x + 8, y - 30, "note"); } },
+    ama: { draw: (P, t) => { for (let i = 0; i < 3; i++) { const ph = (t * 0.9 + i / 3) % 1; P(6 + ph * 8, -14 - Math.sin(ph * Math.PI) * 8, 4, 3, "#f2ead8"); } P(8, -4, 10, 6, "#6b3f24"); P(9, -3, 8, 1, "#e8e2d0"); } },
+    hake: { draw: (P, t, n) => { n.dir = "down"; P(4, -12, 1, 2, "#6b3f24"); for (let i = 0; i < 12; i++) P(5 + i, -14 + i * 0.3, 1, 1, "#6b3f24"); const bob = Math.round(Math.sin(t * 2.2) * 1.5); for (let i = 0; i < 14; i++) P(17, -10 + i, 1, 1, "rgba(230,230,230,.6)"); P(16, 4 + bob, 3, 3, "#c8102e"); P(16, 4 + bob, 3, 1, "#f2ead8"); } },
+    mora: { draw: (P, t) => { P(9, -10, 5, 6, "#1b1633"); P(10, -9, 3, 4, "#ffcf4a"); for (let i = 0; i < 4; i++) P(-14 + i * 3, 2, 2, 4, ["#6bff9a", "#c9a6ff", "#ff6b7a", "#6fb8e8"][i]); } },
+    sarn: { draw: (P, t) => { const a = Math.sin(t * 4) > 0 ? 1 : 0; P(8, -16, 3, 1, "#b8bccc"); P(8, -15 + a, 3, 1, "#b8bccc"); if (Math.sin(t * 1.3) > 0.8) P(12, -10 + ((t * 20) % 12), 2, 1, "#5a7a3a"); } },
+    yusra: { draw: (P, t) => { const a = Math.sin(t * 1.5) * 2; P(-16, -12, 1, 10, "#6b5a44"); P(-22, -12 + a, 6, 1, "#c9a227"); P(-15, -12 - a, 6, 1, "#c9a227"); P(-20, -11 + a, 2, 2, "#e8b83a"); } },
+    bram: { draw: (P, t) => { const a = Math.sin(t * 5) * 2; P(6 + a, -12, 4, 5, "#c8c2e0"); P(5 - a, -11, 3, 3, "#e8e2d0"); } },
+    gguard: { pace: 16, draw: () => {} }, hale: { pace: 10, draw: (P) => { for (const dx of [-16, -12]) { P(dx, -6, 4, 6, "#1b1633"); P(dx + 1, -5, 2, 4, "#c8b890"); } } },
+    sela: { draw: (P, t) => { const a = Math.abs(Math.sin(t * 3)) * 2; P(7, -8 + a, 8, 4, "#1b1633"); P(8, -7 + a, 6, 2, "#d9a070"); } },
+    pip: { pace: 8, draw: (P, t, n, g2, x, y) => { if (Math.sin(t * 2) > 0.7) drawEmote(g2, x + 8, y - 30, "note"); } },
+    tobin: { draw: (P, t) => { P(6, -8, 10, 7, "#f2ead8"); for (let i = 0; i < 3; i++) P(7, -7 + i * 2, 4 + ((t * 6 + i) % 4), 1, "#5a4a3a"); P(12 + Math.sin(t * 8) * 2, -12, 1, 6, "#1b1633"); } },
+    ines: { draw: (P, t, n, g2, x, y) => { n.dir = Math.sin(t * 0.6) > 0 ? "left" : "right"; P(7, -10, 6, 8, "#f2ead8"); if (Math.sin(t * 0.9) > 0.85) drawEmote(g2, x + 8, y - 30, "bang"); } },
+    oskar: { draw: (P, t) => { const ph = (t * 1.2) % 1; P(10, -16 + (ph < 0.15 ? 6 : 0), 2, 7, "#6b3f24"); P(8, -18 + (ph < 0.15 ? 6 : 0), 6, 3, "#857ea5"); P(14, -10, 2, 14, "#8a6438"); } },
+    nell: { draw: (P, t) => { sparks(P, t, 10, -6, 0.1); P(7, -10, 5, 2, "#b8bccc"); } },
+    ansel: { draw: (P, t) => { P(9, -12, 5, 7, "#1b1633"); P(10, -11, 3, 5, Math.sin(t * 3) > 0 ? "#ffcf4a" : "#ffe08a"); } },
+    orla: { draw: (P, t) => { for (let i = 0; i < 5; i++) { const a = t * 1.5 + i * 1.26; P(Math.cos(a) * 12, -16 + Math.sin(a) * 6, 1, 3, "rgba(180,200,240,.8)"); } } },
+    tamsin: { draw: (P, t, n, g2, x, y) => { if (Math.sin(t * 0.4) > 0.3) drawEmote(g2, x + 8, y - 30, "zzz", 0.8); } },
+    kest: { draw: (P, t) => { P(7, -12, 4, 6, "#1b1633"); P(8, -11, 2, 4, "#6bff9a"); if (Math.sin(t * 6) > 0.5) P(8, -15 - ((t * 10) % 4), 1, 1, "#aaffcc"); } },
+    wren: { pace: 6, draw: (P) => { P(-12, -8, 8, 8, "#1b1633"); P(-11, -7, 6, 6, "#c8b890"); } },
+    oldhake: null,
+  };
+  const REST_EMOTES = ["dots", "note", "heart", "drop"];
+  function npcActivity(g2, n, x, y) {
+    const t = time + (n.bob || 0), a = ACTS[n.id], P = P2(g2, x, y);
+    if (a && a.draw) a.draw(P, t, n, g2, x, y);
+    else {   // everyone else: looks around now and then, and sometimes has something on their mind
+      const k = Math.floor(t / 3.5 + hash(n.x, n.y) * 7) % 4; if (Math.hypot(n.px - G.px, n.py - G.py) > 30) n.dir = ["down", "left", "down", "right"][k];
+      const e = (t * 0.23 + hash(n.x * 3, n.y)) % 1; if (e < 0.12) drawEmote(g2, x + 8, y - 30, REST_EMOTES[Math.floor(hash(n.x, n.y * 7) * REST_EMOTES.length)], Math.min(1, e * 20));
+    }
+  }
+  const _updateA = update;
+  update = function (dt) {
+    _updateA(dt);
+    if (!G || (mode !== "play" && mode !== "scene")) return;
+    for (const n of NPCS) {
+      const a = ACTS[n.id]; if (!a || !a.pace) continue;
+      if (n.hx === undefined) { n.hx = n.px; n.hy = n.py; }
+      if (dlg && mode === "dialog") continue;
+      const near = Math.hypot(n.hx - G.px, n.hy - G.py) < 30;
+      if (near) { n.walking = false; continue; }      // stop and face you when you come close
+      const t = time * 0.7 + (n.bob || 0), s = Math.sin(t), c = Math.cos(t);
+      n.px = n.hx + s * a.pace; n.walking = Math.abs(c) > 0.25; n.dir = n.walking ? (c > 0 ? "right" : "left") : (a.look || "down");
+    }
+  };
+
+  // ================================================================== CUTSCENES
+  // A small scripting system: actors walk, fall and carry things; the camera pans; lines appear in the caption strip.
+  // Steps run in order. Play is frozen (mode "scene") until the scene ends, then `done` runs. Esc or E skips.
+  let scene = null;
+  function playScene(steps, done) {
+    scene = { steps, i: 0, t: 0, actors: {}, cam: null, done, prevMode: mode, fade: 0, fadeTo: 0, shakeT: 0 };
+    mode = "scene"; banterEl.hidden = true;
+    enterStep();
+  }
+  function enterStep() {
+    const st = scene.steps[scene.i]; if (!st) return endScene();
+    scene.t = 0;
+    if (st.add) for (const [id, a] of Object.entries(st.add)) scene.actors[id] = { dir: "down", walking: false, ...a, px: a.x * TILE + 8, py: a.y * TILE + 8 };
+    if (st.remove) for (const id of st.remove) delete scene.actors[id];
+    if (st.cam) scene.cam = { x: st.cam[0] * TILE + 8, y: st.cam[1] * TILE + 8 };
+    if (st.line) { const [who, text] = st.line; banterEl.innerHTML = `${who ? `<b style="color:var(--scarf)">${who}:</b> ` : ""}${text}`; banterEl.hidden = false; }
+    if (st.fade !== undefined) scene.fadeTo = st.fade;
+    if (st.shake) shake = Math.max(shake, st.shake);
+    if (st.sound) Music.sound(st.sound);
+    if (st.fn) st.fn();
+    if (st.move) for (const [id, [tx, ty]] of Object.entries(st.move)) { const a = scene.actors[id]; if (a) { a.tx = tx * TILE + 8; a.ty = ty * TILE + 8; } }
+  }
+  function endScene() { const d = scene.done; scene = null; banterEl.hidden = true; if (mode === "scene") mode = "play"; if (d) d(); }
+  function skipScene() { if (!scene) return; for (let k = scene.i; k < scene.steps.length; k++) { const st = scene.steps[k]; if (st.fn && st.always) st.fn(); } scene.i = scene.steps.length; endScene(); }
+  const _updateC = update;
+  update = function (dt) {
+    _updateC(dt);
+    if (!scene || mode !== "scene") return;
+    const st = scene.steps[scene.i]; scene.t += dt;
+    let moving = false;
+    for (const a of Object.values(scene.actors)) {
+      if (a.tx === undefined) { a.walking = false; continue; }
+      const dx = a.tx - a.px, dy = a.ty - a.py, d = Math.hypot(dx, dy), sp = (a.speed || 40) * dt;
+      if (d <= sp) { a.px = a.tx; a.py = a.ty; a.tx = undefined; a.walking = false; continue; }
+      a.px += dx / d * sp; a.py += dy / d * sp; a.walking = !a.falling; moving = true;
+      if (!a.falling) a.dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : (dy > 0 ? "down" : "up");
+    }
+    const tgt = scene.cam || { x: G.px, y: G.py };
+    const tcx = clamp(tgt.x - VIEW_W / 2, 0, W * TILE - VIEW_W), tcy = clamp(tgt.y - VIEW_H / 2 - 8, 0, H * TILE - VIEW_H);
+    camX += (tcx - camX) * Math.min(1, dt * 2.5); camY += (tcy - camY) * Math.min(1, dt * 2.5);
+    scene.fade += (scene.fadeTo - scene.fade) * Math.min(1, dt * 2.5);
+    const need = st.wait !== undefined ? st.wait : st.line ? 2 + st.line[1].length * 0.04 : 0;
+    if (scene.t >= need && !(st.untilStill && moving)) { scene.i++; enterStep(); }
+  };
+  addEventListener("keydown", e => { if (!scene || mode !== "scene") return; const k = e.key.toLowerCase(); if (k === "escape" || k === "e" || k === "enter") { e.stopImmediatePropagation(); skipScene(); } }, true);
+  const _actorsC = act2ActorsB;
+  act2ActorsB = function (actors, ox, oy) {
+    _actorsC(actors, ox, oy);
+    if (!scene) return;
+    for (const a of Object.values(scene.actors)) actors.push({ y: a.py + (a.z || 0), draw: () => {
+      if (a.draw) { a.draw(g, a.px - ox, a.py - oy, a); return; }
+      drawPerson(g, a.px - ox, a.py - oy - (a.lift || 0), { dir: a.dir, walking: a.walking, walk: time * 3.4, bob: 0, ...a.look, glowEyes: !!(a.look && a.look.glowEyes) });
+      if (a.carry) { const P = P2(g, a.px - ox, a.py - oy); P(-12, -26, 24, 2, "#6b5a44"); P(-5, -24, 10, 10, "#1b1633"); P(-4, -23, 8, 9, "#e8b83a"); P(-3, -22, 2, 6, "#ffe08a"); }
+      if (a.emote) drawEmote(g, a.px - ox + 8, a.py - oy - 30 - (a.lift || 0), a.emote);
+    } });
+  };
+  const _renderWorldC = renderWorld;
+  renderWorld = function () { _renderWorldC(); if (scene) { if (scene.fade > 0.01) { g.fillStyle = `rgba(6,4,16,${scene.fade})`; g.fillRect(0, 0, VIEW_W, VIEW_H); } g.fillStyle = "#000"; g.fillRect(0, 0, VIEW_W, 14); g.fillRect(0, VIEW_H - 14, VIEW_W, 14); } };
+  const _nearestNpcC = nearestNpc;
+  nearestNpc = function () { return mode === "scene" ? null : _nearestNpcC(); };
+
+  // ---- the prologue's scenes
+  const LIO_LOOK = { robe: "#4a7a9a", hair: "#3a2a1e", skin: "#d9a070", style: { hair: "fringe", eye: "#3a6a8a" } };
+  const GUILD_LOOK = { robe: "#3a2a1e", hair: "#1b1633", skin: "#c98d63", style: { hair: "hood", hood: "#2a2a2a", coat: true } };
+  const LIMP_LOOK = { robe: "#c9a227", hair: "#5a3a2a", skin: "#b88a64", style: { hair: "cap", coat: true, beard: true } };
+  function lioGreets() {
+    const lio = NPCS.find(n => n.id === "lio"); const px = Math.floor(G.px / TILE), py = Math.floor(G.py / TILE);
+    if (lio) lio.hidden = true;
+    playScene([
+      { add: { lio: { x: 16, y: 41, look: LIO_LOOK, speed: 70 } }, cam: [14, 41], wait: 0.6 },
+      { move: { lio: [px + 1, py] }, untilStill: true, wait: 0.2 },
+      { fn: () => { scene.actors.lio.dir = "left"; scene.actors.lio.emote = "heart"; }, line: ["Lio", "SABLE! You're up! Grandma's by the well with the water, she's been asking for you. And after, come to the tower! I polished the ring!"] },
+      { fn: () => { scene.actors.lio.emote = null; }, move: { lio: [16, 41] }, untilStill: true, wait: 0.2 },
+      { remove: ["lio"], fn: () => { if (lio) lio.hidden = false; }, always: true, wait: 0.1 },
+    ]);
+  }
+  function theftArrive(then) {
+    playScene([
+      { cam: [15, 37], add: {
+          thief1: { x: 14, y: 37, look: GUILD_LOOK, dir: "up" }, thief2: { x: 17, y: 37, look: GUILD_LOOK, dir: "up" }, limp: { x: 16, y: 38, look: LIMP_LOOK, dir: "up" },
+          lio: { x: 15, y: 38, look: LIO_LOOK, lift: 30, dir: "down", emote: "bang" } }, line: [null, "Torches on the tower. Men in Guild coats, hauling the Rain Bell down on ropes. And Lio, halfway up, holding the bell-rope with both hands."], sound: "encounter" },
+      { line: ["Lio", "SABLE! I'm holding on! I'm holding on like a courier!"] },
+      { fn: () => { scene.actors.limp.dir = "down"; }, line: ["The limping man", "(Tiredly, almost gently.) Let go of the rope, boy. It isn't yours."] },
+      { line: ["Lio", "It IS mine! I'm ringing it at the first rain! I'm ringing it for everyone!"] },
+      { fn: () => { scene.actors.limp.dir = "left"; }, line: ["The limping man", "(Without looking at you.) Dogs."], wait: 1.6 },
+    ], then);
+  }
+  function theftFall(then) {
+    playScene([
+      { cam: [15, 37], add: {
+          thief1: { x: 14, y: 37, look: GUILD_LOOK, dir: "up" }, thief2: { x: 17, y: 37, look: GUILD_LOOK, dir: "up" }, limp: { x: 16, y: 38, look: LIMP_LOOK, dir: "up" },
+          lio: { x: 15, y: 38, look: LIO_LOOK, lift: 30, dir: "down" } }, line: [null, "You reach the foot of the stairs as the Bell swings out over the dark on its ropes. The limping man looks straight at you. He has very tired eyes."] },
+      { line: [null, "Then he cuts the bell-rope. Lio is still holding it."], wait: 2.2 },
+      { fn: () => { const l = scene.actors.lio; l.falling = true; l.speed = 150; l.py -= l.lift; l.lift = 0; }, move: { lio: [15, 40] }, untilStill: true, wait: 0.1 },
+      { shake: 6, sound: "defeat", wait: 1.6, fn: () => { scene.actors.lio.draw = (g2, x, y) => { const P = P2(g2, x, y); P(-8, -4, 16, 6, "#1b1633"); P(-7, -3, 14, 4, "#4a7a9a"); P(5, -4, 4, 4, "#d9a070"); P(6, -5, 3, 2, "#3a2a1e"); for (let i = 0; i < 10; i++) P(-12 + i, -1 + (i % 2), 1, 1, "#8a7a5a"); }; } },
+      { fn: () => { scene.actors.thief1.carry = true; scene.actors.thief2.carry = true; }, move: { thief1: [14, 30], thief2: [17, 30], limp: [16, 31] }, line: [null, "They go north into the dark with the Bell slung between them on a pole. The limping man looks back, once."] },
+      { wait: 1.2, remove: ["thief1", "thief2", "limp"] },
+      { cam: [15, 40], line: [null, "You don't remember crossing the square. You remember the sound. You remember that he was still holding the rope."], wait: 3.5 },
+    ], then);
+  }
+  function nadiaMourns(then) {
+    const nd = NPCS.find(n => n.id === "nadia"); if (nd) nd.hidden = true;
+    playScene([
+      { cam: [15, 40], add: { nadia: { x: 12, y: 39, look: nd ? nd.look : {}, speed: 22 } }, fade: 0.3, wait: 0.5 },
+      { move: { nadia: [15, 40] }, untilStill: true, line: [null, "At dawn, Nadia walks to the foot of the black tower. Very slowly. She is carrying a small pair of shoes."] },
+      { fn: () => { scene.actors.nadia.dir = "up"; }, line: [null, "She sets them down on the bottom step, side by side, the way he always left them, and sits beside them."], wait: 4 },
+      { fade: 0, remove: ["nadia"], fn: () => { if (nd) { nd.hidden = false; nd.x = 15; nd.y = 41; nd.px = 15 * TILE + 8; nd.py = 41 * TILE + 8; } G.flags.nadiaAtTower = true; save(); }, always: true, wait: 0.3 },
+    ], then);
+  }
+  const _updateCP = update;
+  update = function (dt) {
+    _updateCP(dt);
+    const f = G && G.flags; if (!f || mode !== "play" || G.stage !== 0) return;
+    if (f.pro === "morning" && !f.lioGreeted) { f.lioGreeted = true; save(); lioGreets(); }
+    else if (f.pro === "done" && !f.mournPlayed) { f.mournPlayed = true; save(); nadiaMourns(); }
+    const nd = NPCS.find(n => n.id === "nadia");
+    if (nd && f.nadiaAtTower && !nd.hidden) { nd.px = 15 * TILE + 8; nd.py = 41 * TILE + 8; nd.dir = "up"; }
+  };
+
+  // full screen (on phones, also try to lock landscape)
+  $("pauseUI").addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b || b.dataset.a !== "fullscreen") return;
+    const d = document, el = d.documentElement;
+    if (d.fullscreenElement || d.webkitFullscreenElement) { (d.exitFullscreen || d.webkitExitFullscreen).call(d); return; }
+    const req = el.requestFullscreen || el.webkitRequestFullscreen;
+    if (!req) { toast("Full screen isn't available in this browser. Try adding the page to your home screen."); return; }
+    Promise.resolve(req.call(el)).then(() => { if (screen.orientation && screen.orientation.lock) screen.orientation.lock("landscape").catch(() => {}); resumeGame(); }).catch(() => toast("Full screen was blocked by the browser."));
+  });
   // ================================================================== BOOT
   const saved = load();          // read the save before a fresh game could overwrite it
   newGame(false);
