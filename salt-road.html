@@ -7627,6 +7627,34 @@
   const cairn = LORE.find(l => l.id === 6);
   if (cairn) { const t0 = cairn.text; cairn.text = () => t0 + (G && G.flags.hermitDone ? " At the very bottom, under all the others, is the oldest stone. Someone has finally scratched a name into it: TEODOR." : ""); }
 
+  // ---- the memorial remembers what the courier chose: a few quiet lines between the farewells and her last words
+  const BELOW_AT_MEMORIAL = {
+    nobody: "(You think about the questions around the fires. You'd answer most of them differently now. Not the last one. Nobody stays below. It stops here.)",
+    me: "(You think about the questions around the fires. You said you'd be the one who stays below. You still would. It's quieter than you expected, being ready.)",
+    climbers: "(You think about the questions around the fires. Whoever reaches the high ground goes back down. You did. You'd do it again.)",
+  };
+  const _memorialDialogR = memorialDialog;
+  memorialDialog = function () {
+    _memorialDialogR();
+    const lines = [
+      heardSong() && (endKindOf() === "ring" || endKindOf() === "sleep") ? "(Across the square, a child is humming while she works. Four notes, and then a fifth, going down.)" : "",
+      G.flags.hermitDone === "rest" ? "(On the rim of the well, where you always sit, there is a small salt stone. You don't remember putting it there.)" : "",
+      G.flags.hermitDone === "down" ? "(Far out on the water, just for a moment, you think you see two figures walking together, one of them very old.)" : "",
+      BELOW_AT_MEMORIAL[(G.flags.creed || {}).below] || "",
+    ].filter(Boolean);
+    if (!lines.length) return;
+    lines.forEach((text, i) => { D[`memorial_r${i}`] = say(null, text, i < lines.length - 1 ? `memorial_r${i + 1}` : "memorial_last"); });
+    for (const k of Object.keys(D)) if (/^memorial_fw\d+$/.test(k) && D[k].go === "memorial_last") D[k].go = "memorial_r0";
+  };
+  const endKindOf = () => G.flags.epilogue;
+  const _finalCreditsR = finalCredits;
+  finalCredits = function () {
+    _finalCreditsR();
+    const n = Object.keys(G.flags.creed || {}).length;
+    const el = $("cardText"), end = "Thank you for carrying it all the way.";
+    if (n) el.textContent = el.textContent.replace(end, `The Courier's Creed: ${n} of ${QUESTIONS.length} questions answered. ${end}`);
+  };
+
   // ================================================================== BOOT
   const saved = load();          // read the save before a fresh game could overwrite it
   newGame(false);
