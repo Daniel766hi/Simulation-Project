@@ -50,6 +50,7 @@
   .corner { position: absolute; left: 10px; bottom: 10px; display: flex; gap: 6px; }
   .corner button { font: 600 12px var(--font); color: var(--text); background: var(--panel); border: 1px solid var(--edge); border-radius: 6px; padding: 5px 9px; cursor: pointer; }
   .corner button:hover { border-color: var(--scarf); }
+  .corner button.glow { border-color: var(--gold); color: var(--gold); animation: furyPulse 1.6s ease-in-out infinite; }
   .corner button:focus-visible { outline: 2px solid var(--gold); }
 
   .dialog { position: absolute; left: 10px; right: 10px; bottom: 10px; display: grid; grid-template-columns: 84px 1fr; gap: 12px; background: var(--panel); border: 2px solid var(--edge); border-radius: 10px; padding: 12px; z-index: 5; }
@@ -123,6 +124,8 @@
   .screen p { margin: 0; color: var(--muted); max-width: 52ch; line-height: 1.5; font-size: 16px; }
   .screen .big { font: 700 18px var(--font); color: #120f24; background: var(--scarf); border: 0; border-radius: 8px; padding: 10px 22px; cursor: pointer; box-shadow: 0 4px 0 #1b8f96; }
   .screen .big:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
+  #cardArt { width: min(480px, 88%); height: auto; image-rendering: pixelated; border-radius: 8px; border: 2px solid var(--edge); box-shadow: 0 10px 40px -10px #000; }
+  @media (max-height: 560px) { #cardArt { width: min(300px, 60%); } }
   .screen .ghost { font: 500 14px var(--font); color: var(--muted); background: transparent; border: 1px solid var(--edge); border-radius: 8px; padding: 7px 14px; cursor: pointer; }
 
   .splash { position: absolute; left: 0; right: 0; top: 34%; text-align: center; pointer-events: none; z-index: 6; padding: 14px 0; background: linear-gradient(90deg, transparent, rgba(60,0,15,.85) 20%, rgba(60,0,15,.85) 80%, transparent); animation: splash 2.4s ease forwards; }
@@ -138,6 +141,8 @@
   .rcard { display: flex; flex-direction: column; gap: 4px; }
   .rcard .relic { font-size: 12px; padding: 5px 9px; }
   .rcard .relic b { color: var(--gold); font-weight: 600; }
+  .rcard .talk { border-color: var(--gold); color: var(--gold); animation: furyPulse 1.6s ease-in-out infinite; }
+  .rcard .bondline { font-size: 11px; color: var(--muted); padding: 0 4px; }
   .help { width: 100%; max-width: 1000px; display: flex; flex-wrap: wrap; gap: 6px 16px; justify-content: center; margin-top: 10px; font-size: 13px; color: var(--muted); }
   .help kbd { font: 500 12px var(--font); color: var(--text); background: #231d45; border: 1px solid var(--edge); border-bottom-width: 2px; border-radius: 4px; padding: 1px 6px; }
   .touch { display: none; width: 100%; max-width: 1000px; justify-content: space-between; align-items: center; margin-top: 10px; gap: 12px; }
@@ -216,6 +221,7 @@
     <button class="ghost" id="newBtn" hidden>Start over</button>
   </div>
   <div class="screen" id="card" hidden>
+    <canvas id="cardArt" width="240" height="100" hidden aria-hidden="true"></canvas>
     <h2 id="cardKicker"></h2>
     <h1 id="cardTitle"></h1>
     <p id="cardText"></p>
@@ -1262,7 +1268,7 @@
   ];
   let field = [];
   function spawnField() {
-    field = FIELD.filter(f => !G.defeated.includes(f.id) && (f.minStage || 0) <= G.stage)
+    field = FIELD.filter(f => !G.defeated.includes(f.id) && (f.minStage || 0) <= G.stage && (!f.req || f.req()))
       .map(f => ({ ...f, px: f.x * TILE + 8, py: f.y * TILE + 8, hx: f.x * TILE + 8, hy: f.y * TILE + 8, t: hash(f.x, f.y) * 10, cool: 0 }));
   }
 
@@ -1354,6 +1360,14 @@
         });
         wrap.appendChild(rb);
       }
+      if (BONDS[id] && bondAvailable(id)) {
+        const tb = document.createElement("button"); tb.type = "button"; tb.className = "relic talk";
+        tb.innerHTML = `★ Sit and talk with ${h.name} <small>${BONDS[id].talks[bondLevel(id)].title} · bond ${bondLevel(id) + 1}/3</small>`;
+        tb.addEventListener("click", () => { closeRoster(); startBond(id); });
+        wrap.appendChild(tb);
+      } else if (BONDS[id]) {
+        const tb = document.createElement("div"); tb.className = "bondline"; tb.textContent = `Bond ${bondLevel(id)}/3${bondLevel(id) >= 3 ? " · bonded" : ""}`; wrap.appendChild(tb);
+      }
       list.appendChild(wrap);
     }
   }
@@ -1388,7 +1402,7 @@
     const kills = G.flags.kills || {};
     const beasts = Object.keys(BESTIARY).filter(k => kills[k]).map(k => `<li><b>${esc(MONSTERS[k].name)}</b> ×${kills[k]}. ${esc(BESTIARY[k])}</li>`).join("") || `<li class="dim">No monsters defeated yet.</li>`;
     const rel = (G.relics || []).map(r => `<li><b>${RELICS[r].name}</b>: ${RELICS[r].desc}${Object.entries(G.equip || {}).find(([, x]) => x === r) ? ` <span class="done">(worn by ${G.party[Object.entries(G.equip).find(([, x]) => x === r)[0]].name})</span>` : ""}</li>`).join("") || `<li class="dim">Bosses drop relics. None yet.</li>`;
-    $("journalBody").innerHTML = `${fallenHtml()}<h3>The story so far</h3>${story}<h3>Tasks</h3><ul>${q}</ul><h3>Relics</h3><ul>${rel}</ul><h3>Bestiary (${Object.keys(BESTIARY).filter(k => kills[k]).length}/${Object.keys(BESTIARY).length})</h3><ul>${beasts}</ul><h3>Salt tablets</h3><ul>${tabs}</ul><p class="dim">Difficulty: ${difficulty[0].toUpperCase() + difficulty.slice(1)} (change it on the title screen).</p>`;
+    $("journalBody").innerHTML = `${fallenHtml()}<h3>The story so far</h3>${story}<h3>Tasks</h3><ul>${q}</ul><h3>Relics</h3><ul>${rel}</ul><h3>Bestiary (${Object.keys(BESTIARY).filter(k => kills[k]).length}/${Object.keys(BESTIARY).length})</h3><ul>${beasts}</ul><h3>Salt tablets</h3><ul>${tabs}</ul>${extraJournalHtml()}<p class="dim">Difficulty: ${difficulty[0].toUpperCase() + difficulty.slice(1)} (change it on the title screen).</p>`;
   }
   $("journalClose").addEventListener("click", closeJournal);
   $("journalBtn").addEventListener("click", () => { if (mode === "play") openJournal(); });
@@ -1489,7 +1503,7 @@
   function showNextCard() {
     const c = cardQueue.shift(); if (!c) return;
     mode = "card";
-    $("cardKicker").textContent = c.kicker; $("cardTitle").textContent = c.title; $("cardText").textContent = c.text;
+    $("cardKicker").textContent = c.kicker; $("cardTitle").textContent = c.title; $("cardText").textContent = c.text; setScene(c.title);
     $("card").hidden = false; $("cardBtn").focus({ preventScroll: true });
   }
   function closeCard() {
@@ -1778,7 +1792,7 @@
     }
     if (act.kind === "item") {
       const it = ITEMS[act.item]; G.items[act.item]--;
-      if (it.dmg) { flash(0.7); const parts = []; for (const f of battle.foes) if (!f.dead) { parts.push(damage(f, it.dmg)); gore(f, 6); } Music.sound("crit"); blog(`${name} hurls an Oil Bomb. Fire everywhere (${parts.join(", ")}).`); await wait(800); return; }
+      if (it.dmg) { flash(0.7); const parts = []; for (const f of battle.foes) if (!f.dead) { parts.push(damage(f, it.dmg)); gore(f, 6); if (it.stunChance && !f.dead && Math.random() < (f.boss ? it.stunChance / 2 : it.stunChance)) f.st.stun = true; } Music.sound("crit"); blog(`${name} ${it.stunChance ? "throws a Thunder Echo. The storm remembers" : "hurls an Oil Bomb. Fire everywhere"} (${parts.join(", ")}).`); await wait(800); return; }
       const t = act.unit;
       if (it.heal) { t.ref.hp = Math.min(t.ref.maxHp, t.ref.hp + it.heal); popupText(t, `+${it.heal}`, "#6bff9a"); }
       if (it.cure) delete t.st.bleed;
@@ -2915,6 +2929,8 @@
     $("partyMini").innerHTML = G.active.map(id => { const h = G.party[id]; return `<div class="pm"><span>${h.name} <small style="color:var(--muted)">${h.level}</small></span><span><div class="bar hp"><i style="width:${h.hp / h.maxHp * 100}%"></i></div><div class="bar sp" style="height:4px;margin-top:2px"><i style="width:${h.sp / h.maxSp * 100}%"></i></div></span></div>`; }).join("")
       + (G.members.length > G.active.length ? `<div style="font-size:11px;color:var(--muted)">+${G.members.length - G.active.length} resting (P)</div>` : "");
     $("coins").textContent = `◆ ${G.coins}`;
+    const talkReady = typeof bondAvailable === "function" && G.members.some(id => bondAvailable(id));
+    $("partyBtn").classList.toggle("glow", talkReady); $("partyBtn").textContent = talkReady ? "Party (P) ★ talk" : "Party (P)";
     $("items").textContent = Object.entries(G.items).filter(([, n]) => n > 0).map(([k, n]) => `${ITEMS[k].name.split(" ").pop()} ×${n}`).join(" · ");
     const t = goal();
     $("goalText").textContent = t.text; $("chapter").textContent = t.ch || "Goal";
@@ -2987,6 +3003,7 @@
       f.tamThanked ? "Tam carves Pell's name on the courier's cairn." : "",
       f.tobinThanked ? "Tobin becomes the most feared auditor in Oru. He is scrupulously kind." : "",
       f.benoFollows ? "Beno grows up to find things for a living. The first thing he finds is Rook's lost quiver." : "",
+      ...extraFates(),
     ].filter(Boolean).join(" ");
     let title, text;
     if (kind === "ring") {
@@ -2999,7 +3016,7 @@
       title = "The Keeper of the Deep";
       text = `You give the Rain Bell to the Warden and stay. "Someone has to sing for the ones below," you say. "I've never dropped a package. I won't drop this one." The Warden carries the Bell up into the light and rings it for everyone. You sit on the drowned throne and sing to the dead, badly at first, then better, for as long as there are dead to sing to. Up above, the courier's cairn gets a new stone with a scarf carved on it. Every year, somebody leaves a letter there, addressed to you. ${fates}`;
     }
-    $("cardKicker").textContent = "Ending";
+    $("cardKicker").textContent = "Ending"; setScene(title);
     $("cardTitle").textContent = title;
     $("cardText").textContent = text;
     $("cardBtn").textContent = "Play again"; $("cardBtn").dataset.ending = "1";
@@ -4040,6 +4057,496 @@
     if (G.stage >= 9 && !f.kingDead) actors.push({ y: 39 * TILE + 8, draw: () => drawMiniBoss(g, 89 * TILE + 8 - ox, 39 * TILE + 8 - oy, "king") });
   };
 
+  // ================================================================== COMPANION BONDS
+  // Three conversations per companion, opened from the party screen as the story moves on.
+  const BONDS = {
+    ilse: { gates: [2, 5, 8], talks: [
+      { title: "The Anvil", lines: [
+        ["ilse", "(Ilse is filing a nick out of her hammer.) My father was a smith too. A good one, sober. A bad one, drunk. You learned which by how the anvil sounded when you came home."],
+        ["sable", "Is that why you became one?"],
+        ["ilse", "I became one because at twelve he couldn't lift the hammer any more and someone had to pay his debts. You want to know a secret? The first thing I ever forged by myself was a set of chains. The Guild ordered them, for debtors. I was proud of the welds."],
+        ["ilse", "When Voss came asking for hooks and chains last year, I remembered those welds. I remembered being twelve and not asking who they were for. That's why I said no. Not because I'm brave. Because I'd already been a coward once, and I knew exactly what it tasted like."],
+      ], ask: { text: "(She looks at you, waiting to see what you'll make of that.)", options: [
+        ["\"Refusing the second time still counts.\"", "Maybe. My hands say it cost something, so maybe it counts. Thank you, courier."],
+        ["\"You were twelve. You didn't know.\"", "No. But I know now, and knowing is a debt too. You pay it by refusing, every time, for the rest of your life."],
+      ] } },
+      { title: "Four Months", lines: [
+        ["ilse", "My apprentice, Dario. Fourteen. He fed me with a spoon for four months after they broke my hands. Buttoned my shirts. Wiped my face when I cried, which I did, a lot, where he couldn't see. He always saw."],
+        ["ilse", "I was so ashamed. Not of the pain. Of needing him. Of being a thing that had to be done for. I'd spent my whole life being the one who does."],
+        ["sable", "And now?"],
+        ["ilse", "Now I think the shame was the only real injury. The bones healed in four months. The idea that I'm only worth what my hands can do... that one's taking longer. You carry things for people, courier. Do you ever let anyone carry you?"],
+      ], ask: { text: "(The fire pops.)", options: [
+        ["\"Not often. I'm working on it.\"", "Good. Work on it. It's the hardest weld there is."],
+        ["\"I'm letting you, right now.\"", "(She laughs, surprised, and then doesn't say anything for a while. She doesn't need to.)"],
+      ] } },
+      { title: "After", lines: [
+        ["ilse", "When this is over, I want to make something that can't hurt anybody. A bell, maybe. A plough. A cradle for the Reedholm babies, on stilts, so the water can never reach them."],
+        ["ilse", "I've spent my whole life making things strong. I want to spend what's left making things gentle. Is that stupid? It feels stupid, saying it out loud."],
+        ["sable", "It sounds like the bravest thing you've said."],
+        ["ilse", "Then here's a braver one: I'm scared I won't get to. Rook didn't get to. The dead don't get an after. So I'm going to say it now, in case: you're the best thing that happened to my hands since Dario and his spoon. There. Forged. Can't unforge it."],
+      ] },
+    ] },
+    maru: { gates: [3, 6, 9], talks: [
+      { title: "The Boat", lines: [
+        ["maru", "I was six when I first heard the weather. A storm, a whole day early, coming in from the sea that wasn't there any more. I told my mother not to take the boat across the salt lake. She laughed and kissed my head."],
+        ["maru", "I heard the boat go down the next afternoon. Not with my ears. With the thing behind my ears. I heard her call my name under the water, and then I heard nothing, for a very long time."],
+        ["sable", "Maru..."],
+        ["maru", "I don't tell it for pity. I tell it because you asked, once, why I sing instead of talk. Talking is for people who might be believed. Singing is for everyone else. Nobody argues with a song. They just let it into them."],
+      ] },
+      { title: "Listening", lines: [
+        ["maru", "I wasn't born blind. My eyes went slowly, when I was twelve. Sister Vela said it was the gift eating the rest of me. She said a storm-singer stops looking so she can listen."],
+        ["maru", "I used to hate her for saying it like a blessing. Now I think she was right, and I still hate it. Both. You can hold both. That's the first thing blindness teaches you: the dark isn't empty. It's full of everything at once."],
+        ["sable", "What do you hear, right now?"],
+        ["maru", "Ilse's heart, slower than it was a month ago. Kest counting under her breath. The rain arguing with the roof. And you, courier. You're always holding your breath a little, like you're waiting for bad news. You don't have to. It'll come either way. Breathe while you can."],
+      ] },
+      { title: "The Shape of a Song", lines: [
+        ["maru", "You know how my song ends. I told you in the marsh. I want to tell you the rest of it, because nobody ever asks about the middle."],
+        ["maru", "The middle is you, dragging a blind girl out of the Butcher's shadow. It's Ilse humming off-key at the forge. It's Rook apologising to pigeons. It's lanterns and bad soup and a smuggler who swears in four languages. That's most of the song. The end is one note."],
+        ["maru", "People think knowing your ending makes you a prisoner. It's the opposite. I stopped being afraid the moment I knew. Everything since has been a gift I didn't have to earn."],
+      ], ask: { text: "(She waits, facing exactly where you are.)", options: [
+        ["\"I'd change your ending if I could.\"", "I know. That's why you're in the middle of my song, and not the end of it. Promise me something: whatever happens, sing badly at my funeral. Loudly. Out of tune."],
+        ["\"Then let's make the middle longer.\"", "(Maru smiles.) That's the most storm-singer thing you've ever said. Yes. Let's."],
+      ] } },
+    ] },
+    rook: { gates: [4, 5, 7], talks: [
+      { title: "The Orphanage", lines: [
+        ["rook", "I grew up in the Guild orphanage in Oru. They taught us arithmetic, archery and gratitude. Mostly gratitude. Every meal, you thanked the Guild for the meal. Every beating, you thanked the Guild for the lesson."],
+        ["rook", "Voss visited when I was ten. He watched me shoot and said, 'That one has steady hands and no questions.' He meant it as praise. I spent twelve years living up to it."],
+        ["sable", "Steady hands, no questions."],
+        ["rook", "I have questions now. I have nothing but questions. It turns out that's much harder to carry than a bow."],
+      ] },
+      { title: "The Driver", lines: [
+        ["rook", "I should tell you about the night on the Flats properly. There was a driver, an old man called Aba. He had a grandson riding on the wagon with him. When the jackals came, Aba threw the boy up onto a rock."],
+        ["rook", "Then he turned around and looked at me. Right at me, holding the torch. He didn't beg. He looked at me like he was trying to remember my face so he could tell someone about it later."],
+        ["rook", "The boy lived. I made sure of that, after. It's the only thing I did right that night. Aba didn't. I think about that look every time I draw a bow. I think about it when I sleep."],
+      ], ask: { text: "(His hands aren't steady now.)", options: [
+        ["\"The boy lived because of you.\"", "The boy lived because his grandfather threw him onto a rock. I just didn't shoot. Don't give me more than I earned. It's kind, but it's heavy."],
+        ["\"What would Aba want from you now?\"", "(A long silence.) I think he'd want me to be the man he was trying to remember. The one who stood still and looked. Not the one with the torch."],
+      ] } },
+      { title: "A Letter", lines: [
+        ["rook", "(Rook holds out a folded, much-rewritten letter.) It's for Aba's widow. She lives in Kessa, by the west houses. I've written it forty times. It still doesn't say anything worth saying."],
+        ["rook", "I'm going to keep it in my quiver. If something happens to me... I'm not being dramatic. The Bog King is going to be ugly, and I'm going to be standing close to it. If something happens, give it to her. Courier's honour."],
+        ["sable", "Courier's honour. But you'll give it to her yourself."],
+        ["rook", "Maybe. If I do, I'll probably just stand there and look at her. Like Aba looked at me. Maybe that's the letter. Maybe that's all it ever was."],
+      ] },
+    ] },
+    ada: { gates: [4, 7, 10], talks: [
+      { title: "Why the Choir", lines: [
+        ["ada", "I joined the Choir at fifteen to escape a marriage. A salt baron's son, forty years old, who collected rare birds and liked to keep them in very small cages. I thought I'd be one of them."],
+        ["ada", "The Choir took me in because I could hold a note for a minute without breathing. I stayed because the first time I sang the dead to sleep, I felt useful. Not decorative. Useful."],
+        ["sable", "And now the Choir is gone."],
+        ["ada", "The Choir was always going to be gone. Everything is. What matters is what you do inside the building before it falls down. That's the only theology I have left, and it fits in a pocket."],
+      ] },
+      { title: "Sleep Is Not Peace", lines: [
+        ["ada", "I have a confession, and you're the closest thing to a priest I've got. I sang hundreds of the dead to sleep. I told their families they were at peace."],
+        ["ada", "I don't know if that was true. Sleep isn't peace. Sleep is just... not being awake. Maybe they're dreaming. Maybe they're drowning in the dream. I don't know. I never knew. I said 'peace' because the living needed the word."],
+        ["ada", "Was that a lie, courier? Or was it a kindness? I've never been able to tell them apart, and I'm starting to think nobody can."],
+      ], ask: { text: "(She's really asking.)", options: [
+        ["\"A kindness. The living needed it.\"", "Then I'll keep saying it. But I'll say it knowing I don't know. Maybe that's what makes it a prayer instead of a lie."],
+        ["\"Maybe the truth would have been kinder.\"", "Maybe. 'I don't know where they are, but I sang to them.' Yes. That's harder to say. It might be truer. I'll try it."],
+      ] } },
+      { title: "A Whisper", lines: [
+        ["ada", "(Ada's voice is almost gone; she whispers, and somehow everyone hears.) I used to think faith was having the answer. Then I thought it was having the question. Now I think it's just... showing up. Singing when your voice is broken."],
+        ["ada", "The Choir sisters in the salt, they sang until the salt closed over their mouths. Nobody told them the King would sleep. They didn't know it would work. They just didn't stop."],
+        ["ada", "That's what I want for my life. Not to be right. To not stop. Will you remember that, if I don't get to say it again?"],
+      ] },
+    ] },
+    ren: { gates: [6, 7, 9], talks: [
+      { title: "High Ground", lines: [
+        ["ren", "I was seven when the last small flood came through Kessa. My mother lifted me onto the roof of the salt shed and went back for my sister. The water came up faster than anyone thought. I watched from the roof."],
+        ["ren", "That's why I joined the Oru guard. I wanted to stand on the highest wall in the valley. I wanted to be the one who decides who gets lifted onto the roof. I thought if I was the gate, I'd never have to watch again."],
+        ["sable", "And instead?"],
+        ["ren", "Instead I became the thing that kept the roof locked. Funny how that happens. You build a wall to keep the water out and one day you notice you're keeping the people out too, and the wall doesn't care which."],
+      ] },
+      { title: "The Bribe", lines: [
+        ["ren", "You heard what the ledger said. Hollis paid me to keep the gate shut this season. I want you to know why, and I want you to know it's not an excuse."],
+        ["ren", "My sister survived the flood. She has the coughing sickness now, from the salt dust. The medicine costs more than a captain earns in a year. Hollis paid for a year of medicine. I took it."],
+        ["ren", "Twelve thousand people waited outside my gate so one woman could breathe. I did the arithmetic every night. It never came out right. It never comes out right. That's how you know you've done something evil: the sums stop working."],
+      ], ask: { text: "(He doesn't look away.)", options: [
+        ["\"You loved her. That's not nothing.\"", "No. It's not nothing. It's also not enough. Love is how most terrible things get justified, courier. I'd know."],
+        ["\"You're paying it back now.\"", "Trying. Some debts you pay off. Some you just carry until you're strong enough to set them down somewhere useful."],
+      ] } },
+      { title: "What Makes a Gate Good", lines: [
+        ["ren", "I've been thinking about gates. A gate isn't good or bad. It's who holds the key, and why, and whether they'll open it when it costs them something."],
+        ["ren", "If I had my life again, I'd want to be the kind of gate that opens. Every time. Even when it's expensive. Especially then."],
+        ["ren", "(He grins, suddenly young.) Listen to me. Captain Ren, philosopher. My men would laugh me off the wall. Don't tell them. Or do. Maybe they need to hear it more than I do."],
+      ] },
+    ] },
+    kest: { gates: [8, 9, 11], talks: [
+      { title: "The Clockmaker's Daughter", lines: [
+        ["kest", "My father made clocks for the Guild towers. Perfect clocks. He said a clock doesn't lie, doesn't sleep, doesn't love anyone, and that's why you can trust it."],
+        ["kest", "He died at his bench. They found him in the morning with a spring in one hand and a screwdriver in the other. Every clock in the house was still running. I remember thinking: not one of them noticed."],
+        ["kest", "I built the clerks to be like his clocks. Things that wouldn't notice. It took me until the hands to understand that was the problem, not the feature."],
+      ] },
+      { title: "Jonas's Hands", lines: [
+        ["kest", "I want to tell you about the day I knew. A clerk came to my workshop for repairs. The brass had worn through on its left arm, and underneath was a hand. A real one, stitched on with wire."],
+        ["kest", "It had a wedding ring. Silver, cheap, engraved: J and S. I sat there holding the arm of my own machine and a stranger's wedding ring for an hour. Then I repaired the brass over it. Because that was the job."],
+        ["kest", "I did the job, courier. That's the whole confession. I did the job. I think that's how most of the evil in the world gets done: by people doing the job."],
+      ], ask: { text: "(She turns a silver ring over in her fingers. She took it.)", options: [
+        ["\"Then stop doing the job. You already have.\"", "I have. It's easier than I thought and harder than I deserved. Somebody in Oru named Sela is missing a husband. I think I know whose ring this is."],
+        ["\"You kept the ring.\"", "I couldn't give it back to a machine. I couldn't give it back to anyone. I think there's a woman in Oru named Sela who's missing a husband called Jonas."],
+      ] } },
+      { title: "The Maker's Debt", lines: [
+        ["kest", "Can a maker be forgiven by what she made? The clerks can't forgive me. They don't have the part for it. I never built it."],
+        ["kest", "So I have to be forgiven by the people they hurt, and most of them are dead, and the rest are right not to. That leaves me forgiving myself, which feels like cheating at cards against a mirror."],
+        ["kest", "So I've decided not to be forgiven. I've decided to be useful instead. Forgiveness is a gift. Usefulness is a job. I know how to do a job. This time I'll choose the right one."],
+      ] },
+    ] },
+    nell: { gates: [10, 11, 12], talks: [
+      { title: "The Toll Crate", lines: [
+        ["nell", "Want to know how I met my father? I was cargo. Somebody left me in a crate at the Oru toll gate, marked 'goods, undeclared.' A baby, in a box, with a note: 'Can't pay the toll. Can't pay for her.'"],
+        ["nell", "Maw was smuggling salt past that gate. He opened the crate expecting brandy. He said I screamed at him like a gull, so that's what he called the ship. Not me. The ship. I was just Nell."],
+        ["nell", "I've spent my whole life not paying tolls. You understand? The one time somebody paid a toll for me, it was my mother, and she paid it with me."],
+      ] },
+      { title: "The First Tollman", lines: [
+        ["nell", "I killed a man when I was sixteen. Guild tollman at the Kessa ford. He found the kids we were smuggling under the salt sacks and pulled a knife on a little girl."],
+        ["nell", "I don't regret it. I want to be clear about that, because everyone expects you to. I regret that he had a knife, and a job, and a boss who told him children were contraband. I regret the world that made us both stand there. Him? No."],
+        ["nell", "Maw held me all night after. He said: 'The sea doesn't forgive and it doesn't blame. It just asks what you'll do tomorrow.' I've been answering that question ever since."],
+      ], ask: { text: "(She's watching you for judgement.)", options: [
+        ["\"You protected a child.\"", "I did. And I'd do it again, and I'd hate it again. Both. That's the toll I do pay."],
+        ["\"It still costs you.\"", "It should. The day it stops costing something, I've become the tollman. Da taught me that too."],
+      ] } },
+      { title: "Home", lines: [
+        ["nell", "The Gull is the only home I've ever had, and I'm about to sail her over a whirlpool. You'd think I'd be sad."],
+        ["nell", "I'm not. Home isn't a boat. Home's the people who'd go down with you. Da knew that. That's why he never took payment. You don't charge family for passage."],
+        ["nell", "So. You lot are family now. Congratulations. Terrible benefits. No pay. Frequent drowning. Welcome aboard."],
+      ] },
+    ] },
+    warden: { gates: [9, 10, 12], talks: [
+      { title: "Forgetting", lines: [
+        ["warden", "You asked what it was like, when Voss broke my memory. It was not darkness. Darkness is something. It was... a room where you know there used to be furniture. Dents in the carpet. No chairs."],
+        ["warden", "I knew I had loved something. I could feel the shape of the love, like a tongue feels the gap of a missing tooth. I did not know what I had loved. That was the worst part. Grief with no name to put it in."],
+        ["warden", "When you brought the shards back, I did not feel whole. I felt... accompanied. As if the missing furniture had come back to sit with me."],
+      ] },
+      { title: "The First Rain", lines: [
+        ["warden", "I remember the first rain. Every drop. I remember the Choir singing the King to sleep, and the salt closing over their mouths, and the people on the hills cheering, not knowing what it cost."],
+        ["warden", "That is the loneliness of remembering, courier. Everyone who saw it died four hundred years ago. I am the only one left who knows what the high ground cost. I have been carrying it alone for a very long time."],
+        ["sable", "You're not carrying it alone now."],
+        ["warden", "No. Now I am telling it to you. That is what memory is for, I think. Not to keep. To give away before you break under it."],
+      ] },
+      { title: "A Question", lines: [
+        ["warden", "I have a question I cannot answer, and you are the wisest person I know, which should worry us both. If I could forget the grief and keep the love, should I?"],
+        ["warden", "I could forget the Choir's faces in the salt. I could forget the drivers on the Flats. I would still remember that I loved them. I would simply stop hurting."],
+      ], ask: { text: "(The crystal in its chest dims, waiting.)", options: [
+        ["\"No. The grief is the love, still working.\"", "...Yes. Yes, I think that is it. Grief is love with nowhere to go. If I cut it away, the love would have nowhere to be. I will keep it. Thank you."],
+        ["\"Yes. You've carried enough.\"", "Perhaps. But then who would remember what the hills cost? ...No. I think I will keep it a little longer. Until someone else is ready to carry half."],
+      ] } },
+    ] },
+  };
+  function bondLevel(id) { return (G.flags.bonds || {})[id] || 0; }
+  function bondAvailable(id) {
+    const b = BONDS[id]; if (!b || !G.members.includes(id)) return false;
+    const n = bondLevel(id); return n < 3 && G.stage >= b.gates[n];
+  }
+  function startBond(id) {
+    const b = BONDS[id], n = bondLevel(id), talk = b.talks[n];
+    talk.lines.forEach((ln, i) => {
+      const last = i === talk.lines.length - 1;
+      D[`bond_${id}_${n}_${i}`] = say(ln[0], ln[1], last ? (talk.ask ? `bond_${id}_${n}_ask` : null) : `bond_${id}_${n}_${i + 1}`, last && !talk.ask ? () => completeBond(id, n) : undefined);
+    });
+    if (talk.ask) {
+      D[`bond_${id}_${n}_ask`] = { who: "sable", text: talk.ask.text, choices: talk.ask.options.map((o, k) => ({ t: o[0], go: `bond_${id}_${n}_r${k}` })) };
+      talk.ask.options.forEach((o, k) => { D[`bond_${id}_${n}_r${k}`] = say(id, o[1], null, () => completeBond(id, n)); });
+    }
+    openDialog(`bond_${id}_${n}_0`);
+  }
+  function completeBond(id, n) {
+    G.flags.bonds = { ...(G.flags.bonds || {}), [id]: n + 1 };
+    const h = G.party[id]; if (h) { h.atk += 1; h.def += 1; h.maxHp += 6; h.hp += 6; }
+    Music.sound("heal"); toast(`Bond with ${HEROES[id].name}: ${BONDS[id].talks[n].title} (${n + 1}/3). +1 attack, +1 defence, +6 max health.`);
+    if (id === "rook" && n === 2) G.flags.rookLetter = true;
+    if (id === "kest" && n === 1) G.flags.jonasRing = true;
+    save(); updateHud();
+  }
+  SPEAKERS.sable = "Sable";
+
+  // ================================================================== COURIER LETTERS
+  // Sable is a courier: some people ask you to carry letters. Delivering one reveals a small story.
+  const LETTERS = [
+    { id: "odo", from: "odo", to: "yusra", when: () => G.stage >= 7, toName: "Yusra in Oru",
+      give: "Odo turns his cap over in his hands. \"You're going to Oru? My daughter's there. Yusra. We haven't spoken in nine years. I said some things about her husband. He died last winter. I never wrote. Could you... give her this?\"",
+      text: "\"Yusra. I was wrong about him, and I was wrong to say it, and I was wrong to let nine years go by because I was too proud to be wrong. I'm old and the water's rising. If you'll have me, I'll come up the hill. If not, I understand. Your father, who is sorry.\"",
+      reply: "(Yusra reads it twice. Then she laughs and cries at the same time.) The stubborn old goat. Nine years. ...Tell him to come up the hill. Tell him I kept his room. Here, for your trouble.", reward: { coins: 40, item: "gsalve" } },
+    { id: "bram", from: "bram", to: "tobin", when: () => G.flags.quillDead, toName: "Tobin in the Guild Hall",
+      give: "Bram slides a note across the counter. \"My little brother Tobin works for the Guild. Worked. Whatever he does now. We fell out over it. If you see him, give him this. Don't read it. Actually, read it, I don't care.\"",
+      text: "\"Tobin. I heard what you did with the ledger pages. I always said the Guild would make you small. I was wrong. You made yourself big, in the worst place, at the worst time. Come home for supper. Mum's recipe. I burned it. Your brother.\"",
+      reply: "(Tobin holds the note very carefully, like it's worth more than the grain.) He burned it. Of course he burned it. ...I'll go home for supper. Thank you, courier.", reward: { coins: 30, item: "ether" } },
+    { id: "oskar", from: "oskar", to: "nadia", when: () => G.stage >= 9 && G.flags.gulpDead, toName: "Elder Nadia in Kessa",
+      give: "Oskar hands you a letter sealed with reed-wax. \"Nadia and I were young together, a long time ago. Before Kessa and Reedholm stopped talking to each other. Before the Guild told us we were different kinds of people. Would you carry this to her?\"",
+      text: "\"Nadia. Fifty years ago you said Kessa and Reedholm were one village with a marsh in the middle. I laughed. I was wrong, and the flood has proved it: we drown together or we build together. Come and see the stilts. Bring your people. We have room. We have always had room. Oskar.\"",
+      reply: "(Nadia presses the letter to her chest.) Oskar. That old fool. That dear old fool. ...Fifty years. Tell him Kessa is coming. Tell him to build the stilts high.", reward: { coins: 50, item: "phoenix" } },
+    { id: "rook", from: null, to: "abawidow", when: () => G.flags.rookDead && G.flags.rookLetter, toName: "Aba's widow in Kessa", auto: true,
+      text: "\"To the wife of Aba the driver. I was the archer holding the torch the night your husband died. I did not kill him. I did not save him. I stood there and watched him throw your grandson onto a rock and turn to look at me. I have seen that look every night since. I do not ask forgiveness. I only want you to know that he was brave, and that someone saw it, and that I have tried to spend what is left of my life deserving to have seen it. Rook.\"",
+      reply: "(The old woman reads it slowly, lips moving. Then she folds it and puts it inside her dress, over her heart.) He looked at everyone like that. Like he was memorising you. ...Is the archer dead? (You nod.) Then tell the dead I read it. Tell them the boy is fifteen now, and tall, and he still climbs rocks.", reward: { coins: 0, item: null } },
+    { id: "liv", from: "saved4", to: "suri", when: () => G.stage >= 12, toName: "the drowned mother in the Deep",
+      give: "Liv presses a letter into your hand, fierce and wet-eyed. \"Dad says you're going down to the bottom. Mum's down there. The drowned took her last spring. If you see her... I know it's stupid. Just in case.\"",
+      text: "\"Mum. It's Liv. I'm taller now. Dad cries at night when he thinks I'm asleep. We built the stilts higher like you said. The twins can swim. I can throw a spear better than any boy in Reedholm. I'm not scared of the water any more, because you're in it. Sleep well. Don't come back up. We love you too much to see you like that. Liv.\"",
+      reply: "(The drowned woman reads it with hands like pale roots. Something in her face, under the brine, becomes a mother's face.) She's taller. She's not scared. ...Then I can sleep. Tell her I heard. Tell her I'm proud. Tell her I won't come back up.", reward: { coins: 0, item: null } },
+  ];
+  const carrying = id => (G.flags.carry || []).includes(id), delivered = id => (G.flags.delivered || []).includes(id);
+  function letterDialog(n) {
+    for (const L of LETTERS) {
+      if (delivered(L.id)) continue;
+      if (carrying(L.id) && n.id === L.to) {
+        D.__letterDel = say(null, `You hand over the letter. It reads: ${L.text}`, "__letterRep");
+        D.__letterRep = say(n.id, L.reply, null, () => {
+          G.flags.carry = (G.flags.carry || []).filter(x => x !== L.id); G.flags.delivered = [...(G.flags.delivered || []), L.id];
+          if (L.reward.coins) G.coins += L.reward.coins; if (L.reward.item) G.items[L.reward.item] = (G.items[L.reward.item] || 0) + 1;
+          G.flags.courierRep = (G.flags.courierRep || 0) + 1; Music.sound("item");
+          toast(`Letter delivered (${G.flags.delivered.length}/${LETTERS.length}).${L.reward.coins ? ` +${L.reward.coins} coin` : ""}${L.reward.item ? `, ${ITEMS[L.reward.item].name}` : ""}`); save(); updateHud();
+        });
+        return "__letterDel";
+      }
+      if (!carrying(L.id) && L.from && n.id === L.from && L.when()) {
+        D.__letterGive = say(n.id, L.give, null, () => { G.flags.carry = [...(G.flags.carry || []), L.id]; toast(`You carry a letter for ${L.toName}.`); Music.sound("click"); save(); updateHud(); });
+        return "__letterGive";
+      }
+    }
+    return null;
+  }
+
+  // ================================================================== NPC SIDE QUESTS
+  Object.assign(MONSTERS, {
+    jonas: { name: "Jonas, With Brass Hands", hp: 220, atk: 18, def: 6, spd: 6, xp: 120, coin: [0, 0], sprite: "drowned",
+      pal: { "#4a6a7a": "#4a4a3a", "#5a7a8a": "#5a5a4a", "#8ab0b8": "#a8b0a0", "#2a5a3a": "#8a6a2a", "#857ea5": "#c9a227", "#b8bccc": "#c9a227" },
+      moves: [{ name: "Brass Grip", w: 3, power: 1.4, stunChance: 0.2 }, { name: "Her Name", w: 1, weakAll: 2 }, { name: "Drag Down", w: 2, power: 1.0, bleed: [3, 3] }] },
+  });
+  BESTIARY.jonas = "Sela's husband. The clerks took his hands for a debt. The marsh took the rest. The brass hands came with him.";
+  Object.assign(ITEMS, { echo: { name: "Thunder Echo", desc: "20 damage to every enemy, 35% chance to stun each.", target: "allEnemiesItem", dmg: 20, stunChance: 0.35, price: 0 } });
+  Object.assign(RELICS, {
+    choirbell: { name: "The Orphans' Bell", from: "_choir", desc: "+2 extra SP each turn, +1 speed.", spRegen: 2, spd: 1 },
+    lullaby: { name: "A Mother's Lullaby", from: "_suri", desc: "Regenerate 5 health each turn, +2 defence.", regen: 5, def: 2 },
+    lamp: { name: "The Keeper's Lamp", from: "_ansel", desc: "+12% critical chance, +2 attack.", crit: 0.12, atk: 2 },
+  });
+  function giveRelic(id) { if ((G.relics || []).includes(id)) return; G.relics = [...(G.relics || []), id]; toast(`Relic received: ${RELICS[id].name}. Equip it from the party screen (P).`); save(); }
+  const KIDS = [{ x: 95, y: 8, name: "Dilly" }, { x: 103, y: 24, name: "Wren" }, { x: 76, y: 18, name: "Bo" }, { x: 86, y: 30, name: "Tansy" }];
+  KIDS.forEach((k, i) => npc2({ id: "kid" + i, name: k.name, x: k.x, y: k.y, look: { robe: ["#d8d4e8", "#c8c0e0", "#e0d8f0", "#d0c8e8"][i], hair: ["#3a2a1e", "#c8a050", "#1b1633", "#a8403a"][i], skin: ["#f0c8a0", "#c98d63", "#e0a878", "#f2c39a"][i], small: true, style: { hair: i % 2 ? "tail" : "fringe" } }, show: () => G.flags.choirQuest && !(G.flags.kidsFound || []).includes(i) }));
+  npc2({ id: "abawidow", name: "Widow Aba", x: 7, y: 41, look: { robe: "#5a4a6a", hair: "#d8d0c0", skin: "#8a5a33", style: { hair: "veil", dress: true } }, show: () => G.stage >= 1 });
+  npc2({ id: "ansel", name: "Ansel the Lighthouse Keeper", x: 121, y: 60, look: { robe: "#3a4a6a", hair: "#d8d0c0", skin: "#b8c8d0", style: { hair: "bald", beard: true, coat: true } }, show: () => G.stage >= 9 && !G.flags.anselRest });
+  npc2({ id: "orla", name: "Orla the Hermit", x: 124, y: 51, look: { robe: "#4a4a6a", hair: "#e8e4f0", skin: "#a8744f", extra: "staff", style: { hair: "long", dress: true } }, show: () => G.stage >= 10 });
+  npc2({ id: "suri", name: "A drowned mother", x: 96, y: 50, look: { robe: "#4a6a6a", hair: "#2a4a4a", skin: "#8ab0b8", glowEyes: true, style: { hair: "long", dress: true } }, show: () => G.stage >= 12 && !G.flags.suriRest });
+  for (const id of ["abawidow", "ansel", "orla", "suri"]) SPEAKERS[id] = NPCS.find(n => n.id === id).name;
+  KIDS.forEach((k, i) => { SPEAKERS["kid" + i] = k.name; });
+  const JORY_GRAVES = [{ x: 18, y: 74 }, { x: 44, y: 58 }, { x: 30, y: 85 }];
+  const OIL = [{ x: 80, y: 63 }, { x: 101, y: 69 }];
+  const TOY = { x: 78, y: 40 };
+  FIELD.push({ id: "jonas", x: 52, y: 76, group: ["jonas"], minStage: 8, req: () => G.flags.selaQuest && !G.flags.jonasDead, area: "marsh" });
+  Object.assign(D, {
+    // Pip and the choir orphans
+    pip_q0: say("pip", "Courier? The other Choir kids went hiding when the clerks came, and they won't come out. Dilly, Wren, Bo and Tansy. They think anyone in a coat is a clerk. Will you find them? Tell them Pip says it's safe. Tell them the song-word: 'morning'.", null, () => { G.flags.choirQuest = true; toast("Side quest: find the four hidden Choir orphans in Oru"); save(); updateHud(); }),
+    pip_q1: say("pip", "Still hiding: some of them. Say 'morning'. It's the waking word. They'll know."),
+    pip_q2: say("pip", "(Pip counts the children three times.) All four. All four! ...Sister Ada left this bell with us when she was sent away. We rang it every morning to wake the Choir. You should have it. You're the one who woke us up.", null, () => { G.flags.choirDone = true; giveRelic("choirbell"); Music.sound("victory"); save(); updateHud(); }),
+    pip_q3: say("pip", "We sing every morning now. Loudly. The old people complain. It's the best sound in Oru."),
+    kid0_0: say("kid0", "(A small girl behind a barrel.) ...Morning? Pip sent you? Is it really safe? Okay. Okay. I'm going to go stand next to Pip and not let go of him ever again.", null, () => kidFound(0)),
+    kid1_0: say("kid1", "(A boy on a roof ledge.) You said the word. Nobody says the word unless Pip told them. ...The clerk that took my dad had hands like a person. Did you know that? I climbed up here so I couldn't see any hands.", null, () => kidFound(1)),
+    kid2_0: say("kid2", "(A tiny boy in a drain.) Morning! I win hide-and-seek. I've been winning for nine days. I'm very hungry.", null, () => kidFound(2)),
+    kid3_0: say("kid3", "(A girl clutching a hymn book.) I kept singing the sleeping song so the clerks would sleep. They never did. I'll try the waking one now.", null, () => kidFound(3)),
+    // Sela and Jonas
+    sela_q0: say("sela", "(Sela catches your sleeve.) Courier. My husband Jonas couldn't pay the Guild. They took... they took his hands. He ran into the marsh with the bandages still on. That was spring. I keep telling myself he's fishing somewhere, in a hut, too proud to come home.", "sela_q1"),
+    sela_q1: { who: "sela", text: "If you go south, would you look for him? Tall, stooped, a laugh like a donkey. You'll know him because he'll be the one trying to fish without hands, and swearing about it.", choices: [
+      { t: "\"I'll look for him.\"", go: "sela_q2" }, { t: "\"The marsh is full of the drowned, Sela.\"", go: "sela_q2b" } ] },
+    sela_q2: say("sela", "Thank you. Thank you. If he's angry, tell him I burned the bread. He always laughs at that.", null, () => { G.flags.selaQuest = true; spawnField(); toast("Side quest: find Sela's husband Jonas in the marsh"); save(); updateHud(); }),
+    sela_q2b: say("sela", "I know. I know what's in the marsh. Look anyway. Please. I'd rather know than keep baking bread for nobody.", null, () => { G.flags.selaQuest = true; spawnField(); toast("Side quest: find Sela's husband Jonas in the marsh"); save(); updateHud(); }),
+    sela_wait: say("sela", "He'd be somewhere south-east in the marsh. He always liked the east. He said the sunrise there was worth drowning for. He was joking. He was always joking."),
+    jonas_after: say(null, "The drowned man with brass hands sinks to his knees in the shallows. The brass fingers open. In one palm, green with marsh-water, is a silver wedding ring engraved J and S. His lips move. It might be her name. It might be the water.", null, () => { G.flags.jonasFound = true; toast("You carry Jonas's wedding ring. Take it back to Sela."); save(); updateHud(); }),
+    sela_ring: { who: "sela", text: "(Sela sees the ring in your hand before you can speak. Her face goes very still.) Tell me. Tell me how he was.", choices: [
+      { t: "Tell her the truth.", go: "sela_truth" },
+      { t: "Tell her he died peacefully, fishing, a free man.", go: "sela_lie" } ] },
+    sela_truth: say("sela", "(She listens to all of it. She doesn't look away once.) The brass hands. Of course. They couldn't even let him drown with his own. ...Thank you for not lying to me. Everybody lies to widows. I'd rather hold the true thing, even if it cuts.", null, () => selaEnd("truth")),
+    sela_lie: say("sela", "(She closes her eyes and smiles, very carefully.) Fishing. Swearing at the fish, I bet. Thank you, courier. ...I know you're lying. I know what's in the marsh. Thank you for lying so kindly. I'll pretend with you, just for tonight.", null, () => selaEnd("lie")),
+    sela_after: say("sela", "I baked bread today. For me, this time. It's the first time I haven't burned it."),
+    // Ansel the lighthouse keeper
+    ansel_0: say("ansel", "(An old man in a sea-coat taps the dead lantern of the lighthouse.) The light's out. Been out a while, I think. My boy's boat is due in. He can't find the channel without the light. Would you bring me oil? The wrecks have barrels. Two should do.", null, () => { G.flags.anselQuest = true; toast("Side quest: bring two barrels of oil to the lighthouse"); save(); updateHud(); }),
+    ansel_wait: say("ansel", "Two barrels. The wreck to the north-west, and the one to the east. My boy's boat is due in any minute now. Any minute."),
+    ansel_1: say("ansel", "(He pours the oil, strikes a flint, and the great lamp roars into light. He stands in it, and you can see the wall through him.) There. There she is. He'll see that from ten miles out.", "ansel_2"),
+    ansel_2: say("ansel", "(He looks at his hands, at the light shining through them.) ...Oh. How long has it been out? Forty years? The sea left forty years ago. His boat... his boat never came in, did it. I've been waiting for a boat on dry sand.", "ansel_3"),
+    ansel_3: { who: "ansel", text: "(He turns to you, fading, and he's smiling.) But the sea's coming back now. Somebody's boat will need the light. Somebody's boy. That's enough. That's plenty. Take my lamp-glass. It burned for forty years without me knowing why.", choices: [
+      { t: "\"Rest, keeper. The light's lit.\"", go: null, act: () => { G.flags.anselRest = true; giveRelic("lamp"); G.coins += 60; save(); updateHud(); } } ] },
+    // Brother Jory
+    jory_q0: say("saved3", "(Brother Jory sits apart from the others, turning three smooth stones in his hands.) The drowned stood around me for a night, listening to me pray. Then they tried to eat me. I've been asking the gods what that means. They're not answering.", "jory_q1"),
+    jory_q1: say("saved3", "These are prayer-stones. Reedholm puts one on each drowned grave so the dead know they're remembered. Three graves out in the marsh have none. Would you place them? I can't go back out there. I'm... I'm not brave. I thought I was holy. It turns out those are different things.", null, () => { G.flags.joryQuest = true; toast("Side quest: place Jory's three prayer-stones on the marsh graves"); save(); updateHud(); }),
+    jory_wait: say("saved3", "Three graves: north-west of the village, north-east near the reeds, and far south. You'll know them by the leaning posts."),
+    jory_done: say("saved3", "(Jory listens to you describe each grave.) You put them down gently? ...I think I understand now. The drowned didn't listen to my prayers because I was holy. They listened because someone was talking to them like they still mattered. The hunger was theirs. The listening was theirs too. Both.", "jory_done2"),
+    jory_done2: say("saved3", "I don't know if the gods are there. But I know the dead like to be spoken to, and the living do too. That's enough religion for one frightened monk. Bless you. I mean that in the plainest way.", null, () => { G.flags.joryDone = true; for (const id of G.members) { G.party[id].maxHp += 8; G.party[id].hp += 8; } toast("Jory's blessing: +8 max health for the whole party."); Music.sound("heal"); save(); updateHud(); }),
+    jory_after: say("saved3", "I spoke to the drowned graves this morning. Nothing answered. It was lovely."),
+    // Orla the hermit
+    orla_0: say("orla", "(An old woman sits on a rock in the rain, eyes closed, humming.) The shrines are waking. I can hear them. I taught Vela, you know. And Vela taught little Maru. I'm the last storm-singer who didn't go hollow, because I left before the King started singing."),
+    orla_1: say("orla", "Bring me the echo of each shrine when you wake it. Just stand near me with the tone still in the Bell. I'll catch the echoes and teach them to your weapons. Thunder remembers a good teacher.", null, () => { G.flags.orlaQuest = true; save(); updateHud(); }),
+    orla_give: say("orla", "(She holds her hands out to the Bell and the rain bends toward her.) Ah. There it is. A good tone. Take these. Each one is a thunderclap in a shell. Throw it and the storm remembers.", null, () => { const n = (G.flags.tones || []).length - (G.flags.orlaGiven || 0); G.flags.orlaGiven = (G.flags.orlaGiven || 0) + n; G.items.echo = (G.items.echo || 0) + n * 2; toast(`Orla gives you ${n * 2} Thunder Echo${n * 2 > 1 ? "es" : ""}.`); Music.sound("item"); save(); updateHud(); }),
+    orla_maru: say("orla", "(Orla turns her blind face toward Maru's lantern in Ilse's hands.) She sang it well, didn't she. I heard it from here. Every storm-singer in history heard it. Put the lantern down on this rock, smith. I'll keep it lit. That's what we do for each other."),
+    orla_idle: say("orla", "Every song ends. That's not a reason to stop singing. Most students only remember the first half. You look like you remember both."),
+    // the drowned mother
+    suri_0: say("suri", "(A drowned woman searches the floor of the palace, touching every stone.) My daughter's boat. She made it herself, out of reed and wax. She put it in my hand when they dragged me down. I've lost it. I can't sleep without it. I can't sleep."),
+    suri_1: say("suri", "It's small. It's somewhere here, in the west of the hall. Please. The King says sleep is coming for everyone. I want to be holding it when it comes.", null, () => { G.flags.suriQuest = true; save(); updateHud(); }),
+    suri_toy: say("suri", "(She takes the little reed boat in both hands, and for a moment her face is only a face.) She made the sail from her own hair ribbon. She was so proud. ...I can sleep now. Tell Liv... tell her I'm not afraid of the water either.", null, () => { G.flags.suriRest = true; giveRelic("lullaby"); save(); updateHud(); }),
+  });
+  function kidFound(i) {
+    G.flags.kidsFound = [...new Set([...(G.flags.kidsFound || []), i])];
+    toast(`${KIDS[i].name} runs back to Pip (${G.flags.kidsFound.length}/4)`); Music.sound("item"); save(); updateHud();
+  }
+  function selaEnd(kind) { G.flags.selaDone = kind; G.flags.jonasFound = false; G.coins += 30; toast("Sela's story is finished."); save(); updateHud(); }
+  function sideQuestDialog(n) {
+    const f = G.flags;
+    switch (n.id) {
+      case "pip": if (G.stage < 7) return null; if (f.choirDone) return G.members.includes("ada") && !f.pipAda ? (f.pipAda = true, "pip_ada") : "pip_q3"; if (!f.choirQuest) return "pip_q0"; return (f.kidsFound || []).length >= 4 ? "pip_q2" : "pip_q1";
+      case "sela": if (G.stage < 8) return null; if (f.selaDone) return "sela_after"; if (f.jonasFound) return "sela_ring"; if (f.selaQuest) return "sela_wait"; return "sela_q0";
+      case "ansel": if (!f.anselQuest) return "ansel_0"; return (f.oil || []).length >= 2 ? "ansel_1" : "ansel_wait";
+      case "saved3": if (G.stage < 9) return null; if (f.joryDone) return "jory_after"; if (!f.joryQuest) return "jory_q0"; return (f.stones || []).length >= 3 ? "jory_done" : "jory_wait";
+      case "orla": if (f.maruDead && !f.orlaMaru) { f.orlaMaru = true; return "orla_maru"; } if (!f.orlaQuest) return "orla_0"; if ((f.tones || []).length > (f.orlaGiven || 0)) return "orla_give"; return "orla_idle";
+      case "suri": if (!f.suriQuest) return "suri_0"; return f.toyFound ? "suri_toy" : "suri_1";
+      case "abawidow": return "aba_idle";
+    }
+    if (/^kid\d$/.test(n.id)) return `${n.id}_0`;
+    return null;
+  }
+  D.aba_idle = say("abawidow", "(An old woman mending a child's coat.) My husband drove salt wagons across the Flats for forty years. The jackals got him last year. My grandson says an archer saved him. I don't know any archers. I'd like to thank one, someday.");
+  D.orla_0.go = "orla_1"; D.suri_0.go = "suri_1";
+  const _dialogFor = dialogFor;
+  dialogFor = function (n) { return letterDialog(n) || sideQuestDialog(n) || _dialogFor(n); };
+  const _act2Triggers = act2Triggers;
+  act2Triggers = function () {
+    _act2Triggers();
+    const f = G.flags;
+    if (f.joryQuest && !f.joryDone) JORY_GRAVES.forEach((gv, i) => { if ((f.stones || []).includes(i) || !near({ x: gv.x * TILE + 8, y: gv.y * TILE + 8 }, 14)) return; f.stones = [...(f.stones || []), i]; Music.sound("heal"); toast(`You set a prayer-stone on the grave (${f.stones.length}/3). ${["Someone has carved a fish on the post.", "The name has worn away. You say 'remembered' out loud anyway.", "A child's grave. Someone left a reed boat here, long ago."][i]}`); save(); updateHud(); });
+    if (f.anselQuest && !f.anselRest) OIL.forEach((o, i) => { if ((f.oil || []).includes(i) || !near({ x: o.x * TILE + 8, y: o.y * TILE + 8 }, 13)) return; f.oil = [...(f.oil || []), i]; Music.sound("item"); toast(`A barrel of lamp oil (${f.oil.length}/2)`); save(); updateHud(); });
+    if (f.suriQuest && !f.toyFound && near({ x: TOY.x * TILE + 8, y: TOY.y * TILE + 8 }, 13)) { f.toyFound = true; Music.sound("item"); toast("A tiny reed boat, its sail a hair ribbon."); save(); updateHud(); }
+    if (G.flags.rookDead && G.flags.rookLetter && !carrying("rook") && !delivered("rook")) { G.flags.carry = [...(G.flags.carry || []), "rook"]; save(); setTimeout(() => toast("In Rook's quiver: his letter to Aba's widow in Kessa. Courier's honour."), 1500); }
+  };
+  const _act2BossEndB = act2BossEndB;
+  act2BossEndB = function (boss) {
+    _act2BossEndB(boss);
+    if (lastGroup.includes("jonas") && !G.flags.jonasDead) { G.flags.jonasDead = true; save(); setTimeout(() => openDialog("jonas_after"), 300); }
+  };
+  const _act2ActorsB = act2ActorsB;
+  act2ActorsB = function (actors, ox, oy) {
+    _act2ActorsB(actors, ox, oy);
+    const f = G.flags, sp = (x, y, c) => actors.push({ y: y * TILE, draw: () => drawSparkle(g, x * TILE + 8 - ox, y * TILE + 8 - oy, c) });
+    if (f.joryQuest && !f.joryDone) JORY_GRAVES.forEach((gv, i) => { if (!(f.stones || []).includes(i)) sp(gv.x, gv.y, "#e8e4f0"); });
+    if (f.anselQuest && !f.anselRest) OIL.forEach((o, i) => { if (!(f.oil || []).includes(i)) sp(o.x, o.y, "#ffcf4a"); });
+    if (f.suriQuest && !f.toyFound) sp(TOY.x, TOY.y, "#9ad8e0");
+  };
+  const _addProp2b = addProp2;
+  addProp2 = () => { _addProp2b(); for (const gv of JORY_GRAVES) addProp("grave", gv.x, gv.y - 1); };
+  // extra endings lines
+  function extraFates() {
+    const f = G.flags, out = [];
+    if (f.selaDone === "truth") out.push("Sela plants a garden on the hill and names the tallest tree Jonas. She tells the true story to anyone who asks.");
+    if (f.selaDone === "lie") out.push("Sela tells everyone her husband died fishing, a free man. Only she and the courier know better, and they never say.");
+    if (f.choirDone) out.push("The Choir orphans ring their bell every morning in Oru. The old people still complain. It is the best sound in the valley.");
+    if (f.anselRest) out.push("The lighthouse on the Wreck Coast burns every night. Nobody tends it. Nobody needs to.");
+    if (f.joryDone) out.push("Brother Jory talks to the drowned graves every morning, and doesn't wait for answers.");
+    if (f.suriRest) out.push("Liv throws her reed spear further every year. Some mornings she swims out and sings to the water, and the water is calm.");
+    if (delivered("rook")) out.push("In Kessa, an old widow keeps an archer's letter over her heart, and a tall boy climbs every rock on the Flats.");
+    if (delivered("odo")) out.push("Odo walks up the hill to Oru with his cart, and his daughter keeps his room.");
+    if (delivered("oskar")) out.push("Kessa and Reedholm become one village with a marsh in the middle, as Nadia said fifty years ago.");
+    const bonded = Object.entries(f.bonds || {}).filter(([, n]) => n >= 3).map(([id]) => HEROES[id].name);
+    if (bonded.length) out.push(`${bonded.join(", ")} ${bonded.length > 1 ? "never forget" : "never forgets"} the nights by the fire when they told Sable who they really were.`);
+    return out;
+  }
+  function extraJournalHtml() {
+    const f = G.flags, li = (done, t) => `<li class="${done ? "done" : ""}">${done ? "✓ " : ""}${t}</li>`;
+    const bonds = G.members.filter(id => BONDS[id]).map(id => { const n = bondLevel(id); return li(n >= 3, `<b>${HEROES[id].name}</b>: ${n}/3 ${n < 3 ? (bondAvailable(id) ? "· a new conversation is waiting (party screen)" : "· more to say later in the story") : "· bonded"}${n ? ` <span class="dim">(${BONDS[id].talks.slice(0, n).map(t => t.title).join(", ")})</span>` : ""}`); }).join("");
+    const letters = LETTERS.filter(L => carrying(L.id) || delivered(L.id)).map(L => li(delivered(L.id), delivered(L.id) ? `Delivered: letter to ${L.toName}.` : `Carrying a letter to ${L.toName}.`)).join("") || `<li class="dim">Nobody has asked you to carry a letter yet. People might, if you talk to them.</li>`;
+    const sq = [
+      [f.choirQuest, f.choirDone, `Pip's choir orphans (${(f.kidsFound || []).length}/4 found in Oru).`],
+      [f.selaQuest, f.selaDone, f.jonasFound ? "Take Jonas's ring back to Sela in Oru." : "Find Sela's husband Jonas in the south-east marsh."],
+      [f.joryQuest, f.joryDone, `Brother Jory's prayer-stones (${(f.stones || []).length}/3 graves).`],
+      [f.anselQuest, f.anselRest, `Oil for the lighthouse keeper (${(f.oil || []).length}/2 barrels).`],
+      [f.orlaQuest, false, `Bring shrine echoes to Orla on the Storm Road (${f.orlaGiven || 0}/3 given).`],
+      [f.suriQuest, f.suriRest, f.toyFound ? "Give the reed boat to the drowned mother." : "Find the drowned mother's reed boat in the west of the Deep."],
+    ].filter(([on]) => on).map(([, done, t]) => li(done, t)).join("") || `<li class="dim">No side quests yet. People in Oru, Reedholm and beyond may need help.</li>`;
+    return `<h3>Bonds</h3><ul>${bonds || '<li class="dim">No companions yet.</li>'}</ul><h3>Letters</h3><ul>${letters}</ul><h3>Side quests</h3><ul>${sq}</ul>`;
+  }
+
+  // ================================================================== STORY ILLUSTRATIONS
+  // Each chapter card, memorial and ending gets a small animated painting.
+  const sceneCanvas = $("cardArt"), sc2 = sceneCanvas.getContext("2d");
+  let sceneKey = null;
+  const SCENE_BY_TITLE = {
+    "The Stolen Bell": "bell", "The Butcher of the Well": "well", "The Drowned Grove": "grove", "The Salt Cathedral": "cathedral", "The Salt-Flayed": "voss",
+    "The Drowned Gate": "gate", "The Rains": "rains", "The Open Gate": "granary", "The Drowning Marsh": "marsh", "Rook": "rookGrave", "The Wreck Coast": "wrecks",
+    "The Three Tones": "shrines", "The Storm Spire": "spire", "The Drowned King": "whirl", "A Bell for Everyone": "endRing", "The Equal Sea": "endCrown", "The Keeper of the Deep": "endKeeper",
+  };
+  function setScene(title) { sceneKey = SCENE_BY_TITLE[title] || null; sceneCanvas.hidden = !sceneKey; }
+  function paintScene() {
+    if (!sceneKey || $("card").hidden) return;
+    const g = sc2, t = time, Wd = 240, Hd = 100;
+    const R = (x, y, w, h, c) => { g.fillStyle = c; g.fillRect(Math.round(x), Math.round(y), w, h); };
+    const sky = (a, b) => { const gr = g.createLinearGradient(0, 0, 0, Hd); gr.addColorStop(0, a); gr.addColorStop(1, b); g.fillStyle = gr; g.fillRect(0, 0, Wd, Hd); };
+    const stars = n => { for (let i = 0; i < n; i++) { const a = 0.4 + Math.sin(t * 2 + i) * 0.3; g.fillStyle = `rgba(255,255,255,${a})`; g.fillRect((hash(i, 1) * Wd) | 0, (hash(i, 2) * 50) | 0, 1, 1); } };
+    const rain = (n, a = 0.5) => { g.fillStyle = `rgba(180,200,240,${a})`; for (let i = 0; i < n; i++) { const x = (hash(i, 5) * (Wd + 30) - t * 30 + Wd + 30) % (Wd + 30) - 15, y = (hash(i, 6) * Hd + t * 160) % Hd; g.fillRect(x | 0, y | 0, 1, 4); } };
+    const moon = (x, y, r, c = "#f2e6c0") => { g.fillStyle = c; g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill(); };
+    const person = (x, y, c, h = 12) => { R(x - 2, y - h, 4, h - 4, c); R(x - 2, y - h - 4, 4, 4, c); R(x - 2, y - 4, 1, 4, c); R(x + 1, y - 4, 1, 4, c); };
+    switch (sceneKey) {
+      case "bell": sky("#0c0a24", "#3a2250"); stars(40); moon(190, 22, 10);
+        R(0, 78, Wd, 22, "#1a1430"); for (const [x, w, h] of [[20, 30, 18], [60, 26, 14], [150, 34, 20], [196, 28, 16]]) { R(x, 78 - h, w, h, "#241c3e"); R(x - 2, 78 - h - 4, w + 4, 5, "#3a2040"); R(x + 8, 78 - h + 6, 4, 4, Math.sin(t * 3 + x) > 0 ? "#ffcf6a" : "#8a6a3a"); }
+        R(104, 18, 14, 60, "#241c3e"); R(100, 14, 22, 6, "#3a2040"); R(106, 22, 10, 12, "#0c0a18"); g.strokeStyle = "#6a5a8a"; g.beginPath(); g.moveTo(111, 22); g.lineTo(111 + Math.sin(t) * 2, 30); g.stroke();
+        R(108, 30, 1, 1, "#c8102e"); R(114, 32, 1, 2, "#c8102e"); break;
+      case "well": sky("#3a0a18", "#c8503a"); moon(40, 30, 14, "#ff9a5a");
+        R(0, 80, Wd, 20, "#2a1a14"); for (const x of [150, 200]) { R(x, 30, 4, 50, "#1a0a0a"); for (const d of [-16, -8, 8, 16]) R(x + (d < 0 ? d : 4), 28 + Math.abs(d) / 3, Math.abs(d), 2, "#1a0a0a"); }
+        for (const [x, y] of [[146, 44], [206, 50]]) { const sw = Math.sin(t * 1.5 + x) * 2; R(x + sw, 30, 1, y - 30, "#6a5a4a"); person(x + sw, y + 14, "#1a0a0a"); }
+        R(90, 70, 26, 12, "#4a3a3a"); R(92, 72, 22, 6, "#1a0a0a"); R(88, 58, 3, 14, "#3a2a1a"); R(115, 58, 3, 14, "#3a2a1a"); R(86, 56, 34, 3, "#6a2020"); break;
+      case "grove": sky("#0a1a14", "#2a4a3a"); stars(10);
+        for (let i = 0; i < 9; i++) { const x = i * 28 + 4; R(x + 10, 28, 3, 60, "#0a140e"); for (const d of [-12, -6, 6, 12]) R(x + 11 + (d < 0 ? d : 2), 26 + Math.abs(d) / 3, Math.abs(d), 2, "#0a140e"); }
+        g.fillStyle = "#08100c"; g.beginPath(); g.ellipse(120, 84, 90, 12, 0, 0, Math.PI * 2); g.fill();
+        for (let i = 0; i < 6; i++) { const a = Math.max(0, Math.sin(t * 1.3 + i * 1.7)); g.fillStyle = `rgba(255,220,120,${a})`; g.fillRect(60 + i * 22, 82 + (i % 2) * 3, 2, 1); g.fillRect(64 + i * 22, 82 + (i % 2) * 3, 2, 1); }
+        g.fillStyle = "rgba(200,160,220,.6)"; for (let i = 0; i < 5; i++) { const y = 84 - ((t * 8 + i * 9) % 20); g.fillRect(80 + i * 18, y | 0, 2, 2); } break;
+      case "cathedral": sky("#0a0a1a", "#2a2448"); stars(30); R(0, 84, Wd, 16, "#e3dde9");
+        R(70, 30, 100, 54, "#332e4f"); R(110, 8, 20, 22, "#332e4f"); R(116, 0, 8, 10, "#433d63"); for (let i = 0; i < 5; i++) R(78 + i * 20, 44, 6, 14, `rgba(158,240,245,${0.4 + Math.sin(t * 2 + i) * 0.3})`);
+        R(112, 64, 16, 20, "#120f24"); R(116, 70, 8, 8, "#8a1020"); R(119, 72, 2, 2, "#ffcf4a"); break;
+      case "voss": sky("#0a0814", "#2a1a34"); R(0, 82, Wd, 18, "#1a1428");
+        for (let i = 0; i < 20; i++) R(40 + i * 8, 60 + Math.sin(i) * 4, 3, 22, "#9ef0f5");
+        R(108, 28, 24, 54, "#2e2a58"); R(112, 16, 16, 14, "#d8c8b8"); for (const [x, h] of [[110, 10], [118, 14], [126, 9]]) { g.fillStyle = "#9ef0f5"; g.beginPath(); g.moveTo(x, 16); g.lineTo(x + 3, 16 - h); g.lineTo(x + 6, 16); g.fill(); }
+        const gl = 0.5 + Math.sin(t * 6) * 0.4; g.fillStyle = `rgba(255,207,74,${gl})`; g.beginPath(); g.arc(120, 46, 10, 0, Math.PI * 2); g.fill(); R(116, 42, 8, 8, "#ffcf4a"); break;
+      case "gate": sky("#0e1a2e", "#3a5a7a"); rain(60);
+        R(0, 20, Wd, 50, "#1b2440"); R(96, 30, 48, 50, "#3a2a1e"); for (let x = 98; x < 144; x += 6) R(x, 30, 2, 50, "#ffcf4a");
+        const lv = 80 - Math.sin(t * 0.8) * 3; R(0, lv, Wd, Hd - lv, "rgba(58,143,191,.8)"); g.fillStyle = "#c9a227"; g.beginPath(); g.ellipse(120, lv - 6, 12, 16, 0, 0, Math.PI * 2); g.fill(); R(116, lv - 30, 8, 8, "#b8c8c8"); break;
+      case "rains": sky("#141c30", "#3a4a68"); R(0, 30, Wd, 50, "#2a3050"); for (let i = 0; i < 10; i++) R(i * 26, 20 + (i % 3) * 6, 20, 14, "#3a5aa8");
+        R(94, 34, 52, 46, "#1a1418"); R(96, 34, 20, 46, "#3a2a1e"); R(124, 34, 20, 46, "#3a2a1e");
+        for (let i = 0; i < 18; i++) person(20 + i * 12 + (Math.sin(t + i) * 1), 94, i % 3 ? "#1a1a2a" : "#2a2a3a", 10 + (i % 3) * 2);
+        rain(90, 0.55); break;
+      case "granary": sky("#1a2238", "#3a4a68"); R(40, 20, 160, 70, "#5a4a3a"); R(40, 16, 160, 6, "#3a5aa8"); R(100, 44, 40, 46, "#3a2a1e");
+        for (let i = 0; i < 4; i++) { R(96, 50 + i * 10, 48, 2, "#8a8aa0"); R(100 + i * 12, 48, 2, 40, "#8a8aa0"); }
+        for (const x of [60, 180]) { R(x - 5, 60, 10, 30, "#8a6a2a"); R(x - 4, 52, 8, 8, "#a88a3a"); R(x - 9, 64, 4, 8, "#d9a070"); R(x + 5, 64, 4, 8, "#d9a070"); R(x - 2, 55, 1, 1, "#ff6b3a"); R(x + 1, 55, 1, 1, "#ff6b3a"); }
+        rain(50, 0.4); break;
+      case "marsh": sky("#1a2418", "#4a5a3a"); rain(40, 0.35);
+        const wl = 74 + Math.sin(t) * 2; R(0, wl, Wd, Hd - wl, "#3a5a4a");
+        for (const [x, w] of [[40, 30], [90, 36], [150, 28]]) { R(x, 40, w, 16, "#8a5a33"); R(x - 2, 34, w + 4, 7, "#a8403a"); for (let k = 0; k < 3; k++) R(x + 3 + k * (w / 3), 56, 2, wl - 56 + 10, "#5a3a20"); R(x + 8, 44, 4, 4, "#ffcf6a"); }
+        R(0, 62, Wd, 3, "#8a5a33"); R(196, wl - 6, 8, 6, "#e8c83a"); R(208, wl - 6, 8, 6, "#e8c83a"); R(199, wl - 5, 2, 4, "#111"); R(211, wl - 5, 2, 4, "#111"); break;
+      case "rookGrave": sky("#2a2040", "#e8a070"); moon(200, 70, 16, "#ffcf8a");
+        R(0, 80, Wd, 20, "#3a5a4a"); R(100, 46, 40, 6, "#8a5a33"); for (const x of [104, 134]) R(x, 52, 3, 30, "#5a3a20");
+        R(108, 40, 24, 6, "#6b5a4a"); g.strokeStyle = "#8a5a33"; g.lineWidth = 2; g.beginPath(); g.arc(120, 38, 12, Math.PI * 1.1, Math.PI * 1.9); g.stroke(); R(118, 20, 2, 18, "#d8dce8"); R(117, 18, 4, 3, "#e8e2d0");
+        for (let i = 0; i < 6; i++) { const y = 30 - ((t * 5 + i * 7) % 30); g.fillStyle = `rgba(255,220,160,${0.5})`; g.fillRect(110 + i * 4, y | 0, 1, 1); } break;
+      case "wrecks": sky("#1a2a3e", "#6a8aa8"); const sea = 70 + Math.sin(t * 0.7) * 2; R(0, sea, Wd, Hd - sea, "#3a5a7a"); R(0, 80, Wd, 20, "#d8c89a");
+        for (const [x, w, h] of [[20, 50, 20], [100, 60, 26], [180, 44, 18]]) { g.fillStyle = "#2a1a10"; g.beginPath(); g.moveTo(x, 82); g.lineTo(x + w * 0.2, 82 - h); g.lineTo(x + w, 82 - h * 0.6); g.lineTo(x + w * 0.9, 82); g.fill(); R(x + w * 0.4, 82 - h - 16, 2, 18, "#2a1a10"); }
+        g.fillStyle = "rgba(220,240,255,.5)"; for (let i = 0; i < 12; i++) g.fillRect((i * 21 + t * 8) % Wd, sea + 2 + (i % 3) * 3, 8, 1); break;
+      case "shrines": sky("#10101e", "#3a3a5a"); stars(30); R(0, 80, Wd, 20, "#2a2a3e");
+        [["#3a8fbf", 50], ["#e8e2f0", 120], ["#3ee0e8", 190]].forEach(([c, x], i) => { R(x - 12, 50, 24, 30, "#aba4c8"); R(x - 12, 48, 24, 3, "#c8c2e0"); const a = 0.4 + Math.sin(t * 2 + i * 2) * 0.35; g.fillStyle = c; g.globalAlpha = a; g.fillRect(x - 4, 56, 8, 14); g.globalAlpha = a * 0.3; g.beginPath(); g.arc(x, 62, 22, 0, Math.PI * 2); g.fill(); g.globalAlpha = 1; }); break;
+      case "spire": sky("#06081a", "#1e2440");
+        for (let i = 0; i < 6; i++) { g.fillStyle = "#12142a"; g.beginPath(); g.moveTo(i * 50 - 10, 100); g.lineTo(i * 50 + 20, 60 + (i % 3) * 10); g.lineTo(i * 50 + 50, 100); g.fill(); }
+        R(112, 6, 16, 90, "#1e2440"); R(108, 2, 24, 6, "#2e3660"); for (let i = 0; i < 6; i++) R(118, 14 + i * 13, 4, 4, "#3ee0e8");
+        if ((t % 2.4) < 0.18) { g.strokeStyle = "#e8f4ff"; g.lineWidth = 2; g.beginPath(); let x = 120, y = 0; g.moveTo(x, y); while (y < 60) { x += rand(-10, 10); y += rand(6, 12); g.lineTo(x, y); } g.stroke(); g.fillStyle = "rgba(220,240,255,.3)"; g.fillRect(0, 0, Wd, Hd); }
+        rain(60, 0.4); break;
+      case "whirl": sky("#02060e", "#0a1830");
+        for (let i = 0; i < 7; i++) { g.strokeStyle = `rgba(160,220,255,${0.6 - i * 0.07})`; g.lineWidth = 2; g.beginPath(); g.arc(120, 50, 8 + i * 9, t * (1 + i * 0.2), t * (1 + i * 0.2) + Math.PI * 1.3); g.stroke(); }
+        for (let i = 0; i < 7; i++) { R(111 + i * 3, 46, 2, 6, "#8ab0b8"); R(111 + i * 3, 44, 2, 2, "#c8d8e0"); }
+        R(116, 52, 8, 8, "#c8d8e0"); R(118, 54, 1, 1, "#3ee0e8"); R(121, 54, 1, 1, "#3ee0e8"); break;
+      case "endRing": sky("#3a5a8a", "#f2c08a"); moon(120, 70, 26, "#ffdf9a");
+        R(0, 70, Wd, 30, "#4a7a4a"); g.fillStyle = "#3a6a3a"; g.beginPath(); g.moveTo(0, 80); g.quadraticCurveTo(60, 50, 120, 72); g.quadraticCurveTo(180, 52, 240, 76); g.lineTo(240, 100); g.lineTo(0, 100); g.fill();
+        for (let i = 0; i < 22; i++) person(10 + i * 10.5, 86 + Math.sin(i) * 3, "#1a2a1a", 9 + (i % 3));
+        R(116, 20, 8, 8, "#ffcf4a"); R(114, 27, 12, 2, "#ffcf4a"); for (let i = 0; i < 3; i++) { g.strokeStyle = `rgba(255,220,120,${0.5 - ((t + i) % 3) / 6})`; g.beginPath(); g.arc(120, 24, 8 + ((t * 10 + i * 10) % 30), 0, Math.PI * 2); g.stroke(); } break;
+      case "endCrown": sky("#0a1a2e", "#1a3a5a"); R(0, 30, Wd, 70, "rgba(40,90,140,.9)");
+        g.fillStyle = "rgba(20,40,70,.9)"; for (const x of [30, 80, 170, 210]) { g.fillRect(x, 60, 12, 40); g.fillRect(x - 3, 56, 18, 5); }
+        for (let i = 0; i < 10; i++) g.fillRect(i * 24, 30 + Math.sin(t + i) * 1, 16, 1);
+        for (let i = 0; i < 9; i++) { R(106 + i * 3, 70 - (i % 2) * 4, 2, 10, "#8ab0b8"); } R(110, 78, 20, 10, "#5a7a8a"); break;
+      case "endKeeper": sky("#02060e", "#0a1830"); const a = 0.3 + Math.sin(t) * 0.1; g.fillStyle = `rgba(200,230,255,${a})`; g.beginPath(); g.moveTo(100, 0); g.lineTo(140, 0); g.lineTo(160, 100); g.lineTo(80, 100); g.fill();
+        R(104, 60, 32, 30, "#2a3a4a"); R(100, 56, 40, 6, "#3a4a5a"); person(120, 74, "#3b2f7a", 14); R(117, 62, 6, 2, "#3ee0e8");
+        for (let i = 0; i < 12; i++) { const y = 100 - ((t * 6 + i * 11) % 100); g.fillStyle = "rgba(160,220,255,.5)"; g.fillRect((60 + i * 11) | 0, y | 0, 1, 2); }
+        for (let i = 0; i < 4; i++) { g.fillStyle = `rgba(255,255,255,${0.6 - ((t * 0.5 + i / 4) % 1) * 0.6})`; g.fillRect(126 + i * 4, 54 - ((t * 8 + i * 5) % 20), 1, 1); } break;
+    }
+    g.fillStyle = "rgba(0,0,0,.25)"; g.fillRect(0, 0, Wd, 1); g.fillRect(0, Hd - 1, Wd, 1);
+  }
+
   // ================================================================== BOOT
   const saved = load();          // read the save before a fresh game could overwrite it
   newGame(false);
@@ -4057,7 +4564,7 @@
   let last = performance.now();
   function loop(now) {
     const dt = Math.min(0.05, (now - last) / 1000); last = now;
-    update(dt); render();
+    update(dt); render(); paintScene();
     requestAnimationFrame(loop);
   }
   requestAnimationFrame(loop);
