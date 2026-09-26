@@ -160,6 +160,7 @@
   .screen .big:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
   #cardArt { width: min(480px, 88%); height: auto; image-rendering: pixelated; border-radius: 8px; border: 2px solid var(--edge); box-shadow: 0 10px 40px -10px #000; }
   @media (max-height: 560px) { #cardArt { width: min(300px, 60%); } }
+  @media (max-height: 460px) { .screen { gap: 6px; padding: 10px 16px; overflow-y: auto; } .screen h1 { font-size: clamp(24px, 9vh, 40px); } .screen h2 { font-size: 11px; } .screen p { font-size: 12.5px; line-height: 1.35; } .screen .big { padding: 7px 18px; font-size: 16px; } .screen p.diffNote { font-size: 11.5px; } }
   .screen .ghost { font: 500 14px var(--font); color: var(--muted); background: transparent; border: 1px solid var(--edge); border-radius: 8px; padding: 7px 14px; cursor: pointer; }
 
   .splash { position: absolute; left: 0; right: 0; top: 34%; text-align: center; pointer-events: none; z-index: 6; padding: 14px 0; background: linear-gradient(90deg, transparent, rgba(60,0,15,.85) 20%, rgba(60,0,15,.85) 80%, transparent); animation: splash 2.4s ease forwards; }
@@ -289,7 +290,7 @@
   <div class="screen" id="title">
     <h2>A dark adventure in twelve chapters</h2>
     <h1>The Salt Road</h1>
-    <p>You are Sable: left on a rock in the salt as a child, raised by a village that had nothing to spare, and now its courier. You carry what you are given. You have never dropped a package. On the last dry day before the rains, the men who come for the Rain Bell will teach you what it costs to hold on.</p>
+    <p>You are Sable: left on a rock in the salt as a child, raised by a village that had nothing to spare, and now its courier. You carry what you are given. You tell everyone you have never dropped a package. On the last dry day before the rains, the men who come for the Rain Bell will teach you what it costs to hold on.</p>
     <div class="diff" id="diffRow" role="group" aria-label="Difficulty">
       <button type="button" data-d="story">Story</button><button type="button" data-d="normal">Normal</button><button type="button" data-d="hard">Hard</button>
     </div>
