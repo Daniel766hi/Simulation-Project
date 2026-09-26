@@ -7387,7 +7387,7 @@
       for (const [x, y] of [[40, 132], [84, 140], [128, 128], [214, 144]]) { const b = Math.round(Math.sin(t * 3 + x) * 2); PR(g2, x, y + b, 6, 6, OUT); PR(g2, x + 1, y + 1 + b, 4, 4, "#c8a888"); PR(g2, x + 7, y - 4 + b, 2, 6, "#c8a888"); }
       chibi(g2, { robe: "#2a4a6a", hair: "#2a2030", skin: "#c8a888", style: { hair: "long", eye: "#6a8aa8" } }, { dir: "down", walking: true, walk: t * 5 }, 2, 160, 118 + Math.min(14, t * 4));
     } },
-    { dur: 4.8, line: ["The Salt Hermit", "I have been asking questions for four hundred years, courier. Because I never asked the only one that mattered, while it still mattered."], draw: portraitShot(HERMIT_LOOK, { eyes: "down", brows: "worried", tears: true, light: "#8ab0e8" }, nightBg) },
+    { dur: 4.8, line: ["The Salt Hermit", "You went down, courier, and you came back up. I never went down at all."], draw: portraitShot(HERMIT_LOOK, { eyes: "down", brows: "worried", tears: true, light: "#8ab0e8" }, nightBg) },
     { dur: 3.6, fadeOut: 1.0, line: [null, "(In the moonlight, you can see through his hands. They are made of salt.)"], draw: (g2, t) => {
       detail(g2, (c2, tt) => {
         PR(c2, 0, 0, 80, 48, "#0e0c1c"); for (let i = 0; i < 14; i++) PR(c2, (hash(i, 7) * 80) | 0, (hash(i, 9) * 20) | 0, 1, 1, "#8a84a8");
@@ -7597,6 +7597,43 @@
   rookDies = function () { _rookDiesL(); if (loveOn()) G.flags.epitaphs = { ...(G.flags.epitaphs || {}), rook: "Rook, the deserter archer. Held the torch on the Flats; made the shot from inside the Bog King. There would have been room." }; save(); };
   ACHIEVEMENTS.push(["lanterns", "Lanterns over Oru", "Answer Rook's question on the rooftop.", () => !!(G.flags.love && G.flags.love.h3 && !G.flags.love.declined)],
     ["whistle", "Somebody Came Back", "Save Rook from inside Old Gulp.", () => !!G.flags.rookSaved]);
+
+  // ================================================================== THE SONG UNDER THE SALT, AND THE FIRST COURIER
+  // Four notes run through the valley: Ilse's "forging song", the tune Ada's grandmother hummed, what Maru hears
+  // under the salt. They are the drowned asking their question. At the King's throne the player hears where they come from.
+  BANTER.push(
+    { id: "s1", need: ["maru"], where: "old", night: true, when: () => G.stage >= 3, lines: [["maru", "Sable. Stop walking a moment. ...There. Under the salt. Do you hear it?"], ["sable", "The wind."], ["maru", "Four notes, over and over. The same as Ilse's forging song. But it isn't forging. It goes up at the end, like a question nobody's answering."]] },
+    { id: "s2", need: ["ada"], when: () => G.flags.choirDead, lines: [["ada", "(Ada writes on her slate: 'The Choirmaster's hymn had no words. But I knew the tune. My grandmother hummed it doing the washing.')"], ["sable", "Four notes? Ilse hums it too."], ["ada", "(She rubs it out and writes: 'Everybody hums it. Nobody knows where it came from.')"]] },
+    { id: "s3", need: ["warden", "ilse"], when: () => G.stage >= 9, lines: [["warden", "Smith. The four notes you hum. Where did you learn them?"], ["ilse", "My father. He said they came up out of the anvil if you struck it right."], ["warden", "They came up out of the ground. I heard them when I was built, under the water. Many voices at once. It is not a forging song. It is a question, and the living have been humming it for four hundred years without knowing they were asked."]] },
+    { id: "s4", need: ["rook", "ilse"], when: () => G.flags.rookSaved, lines: [["rook", "(Rook is humming. He stops when he notices.) ...Inside the toad. They were all doing it. The dead. Four notes."], ["ilse", "My song."], ["rook", "I don't think it was ever yours, smith."]] },
+  );
+  banterReady = function () {
+    const seen = G.flags.banter || [], here = regionOf(Math.floor(G.px / TILE), Math.floor(G.py / TILE));
+    return BANTER.find(b => !seen.includes(b.id) && b.need.every(id => G.members.includes(id)) && (!b.where || b.where === here) && (!b.night || isNight()) && (!b.dead || (G.flags.fallen || []).includes(b.dead)) && (!b.when || b.when()));
+  };
+  const heardSong = () => (G.flags.banter || []).some(id => ["b1", "s1", "s2", "s3", "s4"].includes(id)) || (G.flags.fallen || []).includes("maru");
+  const kingText = D.king_scene.text;
+  Object.defineProperty(D.king_scene, "text", { configurable: true, get: () => kingText + (heardSong()
+    ? " And all of them, every drowned mouth, are humming. Four notes, rising at the end, never answered. Ilse's forging song. Ada's grandmother's washing song. It was never theirs."
+    : " And all of them, every drowned mouth, are humming four notes, rising at the end, never answered.") });
+  const _extraFatesS = extraFates;
+  extraFates = function () {
+    const out = _extraFatesS();
+    if ((endKindL === "ring" || endKindL === "sleep") && heardSong()) out.push("Children in Kessa still hum the four notes. They have added a fifth, now, at the end. It goes down instead of up. It sounds like an answer.");
+    return out;
+  };
+
+  // ---- Teodor carried Aurel's refusal to the Guild, and sold it
+  D.hermit5_1.go = "hermit5_1b";
+  Object.assign(D, {
+    hermit5_1b: say("hermit5", "I was a courier, before the valley had a word for it. Aurel gave me his answer to carry to the Guild council: he would not sell the lowlands. Corvin met me on the road, before the council ever sat. He asked what I was carrying.", "hermit5_1c"),
+    hermit5_1c: say("hermit5", "He offered me a house on the hill for the letter. Dry ground, for me and mine, forever. I gave it to him. The council never read it. Three weeks later Corvin opened the sluice, and my brother went down into the water with his people, still waiting for an answer I had sold.", "hermit5_1d"),
+    hermit5_1d: say("hermit5", "The first time we met, I asked you what a courier carries. I have known the answer for four hundred years. Everything. A courier carries everything, and sets none of it down.", "hermit5_2"),
+  });
+  D.corvin_scene2.go = "corvin_scene2b";
+  D.corvin_scene2b = say("corvin", "Aurel sent his refusal by courier, you know. His own brother, a boy with a satchel. I met him on the road and offered him a house on the hill for it. He took it. Couriers are the most reasonable people in the world. They know exactly what everything weighs.", "corvin_scene3");
+  const cairn = LORE.find(l => l.id === 6);
+  if (cairn) { const t0 = cairn.text; Object.defineProperty(cairn, "text", { configurable: true, get: () => t0 + (G && G.flags.hermitDone ? " At the very bottom, under all the others, is the oldest stone. Someone has finally scratched a name into it: TEODOR." : "") }); }
 
   // ================================================================== BOOT
   const saved = load();          // read the save before a fresh game could overwrite it
