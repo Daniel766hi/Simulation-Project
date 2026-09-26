@@ -93,3 +93,18 @@ def test_hypothesis_needs_both_tests_and_all_windows_to_agree():
 def test_hypothesis_is_not_supported_without_consistent_evidence(d):
     res = hypothesis_test(d)
     assert not res["supported"]
+
+
+def test_final_report_marks_incomplete_runs_provisional():
+    from final_report import build
+    comp = {"windows": {"1661": {"winner": 0.66, "ours": 0.60, "combined": 0.56}}, "mean": {"winner": 0.66, "ours": 0.60, "combined": 0.56},
+            "tests": {"H1": {"mean_diff": -0.1, "wins": 1, "n": 1, "wilcoxon_p": 0.5, "dm_t_p": 0.5, "supported": False}},
+            "complete": 1, "planned": 9}
+    stack = {"weights": {"ours": 0.5, "win_rec": 0.5}, "windows": {"1661": {"stack": 0.55, "winner": 0.66, "combined": 0.56}},
+             "complete": 1, "planned": 3, "stack_wins_vs_winner": 1, "stack_wins_vs_combined": 1, "better_than_both": False}
+    text = build(comp, stack)
+    assert "provisional (1 of 9 windows)" in text and "provisional (1 of 3 windows)" in text
+    assert "**0.5600**" in text and "no verdict" in text
+    comp["complete"] = stack["complete"] = 9
+    stack["planned"] = 9
+    assert "final" in build(comp, stack) and "stays the method" in build(comp, stack)
