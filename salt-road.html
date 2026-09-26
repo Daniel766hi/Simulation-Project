@@ -7430,38 +7430,36 @@
   const loveOn = () => { const l = LOVE(); return l.n > 0 && !l.declined; };
   const HEARTS = [
     { id: "h1", title: "Night Watch", when: () => G.stage >= 4 && (G.flags.bonds || {}).rook >= 1, lines: [
-      [null, "(It's Rook's watch, but he hasn't moved from the fire in an hour. He sees you awake and doesn't pretend he wasn't looking.)"],
-      ["rook", "Can't sleep either? Sit. The salt's warm here. ...Can I ask you something? Why a courier? You could have done anything. You're fast, you're stubborn, you can take a hit."],
-      ["sable", "Nadia found me on a rock in the salt when I was two. No name, no letter, nothing. Everything else in the world seemed to have somewhere it was going. Letters always do. I wanted to be near things that had somewhere to go."],
-      ["rook", "(He's quiet for a while.) You've got somewhere now. Five of them, snoring. Six, counting me. I don't snore."]],
-      opts: [["\"Sit with me till your watch ends.\"", true, "(He does. Neither of you says anything else. It's the best conversation you've had in years.)"],
-        ["\"You snore, archer. Get some sleep.\"", false, "(He laughs, properly, for the first time since the grove.) Liar. ...Goodnight, courier."]] },
+      [null, "(It's Rook's watch, but he hasn't moved from the fire in an hour.)"],
+      ["rook", "Can I ask you something? Why a courier? You're fast, you're stubborn, you can take a hit. The Guild would have paid you triple."],
+      ["sable", "Nadia found me on a rock in the salt when I was two. No name, no letter. Just a tin whistle on a string round my wrist. Everything else in the world seemed to have somewhere it was going. Letters always do."],
+      ["rook", "(He's quiet for a while.) Voss found me when I was ten. You were found at two. I think you got the better finder."]],
+      opts: [["\"Sit with me till your watch ends.\"", true, "(He moves over to make room on the warm salt. Neither of you says anything else.)"],
+        ["\"Get some sleep, Rook.\"", false, "(He nods. He's still awake when you close your eyes.)"]] },
     { id: "h2", title: "The Blue Thread", when: () => G.stage >= 5 && (G.flags.bonds || {}).rook >= 2, lines: [
-      [null, "(Rook is fletching arrows. You notice the thread is blue, the same blue as your scarf, which tore on a pillar in the Cathedral.)"],
-      ["rook", "I, ah. Picked up the bit that tore off. Good thread. Waste not. (He holds out one arrow.) This one's yours. Fletched it straightest. Don't shoot anything you like with it."],
-      ["rook", "Ilse told me about the medicine. The girl in the storm. I'm sorry. You carry everybody's letters, courier, and you carry that. Who carries yours?"]],
-      opts: [["\"Maybe you could.\"", true, "(He looks at the arrow in your hands instead of at you, which is how you know he heard it.) ...Yeah. Maybe I could."],
-        ["\"Nobody. That's the job.\"", false, "Then it's a bad job. (He goes back to his fletching.) Keep the arrow anyway."]] },
+      [null, "(Rook is fletching arrows. The thread is blue, the same blue as your scarf, which tore on a pillar in the Cathedral. He doesn't mention it.)"],
+      ["rook", "Ilse told me about the medicine. The girl in the storm. (He doesn't look up.) You carry everybody's letters, and you carry that too. Who carries yours?"]],
+      opts: [["\"Maybe you could.\"", true, "(He doesn't answer. He finishes the arrow, and puts it in your quiver instead of his.)"],
+        ["\"Nobody. That's the job.\"", false, "Then it's a bad job. (He goes back to his fletching.)"]] },
     { id: "h3", title: "Lanterns over Oru", when: () => G.stage >= 7 && (G.flags.bonds || {}).rook >= 3 && !G.flags.gulpDead, lines: [
-      [null, "(The roof tiles are still warm from the day. You and Rook sit with your legs over the edge, watching the lanterns climb, not saying much.)"],
+      [null, "(The roof tiles are still warm from the day. You and Rook sit with your legs over the edge, watching the lanterns climb.)"],
       ["rook", "Never thought I'd see them from up here. From the high streets. We always figured the people up here didn't look."],
-      ["rook", "Steady hands, no questions. That's what Voss said about me. I've got a question now. (He doesn't look at you.) When this is over, when there's no Bell to carry... do you want me to stay?"]],
-      opts: [["\"Stay.\"", true, "(He lets out a breath he has clearly been holding since the Grove. His hand finds yours on the warm tiles, and stays there.) ...Okay. Okay. I'll stay."],
-        ["\"Ask me again when this is over. I'll say yes.\"", true, "(He laughs, shaky.) You can't tell a man the answer and make him wait for it. That's cruel. ...I'll ask. Every day, if I have to."],
-        ["\"You're my friend, Rook. The best I have.\"", "decline", "(A pause. Then he bumps your shoulder with his.) Best you have. That's not nothing. That's a lot, actually, for a man like me. ...Look, there goes another one."]] },
+      ["rook", "I can't stay in Oru, after. They hang Guild deserters in that square. I was thinking of Kessa. (A pause.) If there's room."]],
+      opts: [["\"There's room. Stay.\"", true, "(He lets out a breath he's been holding since the Grove. His hand finds yours on the tiles, and stays there.)"],
+        ["\"Ask me again when the Bell is home.\"", true, "(He nods slowly.) When the Bell is home. ...I'll ask."],
+        ["\"Kessa takes anyone in. It took me. You'll have friends there.\"", "decline", "(A pause. Then he bumps your shoulder with his.) Friends. That's more than a man like me gets to expect. ...Thank you, courier."]] },
     { id: "h4", title: "The Whistle", when: () => G.stage >= 7 && !G.flags.gulpDead && loveOn() && LOVE().h3, lines: [
-      [null, "(The marsh is close. You can smell it. You take the tin whistle from around your neck: the one Nadia tied to your wrist on the rock, the only thing you had.)"],
-      ["sable", "Couriers use these in salt-storms. Three short notes. I've never lost a letter, Rook. I always find where things are going."],
-      ["sable", "So if you're ever lost, blow it, and I'll come."],
-      ["rook", "(He turns it over in his fingers like it might break.) And if I'm somewhere you can't follow?"]],
-      opts: [["\"Then blow it anyway.\"", true, "(He puts the cord over his head and tucks the whistle inside his shirt, over his heart.) Anyway. Got it. (Quietly.) Nobody ever gave me anything I didn't have to thank the Guild for."]],
+      [null, "(The marsh is close. You can smell it. You take the tin whistle from around your neck: the one you were found with. The only thing that was ever yours before you were anybody.)"],
+      ["sable", "Couriers use these in salt-storms. Three short notes. I've never lost a letter, Rook. I always find where things are going. If you're ever lost, blow it, and I'll come."],
+      ["rook", "(He turns it over in his fingers.) And if I'm somewhere you can't follow?"]],
+      opts: [["\"Then blow it anyway.\"", true, "(He doesn't thank you. In the orphanage they thanked the Guild for everything, every meal and every beating. He just puts the cord over his head, and tucks the whistle inside his shirt.)"]],
       done: () => { LOVE().token = true; } },
-    { id: "h5", title: "What I Thought About", when: () => G.stage >= 9 && LOVE().saved && G.members.includes("rook"), lines: [
-      [null, "(Rook's hands still shake. He shoots anyway. Tonight he holds a cup of tea with both of them and doesn't drink it.)"],
-      ["rook", "When I was inside it. In the dark, with the others. I thought I'd think something clever. Some last line. Ilse would've liked a last line."],
-      ["rook", "I didn't think anything clever. Just your name. Over and over, like a stupid song. And then I remembered the whistle."]],
-      opts: [["(Kiss him.)", true, "(He goes very still, like a man who has been shot, and then he kisses you back, carefully, like you are the one who might break. Across the fire, Ilse pointedly turns around. Maru, who is blind, says \"Finally.\")"],
-        ["(Take his shaking hands in yours until they stop.)", true, "(It takes a long time. Neither of you minds. When they stop, he leans his forehead against yours and says, \"There. Steady hands. Still got the questions, though.\")"]] },
+    { id: "h5", title: "Down There", when: () => G.stage >= 9 && LOVE().saved && G.members.includes("rook"), lines: [
+      [null, "(Rook's hands still shake. He shoots anyway. Tonight he's holding a cup of tea with both of them, and not drinking it.)"],
+      ["rook", "When I was inside it, in the dark, with the others... I kept thinking about Aba. The way he looked at me. And I thought: that's fair. That's where I belong. Down here, with the ones I let die."],
+      ["rook", "Then I heard you coming."]],
+      opts: [["\"Nobody belongs down there. Not even you.\"", true, "(He looks at you for a long time. Then he leans his forehead against yours, and stays there until the fire burns down.)"],
+        ["(Say nothing. Take his hands until they stop shaking.)", true, "(It takes a long time. When they're still, he doesn't let go.)"]] },
   ];
   for (const h of HEARTS) {
     const base = `love_${h.id}_`;
@@ -7473,7 +7471,7 @@
         const l = LOVE(); l[h.id] = true;
         if (warm === "decline") l.declined = true; else if (warm) l.n++;
         if (h.done) h.done();
-        save(); updateHud(); toast(warm === "decline" ? "Rook: a friend, the best kind." : `♥ ${h.title}`);
+        save(); updateHud();
       });
     });
   }
@@ -7481,34 +7479,35 @@
   const _campSceneL = campScene;
   campScene = function () {
     const h = heartReady();
-    if (h) { setTimeout(() => { card("By the fire", h.title, "Rook, Sable, and a fire that nobody else seems to need tonight."); const w = () => { if (mode === "card") { setTimeout(w, 200); return; } openDialog(`love_${h.id}_0`); }; setTimeout(w, 200); }, 400); return true; }
+    if (h) { setTimeout(() => { card("By the fire", h.title, "Rook"); const w = () => { if (mode === "card") { setTimeout(w, 200); return; } openDialog(`love_${h.id}_0`); }; setTimeout(w, 200); }, 400); return true; }
     return _campSceneL();
   };
   const _updateL = update;
   update = function (dt) {   // a nudge, once per scene, so a player who never rests doesn't miss it
     _updateL(dt);
     if (mode !== "play" || !G || !G.stage) return;
-    const h = heartReady(); if (h && !LOVE()[h.id + "n"]) { LOVE()[h.id + "n"] = true; setTimeout(() => toast("Rook keeps glancing at you. Maybe rest at a fire tonight."), 1500); }
+    const h = heartReady(); if (h && !LOVE()[h.id + "n"]) { LOVE()[h.id + "n"] = true; setTimeout(() => toast("Rook has been quiet all day. Maybe rest at a fire tonight."), 1500); }
   };
 
   // ---- Old Gulp: the whistle
   Object.assign(D, {
     gulp_love0: say(null, "(From inside Old Gulp: three short notes of a courier's whistle. Weaker now.)", "gulp_love1"),
     gulp_love1: say(null, "(You don't wait for it to finish dying. You go in through the throat sac with a knife and both arms, into the heat and the acid and the faces, and you find a hand holding a tin whistle, and you pull.)", "gulp_love2"),
-    gulp_love2: say("rook", "(He comes out burned white, bow snapped, coughing black water, alive.) Told you I could make the shot. Didn't say from which side. (He opens one eye.) ...You came in after me. You absolute idiot.", "gulp_love3"),
+    gulp_love2: say("rook", "(He comes out burned white, bow snapped, coughing black water. Alive.) ...Told you I could make the shot. Didn't say from which side.", "gulp_love3"),
     gulp_love3: say("sable", "You blew it. I said I'd come.", "gulp_love4"),
-    gulp_love4: say("rook", "You said blow it anyway. So I did. (His laugh turns into coughing, and then into something that isn't either.) Ilse. Ilse, I held the torch, that night on the Flats. I never said sorry properly. I'm saying it now. I'm going to keep saying it, because I get to.", "gulp_love5"),
+    gulp_love4: say("rook", "You said anyway. (He turns his head, and finds Ilse.) Ilse. I held the torch, that night on the Flats. I never said sorry properly. I'm saying it now. I'll keep saying it. Turns out I get to.", "gulp_love5"),
     gulp_love5: say("ilse", "(Ilse sits down hard in the mud next to him, and puts her ruined hand on his chest, over the whistle, to feel it rise and fall.) ...Say it tomorrow, archer. Say it every day. I'll get sick of it eventually.", null, () => {
       const l = LOVE(); l.saved = true; G.flags.rookSaved = true; const h = G.party.rook; if (h) { h.hp = Math.max(1, Math.round(h.maxHp * 0.3)); h.maxHp = Math.max(10, h.maxHp - 4); }
-      save(); updateHud(); card("He lives", "Rook", "His hands shake now, and there are white burns up both his arms that will never fade. He wears your whistle on its cord and does not take it off, not to wash, not to sleep. When anyone asks about the scars, he says: \"Somebody came back for me.\"");
+      save(); updateHud(); card("He lives", "Rook", "His hands shake now, and there are white burns up both his arms that will never fade. He wears your whistle on its cord and does not take it off. When anyone asks about the scars, he says somebody came back for him, and leaves it at that.");
       setTimeout(() => { const w = () => { if (mode === "card") { setTimeout(w, 200); return; } openDialog("warden2_love"); }; w(); }, 400);
     }),
-    warden2_love: say("warden2", "(The ground trembles. The Warden walks out of the rain, crystal steaming, and looks at Rook, alive and shaking in the mud, for a long moment.) I remember him. He was a child at my steps once. He threw stones at pigeons and apologised to each one. ...Good. Good.", "warden2_1"),
+    warden2_love: say("warden2", "(The ground trembles. The Warden walks out of the rain, crystal steaming, and looks at Rook alive in the mud, and then at the burns on your arms.) Four hundred years ago, a king went down into the water after his people. He did not come back up. ...You did. Remember that, courier, when you meet him.", "warden2_1"),
   });
   // if love was spoken but the whistle never given, he still dies, and knows it
   Object.assign(D, {
-    gulp_after3l: { who: "rook", text: "(His hand finds yours. It is already cold.) I was going to ask you again. When this was over. ...Tell me it was enough. It doesn't have to be true.", choices: [
-      { t: "\"Yes. I would have said yes.\"", go: "rook_die1" }, { t: "\"It was enough, Rook. You were enough.\"", go: "rook_die2" } ] },
+    gulp_after3l: { who: "rook", text: "(His hand finds yours. It is already cold.) Would there have been room? In Kessa. ...Tell me there would. It doesn't have to be true.", choices: [
+      { t: "\"There was always room.\"", go: "rook_diel" }, { t: "\"It's true, Rook. That's the worst part.\"", go: "rook_diel" } ] },
+    rook_diel: say("ilse", "(Ilse kneels and closes his eyes with her ruined hands. She doesn't say anything clever. After a while she says:) We'll carry your bow, archer.", null, () => rookDies()),
   });
   const _openDialogL = openDialog;
   openDialog = function (id) {
@@ -7554,7 +7553,6 @@
     { dur: 4.4, fadeOut: 1.0, line: [null, "You drag him out into the rain. He is burned white, and his bow is snapped, and he is breathing."], draw: (g2, t) => {
       AREA_BG.marsh(g2, t); PX.rain(g2, t, 140);
       chibi(g2, ROOK_L(), { rot: 1 }, 2, 176, 176); chibi(g2, SABLE_L(), { dir: "left" }, 2, 204, 172);
-      if (Math.sin(t * 3) > 0) drawEmote(g2, 170, 132, "heart");
     } },
   ];
   CINE_BEFORE.love_h3_0 = { shots: LANTERNS, music: "cine_lullaby" };
@@ -7568,16 +7566,16 @@
   extraJournalHtml = function () {
     const l = G.flags.love; if (!l || (!l.n && !l.declined)) return _extraJournalL();
     const seen = HEARTS.filter(h => l[h.id]).map(h => h.title);
-    const state = l.declined ? "Rook is your friend. The best kind." : l.saved ? "Rook wears your whistle over his heart. Somebody came back for him." : G.flags.rookDead ? "You would have said yes." : l.token ? "Rook wears your whistle over his heart." : "Something is growing between you and Rook.";
-    return _extraJournalL() + `<h3>♥ The Archer and the Courier</h3><p>${state}</p><p class="dim" style="font-size:13px">${seen.join(" · ")}</p>`;
+    const state = l.declined ? "A friend. He'll come to Kessa." : l.saved ? "He wears your whistle. His hands shake. He shoots anyway." : G.flags.rookDead ? "There would have been room." : l.token ? "He wears your whistle, under his shirt." : l.h3 ? "He asked if there was room in Kessa." : "Some nights he doesn't wake you for your watch.";
+    return _extraJournalL() + `<h3>Rook</h3><p>${state}</p><p class="dim" style="font-size:13px">${seen.join(" · ")}</p>`;
   };
   const _chronicleL = chronicle;
   chronicle = function () {
     const P = _chronicleL(), l = G.flags.love;
     if (l && l.n >= 2 && !l.declined) P.splice(P.length - 1, 0, ["The Archer and the Courier", l.saved
-      ? "The courier gave the archer her whistle before the marsh, the only thing she had owned as a foundling. When Old Gulp swallowed him, he blew it from inside the dark, and she went in after him. I am told the burns on her arms match his. I am told neither of them minds."
-      : G.flags.rookDead ? "The archer loved the courier, and I think she loved him, and he died in the marsh before either of them said it plainly. Every spring there is a new arrow on his grave at Reedholm, fletched with blue thread. Everyone knows who leaves them."
-      : "Somewhere between the Grove and the gate, the courier and the archer stopped sitting on opposite sides of the fire."]);
+      ? "Before the marsh, the courier gave the archer the tin whistle she had been found with. When Old Gulp swallowed him, he blew it from inside the dark, and she went in after him. Of everything in this chronicle, it is the only time I know of that someone went back down into the water for another, and came up again."
+      : G.flags.rookDead ? "The archer asked the courier if there was room for him in Kessa. He died in the marsh before he could find out. Every spring there is a new arrow on his grave at Reedholm, fletched with blue thread. Everyone knows who leaves them."
+      : "Somewhere between the Grove and the gate, the courier and the archer stopped sitting on opposite sides of the fire. Nobody remarked on it."]);
     return P;
   };
   const _extraFatesL = extraFates;
@@ -7585,18 +7583,18 @@
     const out = _extraFatesL(), l = G.flags.love; if (!l || l.declined || l.n < 2) return out;
     const k = endKindL;
     if (l.saved && G.members.includes("rook")) out.push({
-      ring: "Rook asks Sable the same question every morning for a year, on the steps of the rebuilt bell tower. Every morning she says yes. On the last dry day of the year they are married under the Rain Bell, and it rings on its own.",
-      sleep: "Rook asks Sable the same question every morning for a year. Every morning she says yes. They are married at the gate of Oru, under Aurel's name, and every year they take Aba's widow a letter, and every year she forgives him a little more.",
-      keeper: "Every night, Rook rows out to where the whirlpool used to be and shoots one lantern-arrow high over the water, so Sable, below, can see which way is up. He is an old man before he misses a night. He never does.",
-      crown: "Rook is the last to go under. He does not fight the water. He blows the whistle, three short notes, and waits for her to come. She does not come. She is the sea now. It sounds, very faintly, like a whistle forever.",
-      seat: "Rook leaves the high ground the week Sable takes the Guild's seat. He leaves the whistle on her desk. She keeps it in a drawer she never opens, and never closes.",
-    }[k] || "Rook and Sable walk home together. That is the whole story, and it is enough.");
+      ring: "Rook comes to Kessa. He re-hangs the bell-rope Lio died holding, and teaches the village children to shoot at targets and never at people. Some evenings he and Sable walk out to the edge of the salt and don't say much.",
+      sleep: "Rook comes to Kessa. Every year he and Sable carry a letter to Aba's widow, and every year she lets him a little further past the door.",
+      keeper: "Rook lives out his life in a hut at the end of Nell's pier. On quiet nights he sits with his feet in the water, so that someone below knows someone above is still there.",
+      crown: "Rook goes under with everyone else, the tin whistle still round his neck. In the perfectly silent kingdom nothing is ever lost again, and nothing is ever found.",
+      seat: "Rook leaves the high ground the week Sable takes the Guild's seat. He grew up in a Guild orphanage; he knows what that chair does to people. He leaves the whistle on her desk.",
+    }[k] || "Rook comes to Kessa.");
     else if (G.flags.rookDead) out.push("Every spring there is a new arrow on Rook's grave at Reedholm, fletched with blue thread. Everyone knows who leaves them.");
     return out;
   };
   // his epitaph and the dream remember the whistle, if it was given
   const _rookDiesL = rookDies;
-  rookDies = function () { _rookDiesL(); if (loveOn()) G.flags.epitaphs = { ...(G.flags.epitaphs || {}), rook: "Rook, the deserter archer. Held the torch on the Flats; made the shot from inside the Bog King. Loved, and would have been asked again." }; save(); };
+  rookDies = function () { _rookDiesL(); if (loveOn()) G.flags.epitaphs = { ...(G.flags.epitaphs || {}), rook: "Rook, the deserter archer. Held the torch on the Flats; made the shot from inside the Bog King. There would have been room." }; save(); };
   ACHIEVEMENTS.push(["lanterns", "Lanterns over Oru", "Answer Rook's question on the rooftop.", () => !!(G.flags.love && G.flags.love.h3 && !G.flags.love.declined)],
     ["whistle", "Somebody Came Back", "Save Rook from inside Old Gulp.", () => !!G.flags.rookSaved]);
 
