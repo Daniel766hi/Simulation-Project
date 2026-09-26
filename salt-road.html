@@ -294,7 +294,7 @@
   "use strict";
   const $ = id => document.getElementById(id);
   const REDUCED = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const TILE = 16, W = 130, H = 90, OW = 72, OH = 54, VIEW_W = 320, VIEW_H = 192;
+  const TILE = 16, W = 170, H = 90, OW = 72, OH = 54, VIEW_W = 320, VIEW_H = 192;
   const SETTINGS = { music: 0.8, sfx: 0.8, text: "normal", battle: "normal", shake: true };
   try { Object.assign(SETTINGS, JSON.parse(localStorage.getItem("salt-road-settings") || "{}")); } catch { /* storage unavailable */ }
   let paused = false;
@@ -605,10 +605,21 @@
     rect(75, 37, 103, 52, T.ABYSS); outline(74, 36, 104, 53, T.CORAL);
     for (let i = 0; i < 40; i++) { const x = 76 + Math.floor(hash(i, 401) * 27), y = 39 + Math.floor(hash(i, 403) * 12); if (Math.abs(x - 89) > 2) set(x, y, T.CORAL); }
     carve([[89, 52], [89, 38]], T.ABYSS, 1); rect(86, 37, 92, 40, T.ABYSS);
+    // The Hollow Beneath: salt mines under the Well of Nine
+    carve([[133, 16], [140, 16], [140, 8], [150, 8], [150, 14], [158, 14], [158, 4], [167, 4]], T.DARK, 1);
+    carve([[145, 8], [145, 3]], T.DARK, 1); carve([[154, 14], [154, 17]], T.DARK, 1); rect(143, 2, 148, 4, T.DARK); rect(136, 10, 139, 13, T.DARK);
+    for (const [x, y] of [[141, 7], [149, 15], [157, 5], [146, 2]]) set(x, y, T.CRYSTAL);
+    carve([[165, 22], [167, 22]], T.DARK); carve([[165, 22], [160, 22], [160, 25]], T.DARK, 1); rect(146, 24, 160, 32, T.DARK);
+    rect(147, 28, 159, 29, T.WATER); set(153, 28, T.BRIDGE); set(153, 29, T.BRIDGE); carve([[146, 31], [140, 31], [140, 34], [133, 34]], T.DARK, 1);
+    for (const x of [148, 151, 155, 158]) set(x, 25, T.WALL);
+    carve([[133, 40], [140, 40], [140, 47], [145, 47]], T.DARK, 1);
+    outline(145, 41, 165, 53, T.WALL); rect(146, 42, 164, 52, T.FLOOR); set(145, 47, T.FLOOR);
+    for (const [x, y] of [[148, 44], [148, 50], [162, 44], [162, 50]]) set(x, y, T.WALL);
+    for (const [x, y] of [[166, 4], [167, 22], [134, 34], [133, 40], [133, 16]]) set(x, y, T.STAIRS);
     fixSpots();
   }
   // Keep every story spot in the new regions standing on floor
-  function floorFor(x, y) { const r = x >= 74 && x <= 104 && y <= 32 ? T.COBBLE : x >= 106 && y <= 31 ? T.SPIRE : x >= 106 && y <= 54 ? T.STONE : x >= 74 && x <= 104 && y >= 36 && y <= 53 ? T.ABYSS : y >= 55 && x <= 61 ? T.GRASS : T.SAND; return r; }
+  function floorFor(x, y) { if (x >= 130) return T.DARK; const r = x >= 74 && x <= 104 && y <= 32 ? T.COBBLE : x >= 106 && y <= 31 ? T.SPIRE : x >= 106 && y <= 54 ? T.STONE : x >= 74 && x <= 104 && y >= 36 && y <= 53 ? T.ABYSS : y >= 55 && x <= 61 ? T.GRASS : T.SAND; return r; }
   function fixSpots() {
     const spots = [...NPCS, ...FIELD, ...LORE, ...(typeof PARTS !== "undefined" ? PARTS : []), ...(typeof SHRINES !== "undefined" ? SHRINES : []), ...TOBIN_PAGES];
     for (const sp of spots) if ((sp.x >= OW || sp.y >= OH) && SOLID.has(get(sp.x, sp.y))) set(sp.x, sp.y, floorFor(sp.x, sp.y));
@@ -619,6 +630,7 @@
     if (G.flags.unlocked) set(34, 11, T.DARK);
     if (G.stage >= 9) for (let y = 70; y <= 73; y++) set(61, y, T.SHALLOW);
     if (G.flags.guildOpen) set(84, 11, T.FLOOR);
+    if (G.flags.minesOpen) set(38, 29, T.STAIRS);
     miniDirty = true;
   }
 
@@ -1203,6 +1215,10 @@
     { x: 111, y: 13, to: [112, 8] }, { x: 111, y: 9, to: [112, 14] },
     { x: 117, y: 86, to: [89, 50], req: () => G.stage >= 12 && G.flags.bellReady, msg: "A whirlpool churns below the pier. Without Nell's diving bell, you'd drown. (Chapter XII)" },
     { x: 89, y: 52, to: [117, 84] },
+    { x: 38, y: 29, to: [135, 16], req: () => G.flags.minesOpen },
+    { x: 133, y: 16, to: [37, 29] },
+    { x: 166, y: 4, to: [165, 22] }, { x: 167, y: 22, to: [165, 4] },
+    { x: 134, y: 34, to: [135, 40] }, { x: 133, y: 40, to: [135, 34] },
   ];
   let warpFade = 0;
   // Safety net: if the party ever ends up inside something solid (an old save, a push), step to the nearest free spot.
@@ -1257,6 +1273,8 @@
     { name: "The Drowning Marsh", x0: 2, y0: 55, x1: 61, y1: 89, music: "marsh" }, { name: "The Wreck Coast", x0: 62, y0: 55, x1: 128, y1: 89, music: "coast" },
     { name: "The Storm Spire", x0: 110, y0: 1, x1: 126, y1: 31, music: "spire" }, { name: "The Storm Road", x0: 106, y0: 32, x1: 128, y1: 54, music: "spire" },
     { name: "The Deep", x0: 74, y0: 36, x1: 104, y1: 53, music: "deep" },
+    { name: "The Salt Galleries", x0: 130, y0: 0, x1: 169, y1: 19, music: "deep" }, { name: "The Sluice Works", x0: 130, y0: 20, x1: 169, y1: 37, music: "deep" },
+    { name: "Corvin's Vault", x0: 130, y0: 38, x1: 169, y1: 56, music: "deep" },
     { name: "The Glass Flats", x0: 0, y0: 0, x1: W, y1: H, music: "flats" },
   ];
   function goal() {
@@ -1298,6 +1316,7 @@
     const t0 = get(tx, ty);
     if (t0 === T.DARK) return "cathedral";
     if (tx >= 74 && tx <= 104 && ty <= 32) return t0 === T.FLOOR ? "hall" : "oru";
+    if (tx >= 130) return "cathedral";
     if (tx >= 106 && ty <= 54) return ty <= 31 ? "spireIn" : "spire";
     if (tx >= 74 && tx <= 104 && ty >= 36 && ty <= 53) return "deep";
     if (ty >= 55) return tx <= 61 ? "marsh" : "coast";
@@ -2167,7 +2186,7 @@
     }
     const reg = REGIONS.find(r => tx >= r.x0 && tx <= r.x1 && ty >= r.y0 && ty <= r.y1);
     const inDark = get(tx, ty) === T.DARK;
-    Music.play(inDark ? "cathedral" : reg ? reg.music : "flats");
+    Music.play(tx >= 130 ? "deep" : inDark ? "cathedral" : reg ? reg.music : "flats");
     if (reg && reg.name !== region) {
       const first = region === ""; region = reg.name;
       if (!first) { const bn = $("banner"); $("bannerText").textContent = reg.name; bn.hidden = true; void bn.offsetWidth; bn.hidden = false; clearTimeout(bn._t); bn._t = setTimeout(() => { bn.hidden = true; }, 2800); }
@@ -3347,12 +3366,13 @@
   // ---- routing: when the goal is in another region, point at the passage that leads toward it
   function regionOf(x, y) {
     if (x < OW && y < OH) return "old";
+    if (x >= 130) return "mines";
     if (x >= 74 && x <= 104 && y <= 32) return "oru";
     if (x >= 106 && y <= 54) return "spire";
     if (x >= 74 && x <= 104 && y >= 36 && y <= 53) return "deep";
     return "south";
   }
-  const REGION_LINKS = { old: { oru: [61, 11], south: [12, 51] }, oru: { old: [89, 31], spire: [104, 17] }, spire: { oru: [108, 50] }, south: { old: [14, 57], deep: [117, 86] }, deep: { south: [89, 52] } };
+  const REGION_LINKS = { mines: { old: [133, 16] }, old: { oru: [61, 11], south: [12, 51], mines: [38, 29] }, oru: { old: [89, 31], spire: [104, 17] }, spire: { oru: [108, 50] }, south: { old: [14, 57], deep: [117, 86] }, deep: { south: [89, 52] } };
   function routedGoal() {
     const t = goal(); if (!t.text) return t;
     const from = regionOf(Math.floor(G.px / TILE), Math.floor(G.py / TILE)), to = regionOf(t.x, t.y);
@@ -4633,7 +4653,7 @@
     ["Oru", 89, 20], ["Guild Hall", 84, 7], ["Drowning Marsh", 20, 70], ["Reedholm", 37, 67], ["Bog Heart", 13, 84], ["Wreck Coast", 95, 66], ["Lighthouse", 121, 59],
     ["Storm Road", 116, 46], ["Storm Spire", 118, 16], ["The Deep", 89, 44]];
   function showWorldMap() {
-    showPanel("World map", `<canvas id="worldMap" width="520" height="360" aria-label="World map"></canvas>
+    showPanel("World map", `<canvas id="worldMap" width="${W * 4}" height="${H * 4}" aria-label="World map"></canvas>
       <div class="maplegend"><span><i style="background:#3ee0e8"></i>You</span><span><i style="background:#ffcf4a"></i>Goal</span><span><i style="background:#fff"></i>Open passage</span><span><i style="background:#c8102e"></i>Monsters</span><span><i style="background:#9ef0f5"></i>Unread tablet</span></div>`);
     drawMinimap();
     const c = $("worldMap"), m = c.getContext("2d"), S = 4, fog = G.flags.fog || "";
@@ -4650,6 +4670,231 @@
     $("pausePanel").querySelector(".maplegend").insertAdjacentHTML("beforeend", `<span>Explored: ${pct}%</span>`);
   }
 
+  // ================================================================== THE HOLLOW BENEATH (optional dungeon) and THE TRUTH PATH
+  Object.assign(MONSTERS, {
+    saltworm: { name: "Salt Worm", hp: 70, atk: 17, def: 6, spd: 6, xp: 46, coin: [5, 10], sprite: "leech",
+      pal: { "#6b2a5a": "#d8d0c0", "#7d3468": "#e8e2d0", "#a0508a": "#f4f0e8", "#5a0f18": "#8a1020", "#c8102e": "#9ef0f5" },
+      moves: [{ name: "Burrowing Bite", w: 3, power: 1.2, bleed: [3, 3] }, { name: "Salt Spray", w: 1, power: 0.7, all: true, weakAll: 2 }] },
+    minerghoul: { name: "Drowned Miner", hp: 62, atk: 18, def: 5, spd: 7, xp: 48, coin: [8, 14], sprite: "ghoul",
+      pal: { "#e8e2f0": "#8a8aa0", "#d8d0e6": "#7a7a90", "#a3242e": "#3a4a5a", "#f2ead8": "#ffcf6a" },
+      moves: [{ name: "Pickaxe", w: 3, power: 1.35, bleed: [3, 2] }, { name: "Cave-in", w: 1, power: 0.8, all: true, stunChance: 0.2 }] },
+    sluicer: { name: "Sluice Engine", hp: 110, atk: 19, def: 11, spd: 3, xp: 64, coin: [12, 20], sprite: "clerk",
+      pal: { "#8a6a2a": "#6a4a3a", "#a88a3a": "#8a5a3a", "#c9a227": "#a86a3a", "#e8e2d0": "#3a8fbf", "#ff6b3a": "#9ef0f5", "#d9a070": "#9a8a7a" },
+      moves: [{ name: "Floodgate", w: 3, power: 1.1, all: true }, { name: "Crush", w: 2, power: 1.5, stunChance: 0.25 }] },
+    corvin: { name: "Corvin, the First Guildmaster", hp: 760, atk: 20, def: 10, spd: 6, xp: 480, coin: [200, 200], sprite: "corvin", boss: true, music: "boss", tall: true,
+      moves: [{ name: "Ledger of Debts", w: 3, power: 1.3, weakAll: 2 }, { name: "Open the Sluice", w: 2, power: 1.0, all: true, bleed: [4, 2] },
+              { name: "Salt Preservation", w: 1, guard: true, heal: 40 }, { name: "Forty Thousand", w: 0, charge: true, power: 1.7, all: true },
+              { name: "Call the Paid", w: 0, summonKind: "minerghoul", summonText: "Corvin rings a coin against his crystal throne. The miners he paid double crawl out of the walls." }] },
+  });
+  Object.assign(BESTIARY, {
+    saltworm: "They eat salt, and whatever the salt has preserved.", minerghoul: "Miners paid double to dig the sluice. They never came back up to spend it.",
+    sluicer: "The machine that opened the sea onto forty thousand people. Still trying to finish the job.",
+    corvin: "The first Guildmaster. He ate salt for four hundred years so he would never rot, and never had to answer for anything.",
+  });
+  Object.assign(RELICS, { corvinseal: { name: "Corvin's Seal", from: "corvin", desc: "+4 attack, +20% coin from battles. It feels heavier than it is.", atk: 4, coinBonus: 0.2 } });
+  const _chooseIntent2b = chooseIntent2b;
+  chooseIntent2b = function (f, find) {
+    if (f.id === "corvin") { if (f.hp < f.maxHp * 0.6 && !f.summoned) { f.summoned = true; return { ...find("summonKind") }; } if (battle.round % 4 === 0) return find("charge"); }
+    if (f.id === "king" && f.noSummon) { if (!f.summoned) f.summoned = true; if (f.hp < f.maxHp * 0.5 && !f.phase2) { f.phase2 = true; return { ...find("bleedAll"), announce: "The King rises one last time, not as a flood, but as a man with a sword." }; } if (f.phase2 && battle.round % 3 === 0) return find("charge"); return null; }
+    return _chooseIntent2b(f, find);
+  };
+  FIELD.push(
+    { id: "h1", x: 140, y: 12, group: ["saltworm", "saltworm"], minStage: 9, dark: true }, { id: "h2", x: 150, y: 11, group: ["minerghoul", "saltworm"], minStage: 9, dark: true },
+    { id: "h3", x: 158, y: 8, group: ["minerghoul", "minerghoul"], minStage: 9, dark: true }, { id: "h4", x: 152, y: 26, group: ["sluicer"], minStage: 9, dark: true },
+    { id: "h5", x: 140, y: 32, group: ["minerghoul", "sluicer"], minStage: 9, dark: true }, { id: "h6", x: 140, y: 44, group: ["saltworm", "minerghoul", "saltworm"], minStage: 9, dark: true },
+  );
+  npc2({ id: "tamsin", name: "Old Tamsin", x: 137, y: 12, look: { robe: "#5a5a6a", hair: "#bfb8a8", skin: "#9ab8c8", glowEyes: true, style: { hair: "cap", coat: true } }, show: () => G.stage >= 9 });
+  npc2({ id: "foreman", name: "A salt-preserved foreman", x: 150, y: 23, look: { robe: "#6a5a4a", hair: "#3a2a1e", skin: "#d8d0c0", dead: true }, show: () => G.stage >= 9 });
+  SPEAKERS.tamsin = "Old Tamsin"; SPEAKERS.foreman = "The foreman's diary"; SPEAKERS.corvin = "Corvin, the First Guildmaster";
+  LORE.push(
+    { id: 16, x: 146, y: 3, title: "A Miner's Tally", text: "Scratched into the salt, rows and rows of marks. At the end: \"Double pay for the channel. Nobody asks what the channel is for. I have six children. I don't ask either.\"" },
+    { id: 17, x: 158, y: 31, title: "The Sluice Plaque", text: "Brass, polished even now: \"THE ORU IRRIGATION WORKS. PROGRESS FOR THE VALLEY. COMMISSIONED BY GUILDMASTER CORVIN.\" Someone has scratched underneath, with a knife: \"40,000.\"" },
+    { id: 18, x: 140, y: 44, title: "Corvin's Motto", text: "Carved over the vault door: \"THE FUTURE IS ALWAYS PAID FOR BY SOMEONE. WISDOM IS CHOOSING WHO.\"" },
+    { id: 19, x: 163, y: 51, title: "Aurel's Last Letter", text: "Kept in Corvin's vault, never delivered: \"To the Guild: I will not sell the lowlands. My people's dead are buried there, and the dead do not move for money. Do what you will. I will not leave them. Aurel.\"" },
+  );
+  Object.assign(D, {
+    well_mines: say("warden", "(The Warden stops at the edge of the pool. The rains have shifted the water, and salt steps spiral down into the dark.) I remember men going down these steps with lanterns. I remember the lanterns coming back up. Not always the men.", "well_mines2"),
+    well_mines2: { who: null, text: "A cold wind rises from the stairs, smelling of salt and old water.", choices: [
+      { t: "Open the way down.", go: null, act: () => { G.flags.minesOpen = true; applyWorldState(); toast("The Hollow Beneath is open: the salt steps by the Well of Nine."); save(); updateHud(); } },
+      { t: "Not yet.", go: null } ] },
+    tamsin_0: say("tamsin", "(A miner's ghost sits on an upturned cart, turning a coin over and over.) Visitors. Living ones. We don't get many. Corvin paid us double, you know. Double, to dig a channel from the old sea, down to the lowlands where the King's people farmed.", "tamsin_1"),
+    tamsin_1: say("tamsin", "We thought it was irrigation. That's what the plaque says. The night he opened the sluice, we were up top, drinking the double pay. We heard it from up there. Forty thousand people. We heard it and we kept drinking. What else was there to do?", "tamsin_2"),
+    tamsin_2: { who: "tamsin", text: "Some of us came back down to close it. We never got back up. Tell me, courier: are we murderers, or just men who needed the money?", choices: [
+      { t: "\"Both. That's what makes it terrible.\"", go: "tamsin_a" },
+      { t: "\"You came back down. That matters.\"", go: "tamsin_b" } ] },
+    tamsin_a: say("tamsin", "Both. Yes. I've had four hundred years to think it over and 'both' is the only answer that doesn't slip off. Corvin's down in the vault, at the bottom. He never rotted. He ate the salt. Go and ask him if he thinks it's both.", null, () => { G.flags.minesLore = true; save(); }),
+    tamsin_b: say("tamsin", "It matters to me. I don't know if it matters to them. Corvin's down in the vault, at the bottom. He never rotted. He ate the salt. Go and ask him what he thinks matters.", null, () => { G.flags.minesLore = true; save(); }),
+    tamsin_after: say("tamsin", "You found his ledger? Then the truth is up there now, in the light. Maybe we can rest. Maybe we just get to stop pretending."),
+    foreman_0: say("foreman", "Clutched in the salt-stiff hands of a foreman: \"Corvin says the lowlands will be 'freed for development'. King Aurel will not sell, so the water will buy it. Corvin says in a hundred years no one will remember, and in two hundred they will thank us for the high ground. God help me, I think he's right.\""),
+    corvin_scene: say("corvin", "(In the vault, a man sits on a throne of salt crystal. His skin is white and hard as a statue's, his eyes wet and alive. Ledgers are stacked to the ceiling.) Visitors. The first in two centuries. Please, don't be alarmed. I ate the salt so I would never rot. It has worked, mostly.", "corvin_scene2"),
+    corvin_scene2: say("corvin", "You've come about the sluice. Everyone who comes down here has. Let me save you the speech: yes. I opened it. Forty thousand people, give or take. Aurel would not sell the lowlands, so the sea bought them for me, and I bought the sea for a very reasonable price.", "corvin_scene3"),
+    corvin_scene3: say("corvin", "Look at what grew on that ground. Oru. Kessa. Your roads, your wells, your Bell. Every one of you lives on my high ground, courier. The future is always paid for by someone. I simply chose who. Who are you to judge a price you have already spent?", "corvin_scene4"),
+    corvin_scene4: { who: "sable", text: "(Behind you, your companions are silent.)", choices: [
+      { t: "\"We didn't choose the price. You did. We're choosing to tell the truth about it.\"", go: "corvin_fight" },
+      { t: "\"A future built on a mass grave is still a mass grave.\"", go: "corvin_fight" } ] },
+    corvin_fight: say("corvin", "Truth. How expensive. Very well: let us see what the truth costs you.", null, () => startBattle(["corvin", "sluicer"], { boss: "corvin", area: "cathedral" })),
+    corvin_after: say("corvin", "(Corvin's crystal skin cracks, and for the first time in four hundred years, he begins to rot. He looks relieved.) Ah. So that's what it feels like. ...The ledger is on the desk. Every name. Every payment. I kept perfect accounts. It was the only honest thing I ever did.", null, () => { G.flags.corvinDead = true; G.flags.corvinLedger = true; toast("You take Corvin's true ledger. Mayor Ines should see this."); save(); updateHud(); }),
+    ines_ledger: say("ines", "(Ines reads Corvin's ledger in silence. It takes a long time. When she looks up, she looks older.) Then Oru was built on a massacre. Every stone. My office. The granaries. The gate your captain guarded.", "ines_ledger2"),
+    ines_ledger2: say("ines", "We can't give forty thousand people back. We can't give back the lowlands. But we can say it. In writing, out loud, with our names on it. The city of Oru owes an apology to the drowned, four hundred years late.", "ines_ledger3"),
+    ines_ledger3: { who: "ines", text: "(She writes, crosses out, writes again, and signs.) Nadia will sign for Kessa. Oskar for Reedholm. Carry it down to the King, courier. It's the most important letter you will ever deliver.", choices: [
+      { t: "\"Courier's honour.\"", go: null, act: () => { G.flags.apology = true; G.flags.carry = [...(G.flags.carry || []), "apology"]; toast("You carry the Apology of Oru, signed by Ines, Nadia and Oskar."); Music.sound("item"); save(); updateHud(); } } ] },
+    king_apology: say(null, "You unfold the Apology of Oru and read it aloud at the bottom of the sea: the sluice, the forty thousand, Corvin's ledger, the Bell made into a lock. And at the end, three names: Ines of Oru. Nadia of Kessa. Oskar of Reedholm. 'We are sorry. We should have said it four hundred years ago.'", "king_apology2"),
+    king_apology2: say("king", "(The great shape of drowned bodies goes very still. The young face in its centre is weeping, though the tears are only seawater among seawater.) Four hundred years I asked who would sing for the ones below. I never thought to ask who would say sorry to them.", "king_apology3"),
+    king_apology3: say("king", "It changes nothing. The dead are dead. The lowlands are sea. And it changes everything. ...I will sleep. But let me die on my feet first, as a king, with a sword in my hand, and not as a flood. Grant me that, courier. One honest fight.", null, () => { G.flags.apologyRead = true; G.flags.carry = (G.flags.carry || []).filter(x => x !== "apology"); G.flags.delivered = [...(G.flags.delivered || []), "apology"]; startBattle(["king"], { boss: "king", area: "deep", apology: true }); }),
+    king_after_ap: say("king", "(The King lowers his sword. The bodies woven into him loosen and drift upward, one by one, gently, toward a surface they can see now.) Thank you. That was the first living thing I have felt in four centuries. Carve my name somewhere. Not on a throne. Somewhere people walk.", "king_after_ap2"),
+    king_after_ap2: say(null, "The Drowned King closes his eyes. The palace does not collapse. The sea above simply exhales, like someone who has held their breath for four hundred years, and lets you go.", "king_after_ap3"),
+    king_after_ap3: say("ren", "(Ren lowers his shield, blinking.) ...No door to hold. Huh. I had a whole speech ready. (He laughs, and it comes out shaky.) I'll save it. I think I'd like to be alive for a while, courier.", "final_choice"),
+  });
+  // the fourth ending, and the King's fourth answer
+  D.final_choice.choices.splice(1, 0, { t: "Carve his name above the gate of Oru, ring the Bell for everyone, and let the last King sleep.", go: null, act: () => ending("sleep"), req: () => G.flags.apologyRead, reqText: "the truth said aloud" });
+  D.king_scene4.choices.push({ t: "Read him the Apology of Oru.", go: "king_apology", req: () => G.flags.apology, reqText: "the Apology of Oru" });
+  const _startBattle2 = startBattle;
+  startBattle = function (group, opts = {}) { const r = _startBattle2(group, opts); if (opts.apology && battle) { const k = battle.foes[0]; k.maxHp = k.hp = Math.round(k.maxHp * 0.5); k.noSummon = true; } return r; };
+  const _act2BossEndB2 = act2BossEndB;
+  act2BossEndB = function (boss) {
+    if (boss === "king" && G.flags.apologyRead) { G.flags.kingDead = true; save(); setTimeout(() => openDialog("king_after_ap"), 300); return; }
+    _act2BossEndB2(boss);
+    if (boss === "corvin") setTimeout(() => openDialog("corvin_after"), 300);
+  };
+  const _ending = ending;
+  ending = function (kind) {
+    if (kind !== "sleep") return _ending(kind);
+    _ending("ring");
+    setScene("The Last King Sleeps");
+    $("cardTitle").textContent = "The Last King Sleeps";
+    $("cardText").textContent = "The Bell rings three times at the bottom of the sea, and this time it is a lullaby and an apology at once. King Aurel sleeps. Above the gate of Oru, where the Guild's crest used to be, the people carve a new name: AUREL, WHO WOULD NOT LEAVE HIS DEAD. Beneath it, the three signatures of the apology, and beneath those, room for more. The gates stay open. Ren lives to stand beside them, and never closes them again. " + $("cardText").textContent.split(". ").slice(-6).join(". ");
+  };
+  // mines interactions and triggers
+  const _interactAct2b = interactAct2b;
+  interactAct2b = function () {
+    if (G.stage >= 9 && !G.flags.minesOpen && near({ x: 36 * TILE + 8, y: 28 * TILE + 8 }, 34) && G.members.includes("warden")) { openDialog("well_mines"); return true; }
+    return _interactAct2b();
+  };
+  const _act2Triggers2 = act2Triggers;
+  act2Triggers = function () {
+    _act2Triggers2();
+    if (G.stage >= 9 && !G.flags.corvinDead && near({ x: 155 * TILE + 8, y: 45 * TILE + 8 }, 48)) once("corvinPrompt", () => openDialog("corvin_scene"));
+    if (G.stage >= 9 && !G.flags.minesOpen && !G.flags.wellHint && G.members.includes("warden") && near({ x: 36 * TILE + 8, y: 28 * TILE + 8 }, 40)) { G.flags.wellHint = true; openDialog("well_mines"); }
+    updateWanderers();
+  };
+  const _act2ActorsB2 = act2ActorsB;
+  act2ActorsB = function (actors, ox, oy) {
+    _act2ActorsB2(actors, ox, oy);
+    if (G.stage >= 9 && !G.flags.corvinDead) actors.push({ y: 45 * TILE + 8, draw: () => drawMiniBoss(g, 155 * TILE + 8 - ox, 45 * TILE + 8 - oy, "corvin") });
+  };
+  const _drawMiniBoss2b = drawMiniBoss2b;
+  drawMiniBoss2b = function (g, x, y, kind) {
+    if (kind === "corvin") { const P = (a, b, w, h, c) => { g.fillStyle = c; g.fillRect(x + a, y + b, w, h); }; P(-10, -6, 20, 6, "#9ef0f5"); P(-7, -26, 14, 20, "#e8e2f0"); P(-5, -34, 10, 8, "#f4f0ff"); P(-3, -31, 2, 2, "#8a1020"); P(1, -31, 2, 2, "#8a1020"); P(-12, -30, 3, 24, "#9ef0f5"); P(9, -32, 3, 26, "#9ef0f5"); return true; }
+    return _drawMiniBoss2b(g, x, y, kind);
+  };
+  const _drawBattleMonster2b = drawBattleMonster2b;
+  drawBattleMonster2b = function (g, u, cx, cy, R, drip, tri, hurt) {
+    if (u.sprite !== "corvin") return _drawBattleMonster2b(g, u, cx, cy, R, drip, tri, hurt);
+    const t = time, b = Math.round(Math.sin(t * 0.8) * 1);
+    R(-40, -26, 80, 26, "#1b1633"); R(-38, -24, 76, 22, "#9ef0f5"); for (let i = 0; i < 7; i++) tri(-38 + i * 11, -44, 10, 22, "#c8f8fa");
+    R(-16, -84 + b, 32, 60, "#1b1633"); R(-15, -83 + b, 30, 58, "#e8e2f0"); for (let i = 0; i < 6; i++) R(-13, -78 + i * 9 + b, 26, 1, "#c8c2d8");
+    R(-13, -70 + b, 26, 18, "#2a2238"); R(-11, -68 + b, 22, 14, "#c9a227"); for (let i = 0; i < 4; i++) R(-9, -66 + i * 3 + b, 18, 1, "#8a6a2a");
+    R(-11, -104 + b, 22, 22, "#1b1633"); R(-10, -103 + b, 20, 20, "#f4f0ff"); for (let i = 0; i < 5; i++) R(-9 + i * 4, -103 + b, 1, 20, "#d8d0e8");
+    R(-7, -96 + b, 5, 4, "#f4f0ea"); R(2, -96 + b, 5, 4, "#f4f0ea"); R(-5, -95 + b, 2, 2, "#3a1a1a"); R(4, -95 + b, 2, 2, "#3a1a1a"); R(-6, -97 + b, 5, 1, "#8a1020"); R(2, -97 + b, 5, 1, "#8a1020");
+    R(-4, -88 + b, 8, 2, "#8a1020"); for (let i = 0; i < 4; i++) R(-3 + i * 2, -88 + b, 1, 1, "#f4f0ff");
+    tri(-12, -118 + b, 6, 16, "#9ef0f5"); tri(-2, -122 + b, 6, 20, "#9ef0f5"); tri(8, -116 + b, 6, 14, "#9ef0f5");
+    for (const [x] of [[-30], [18]]) { R(x, -80 + b, 12, 36, "#e8e2f0"); R(x - 2, -46 + b, 16, 10, "#f4f0ff"); for (let i = 0; i < 4; i++) R(x + i * 3, -36 + b, 2, 5, "#f4f0ff"); }
+    R(30, -44 + b, 8, 10, "#e8e2d0"); R(31, -42 + b, 6, 1, "#8a1020"); R(31, -39 + b, 6, 1, "#5a4a3a");
+    drip(-8, -86 + b, 10, "#3a8fbf"); drip(6, -86 + b, 12, "#3a8fbf"); drip(-20, -40 + b, 14, "#3a8fbf"); drip(24, -30 + b, 10);
+    if (u.charged) { R(-60, -8, 120, 8, "rgba(58,143,191,.6)"); }
+  };
+  const _sideQuestDialog = sideQuestDialog;
+  sideQuestDialog = function (n) {
+    if (n.id === "tamsin") return G.flags.corvinLedger ? "tamsin_after" : "tamsin_0";
+    if (n.id === "foreman") return "foreman_0";
+    if (n.id === "ines" && G.flags.corvinLedger && !G.flags.apology) return "ines_ledger";
+    const r = rumorFor(n); if (r) return r;
+    return _sideQuestDialog(n);
+  };
+  const _extraJournalHtml = extraJournalHtml;
+  extraJournalHtml = function () {
+    const f = G.flags; let h = _extraJournalHtml();
+    if (G.stage >= 9) {
+      const steps = !f.minesOpen ? "Something is under the Well of Nine. The Warden may sense it." : !f.corvinDead ? "Descend the Hollow Beneath under the Well of Nine and find who opened the sluice." : !f.apology ? "Bring Corvin's ledger to Mayor Ines in Oru." : !f.apologyRead ? "Carry the Apology of Oru to the Drowned King." : "The truth has been said aloud.";
+      h += `<h3>The Hollow Beneath</h3><ul><li class="${f.apologyRead ? "done" : ""}">${f.apologyRead ? "✓ " : ""}${steps}</li></ul>`;
+    }
+    return h;
+  };
+  const _extraFates = extraFates;
+  extraFates = function () { const out = _extraFates(); if (G.flags.corvinDead) out.push("Corvin's ledger is read aloud in the square at Oru, every name, over forty days. People bring flowers to the Well of Nine."); if (G.flags.apologyRead && G.members.includes("ren")) out.push("Ren lives. He keeps the gate of Oru open, and sometimes, on quiet nights, he gives the speech he never had to give."); return out; };
+
+  // ================================================================== A LIVING WORLD: rumours and crowds
+  // Townsfolk talk about what has happened lately; their words change as the story moves on.
+  const RUMORS = {
+    tam: { 3: "They say the Butcher's hooks were full of Kessa men. Mine was one. I'll stop saying that eventually.", 5: "Someone saw lights in the Cathedral. Blue ones. My grandmother said the Warden only glows when it's angry, or when it's remembering.", 7: "Half of Kessa has gone up to Oru. The other half is packing. I'm staying until the water's at my door. Somebody has to water Pell's flowers.", 9: "Nadia came back from Oru with a letter from Reedholm and cried for an hour. Good crying. I didn't know old people did that kind.", 11: "The storms over the Spire sound like singing. I sit on the roof and listen. It helps." },
+    beno_after: { 4: "Did you see the farmers come out of the pond? Mum says she remembers being inside the Mother. She says it was warm. She won't talk about it after that.", 7: "Kessa's empty now. I found three lost cats, a clock and a letter from a man to his dead wife. I put the letter back.", 9: "I heard Rook died. He showed me how to hold a bow once. I held it wrong. He said that was the best way to start." },
+    bram_news: { 7: "News? The rain tastes of the sea. Fish are swimming up the gutters. And every night at midnight, the puddles ring like bells.", 8: "News? The Iron Clerks stopped moving all at once. Kids climb on them now. One little girl put flowers in a clerk's hands. They're real hands, you know. I think she knew.", 9: "News? Reedholm's sending boats up the flood with fish. First time in fifty years Reedholm's traded with Oru. Nadia's doing, I hear.", 10: "News? Lightning's been hitting the Spire every night. Old storm-singer on the east road says the shrines are waking. I say drink up.", 11: "News? The sea's come back past the wrecks. There's a whirlpool off the pier. Sailors won't go near it. Nell's lot will, I hear. Mad, the lot of them.", 12: "News? Everyone's quiet tonight. Like the whole city's holding its breath. Here: on the house. Whatever you're doing, come back." },
+    ines_after: { 8: "The granaries are open. Twelve thousand fed. I've started a list of the debtors whose hands the clerks took. Kest is helping. It's a long list.", 10: "The magistrates want to know who's responsible for the clerks, the ledgers, the gate. I told them: everyone who did nothing. They didn't like that answer.", 12: "Whatever you find down there, courier, come back up and tell us. We've had enough of truths that stay at the bottom." },
+    oskar_after: { 9: "The water's still rising, but the dead have stopped walking. We'll build higher. That's what Reedholm does.", 11: "Liv's teaching the Kessa children to swim. Kessa children! In Reedholm! Nadia sends them down every morning in boats. Fifty years, I waited for that." },
+    tobin_after: { 8: "I'm going to eat a whole loaf of bread and then write a very long letter to the magistrates.", 10: "I've found three more forged ledgers. And a fourth that isn't forged at all, just evil. It lists the Guild's founding costs. Somebody should look into what 'lowland acquisition' meant." },
+    aba_idle: { 1: "My husband drove salt wagons across the Flats for forty years. The jackals got him last year. My grandson says an archer saved him. I'd like to thank one, someday.", 9: "My grandson is fifteen. He climbs every rock on the Flats. He says he's practising for the next time someone throws him onto one." },
+    pip_q3: { 8: "We sing every morning now. Loudly. The old people complain. It's the best sound in Oru.", 11: "Sister Ada can't sing any more? Then we'll sing for her. That's what the waking song is for, isn't it? Waking people up when they can't do it themselves." },
+    sela_after: { 9: "I baked bread today. For me, this time. It's the first time I haven't burned it.", 12: "I keep his ring on a string around my neck. Some days it's heavy. Some days I forget it's there. I think that's how it's supposed to go." },
+  };
+  const RUMOR_IDS = { tam: "tam", beno: "beno_after", bram: null, ines: "ines_after", oskar: "oskar_after", tobin: "tobin_after", abawidow: "aba_idle", pip: "pip_q3", sela: "sela_after" };
+  function rumorLine(key) { const r = RUMORS[key]; if (!r) return null; let best = null; for (const k of Object.keys(r).map(Number).sort((a, b) => a - b)) if (G.stage >= k) best = r[k]; return best; }
+  function rumorFor(n) {
+    const f = G.flags;
+    if (n.id === "tam" && G.stage >= 3 && !(f.tamQuest && !f.wyrmDead) && !(G.stage >= 3 && !f.tamQuest) && f.tamThanked) { D.__rumor = say("tam", rumorLine("tam")); return "__rumor"; }
+    if (n.id === "beno" && f.charmReturned && G.stage >= 4) { D.__rumor = say("beno", rumorLine("beno_after")); return "__rumor"; }
+    if (n.id === "ines" && f.quillDead && (!f.corvinLedger || f.apology)) { D.__rumor = say("ines", rumorLine("ines_after")); return "__rumor"; }
+    if (n.id === "oskar" && f.gulpDead) { D.__rumor = say("oskar", rumorLine("oskar_after")); return "__rumor"; }
+    if (n.id === "tobin" && f.tobinThanked && !(!delivered("bram") && carrying("bram"))) { D.__rumor = say("tobin", rumorLine("tobin_after")); return "__rumor"; }
+    if (n.id === "abawidow" && !carrying("rook")) { D.__rumor = say("abawidow", rumorLine("aba_idle")); return "__rumor"; }
+    if (n.id === "pip" && f.choirDone && (f.pipAda || !G.members.includes("ada"))) { D.__rumor = say("pip", rumorLine("pip_q3")); return "__rumor"; }
+    if (n.id === "sela" && f.selaDone) { D.__rumor = say("sela", rumorLine("sela_after")); return "__rumor"; }
+    return null;
+  }
+  D.bram_0.choices[1].act = () => { D.bram_news.text = rumorLine("bram_news") || D.bram_news.text; };
+  // crowds: refugees in Oru, villagers in Reedholm, and a few souls in Kessa, walking about
+  const CROWD_LOOKS = [["#6a5a4a", "#3a2a1e", "#e0a878"], ["#4a5a6a", "#1b1633", "#c98d63"], ["#7a4a3a", "#d8d0c0", "#f0c8a0"], ["#3a5a4a", "#6b3f24", "#8a5a33"], ["#5a3a5a", "#c8a050", "#f2c39a"], ["#6a6a4a", "#2b2350", "#a8744f"]];
+  const CROWD_LINES = {
+    oru: { 7: ["We walked all night to get here. Now we sleep on the steps of a bank.", "My mother says the Guild built this city. My father says the people built it and the Guild wrote it down.", "They say the courier opened the gates. I'd buy them a drink if I had anything but rain.", "The clerks came for my neighbour's hands. We all watched. None of us moved. I think about that.", "Is it true the grain's locked in the Guild Hall? Twelve thousand hungry people and a locked door."],
+           8: ["The granaries are open! My children ate twice today.", "The clerks just stopped. In the middle of the street. One's still holding a man's hat.", "Kest the alchemist walks around at night with a lantern, looking at the stopped clerks. She doesn't look happy.", "They say Reedholm is drowning. My cousin's there. Nobody from Reedholm ever comes up here."],
+           10: ["The storm-singers' tower is lit every night. Lightning, but no thunder. It's wrong.", "Fish in the gutters again. My little one caught one with her hands and named it.", "They say the Mayor's making lists of everyone the Guild hurt. My name's on it. I don't know how to feel about that."],
+           12: ["Everyone's so quiet tonight.", "If the sea comes all the way up, will the gate hold?", "My grandmother says a king lives under the sea. My grandmother also says the moon is a cheese. But she's been right about more than the moon lately."] },
+    reedholm: { 8: ["We build higher. That's what Reedholm does.", "The drowned came right up to the stilts last night. They just stood there, looking up. Like they wanted to come home.", "Oskar hasn't slept in days. Five of ours are still out there."], 9: ["Everyone's home. Everyone who could come home.", "They buried the archer on the highest stilt. The children leave him arrows.", "Kessa people in boats! In Reedholm! My grandmother would've fainted."] },
+    kessa: { 1: ["The Bell's gone. Nobody knows what that means yet, but everybody's scared.", "The jackals have been howling all night. They never used to come this close.", "If anyone can get the Bell back, it's the courier. They never drop a package."], 4: ["Half the village is praying. The other half is packing. I'm doing both.", "They say the courier fought a butcher at the Well of Nine and won."], 7: ["The gates are open! We're going up to Oru tomorrow.", "Kessa's emptying. Feels like the end of something."] },
+  };
+  const WANDERERS = [];
+  function addWanderer(id, x, y, box, place) {
+    const lk = CROWD_LOOKS[WANDERERS.length % CROWD_LOOKS.length];
+    const n = { id, name: ["A refugee", "A townsman", "A tired woman", "An old man", "A dockhand", "A young mother"][WANDERERS.length % 6], x, y, box, place, wander: true, tx: x, ty: y, wait: 0,
+      look: { robe: lk[0], hair: lk[1], skin: lk[2], small: WANDERERS.length % 5 === 4, style: { hair: ["tail", "fringe", "bald", "long", "cap", "bun"][WANDERERS.length % 6], dress: WANDERERS.length % 3 === 2 } },
+      show: place === "oru" ? () => G.stage >= 7 : place === "reedholm" ? () => G.stage >= 8 : () => G.stage >= 1 && G.stage < 8 };
+    npc2(n); WANDERERS.push(NPCS[NPCS.length - 1]); SPEAKERS[id] = n.name;
+  }
+  [[90, 22], [86, 26], [96, 18], [80, 16], [100, 20], [88, 14], [78, 27], [94, 29]].forEach(([x, y], i) => addWanderer("crowd" + i, x, y, [75, 13, 103, 31], "oru"));
+  [[34, 66], [42, 70], [30, 70]].forEach(([x, y], i) => addWanderer("reed" + i, x, y, [29, 63, 45, 71], "reedholm"));
+  [[10, 44], [18, 49], [22, 40]].forEach(([x, y], i) => addWanderer("kess" + i, x, y, [4, 38, 24, 50], "kessa"));
+  function updateWanderers() {
+    const dt = 1 / 60;
+    for (const n of WANDERERS) {
+      if (!n.show()) continue;
+      if (mode !== "play") { n.walking = false; continue; }
+      if (n.wait > 0) { n.wait -= dt; n.walking = false; continue; }
+      const dx = n.tx * TILE + 8 - n.px, dy = n.ty * TILE + 8 - n.py, d = Math.hypot(dx, dy);
+      if (d < 2 || Math.hypot(G.px - n.px, G.py - n.py) < 20) { n.walking = false; if (d < 2) { n.wait = rand(1.5, 5); n.tx = Math.floor(rand(n.box[0], n.box[2])); n.ty = Math.floor(rand(n.box[1], n.box[3])); } continue; }
+      const sp = 22 * dt, nx = n.px + dx / d * sp, ny = n.py + dy / d * sp;
+      if (SOLID.has(tileAt(nx, ny)) || propAt(nx, ny)) { n.wait = rand(0.5, 2); n.tx = Math.floor(rand(n.box[0], n.box[2])); n.ty = Math.floor(rand(n.box[1], n.box[3])); continue; }
+      n.px = nx; n.py = ny; n.walking = true; n.dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : (dy > 0 ? "down" : "up");
+      n.x = Math.floor(n.px / TILE); n.y = Math.floor(n.py / TILE);
+    }
+  }
+  const _dialogFor2 = dialogFor;
+  dialogFor = function (n) {
+    if (n.wander) {
+      const pool = CROWD_LINES[n.place]; let lines = null; for (const k of Object.keys(pool).map(Number).sort((a, b) => a - b)) if (G.stage >= k) lines = pool[k];
+      D.__crowd = say(n.id, lines ? lines[(hash(n.x * 7 + G.stage, n.y * 3 + Math.floor(time / 8)) * lines.length) | 0] : "..."); return "__crowd";
+    }
+    return _dialogFor2(n);
+  };
+
   // ================================================================== STORY ILLUSTRATIONS
   // Each chapter card, memorial and ending gets a small animated painting.
   const sceneCanvas = $("cardArt"), sc2 = sceneCanvas.getContext("2d");
@@ -4657,7 +4902,7 @@
   const SCENE_BY_TITLE = {
     "The Stolen Bell": "bell", "The Butcher of the Well": "well", "The Drowned Grove": "grove", "The Salt Cathedral": "cathedral", "The Salt-Flayed": "voss",
     "The Drowned Gate": "gate", "The Rains": "rains", "The Open Gate": "granary", "The Drowning Marsh": "marsh", "Rook": "rookGrave", "The Wreck Coast": "wrecks",
-    "The Three Tones": "shrines", "The Storm Spire": "spire", "The Drowned King": "whirl", "A Bell for Everyone": "endRing", "The Equal Sea": "endCrown", "The Keeper of the Deep": "endKeeper",
+    "The Three Tones": "shrines", "The Storm Spire": "spire", "The Drowned King": "whirl", "A Bell for Everyone": "endRing", "The Equal Sea": "endCrown", "The Keeper of the Deep": "endKeeper", "The Last King Sleeps": "endRing",
   };
   function setScene(title) { sceneKey = SCENE_BY_TITLE[title] || null; sceneCanvas.hidden = !sceneKey; }
   function paintScene() {
@@ -4745,6 +4990,7 @@
   if (saved && saved.stage > 0) {
     Object.assign(G, saved);
     if (!G.active || !G.active.length) G.active = G.members.slice(0, 4);
+    if (G.flags.fog && G.flags.fog.length === 13 * 9) { const old = G.flags.fog; let f = ""; for (let y = 0; y < FH; y++) for (let x = 0; x < FW; x++) f += x < 13 && old[y * 13 + x] === "1" ? "1" : "0"; G.flags.fog = f; }
     if (!G.flags.fog) { let f = ""; for (let y = 0; y < FH; y++) for (let x = 0; x < FW; x++) f += x * FOG < OW && y * FOG < OH ? "1" : "0"; G.flags.fog = f; }
     applyWorldState();
     miniDirty = true; spawnField();
