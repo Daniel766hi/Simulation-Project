@@ -329,7 +329,7 @@
   "use strict";
   const $ = id => document.getElementById(id);
   const REDUCED = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const TILE = 16, W = 170, H = 90, OW = 72, OH = 54, VIEW_W = 320, VIEW_H = 192;
+  const TILE = 16, W = 170, H = 140, OW = 72, OH = 54, VIEW_W = 320, VIEW_H = 192;
   const SETTINGS = { music: 0.8, sfx: 0.8, text: "normal", battle: "normal", shake: true };
   try { Object.assign(SETTINGS, JSON.parse(localStorage.getItem("salt-road-settings") || "{}")); } catch { /* storage unavailable */ }
   let paused = false;
@@ -814,7 +814,7 @@
       moves: [{ name: "Cleaver", w: 3, power: 1.3 }, { name: "Meat Hook", w: 2, power: 1.0, bleed: [4, 3] }, { name: "Feast", w: 0, heal: 16, feast: true }, { name: "Butcher's Sweep", w: 0, power: 0.85, all: true, rage: true }] },
     mother: { name: "Mother of Leeches", hp: 210, atk: 12, def: 4, spd: 4, xp: 110, coin: [25, 25], sprite: "mother", boss: true, music: "boss",
       moves: [{ name: "Engulf", w: 3, power: 1.25, bleed: [3, 3] }, { name: "Tidal Maw", w: 2, power: 0.8, all: true }, { name: "Brood", w: 0, brood: true }, { name: "Bloodsong", w: 0, bloodsong: true }] },
-    choirmaster: { name: "The Choirmaster", hp: 200, atk: 13, def: 4, spd: 7, xp: 140, coin: [30, 30], sprite: "choirmaster", boss: true, music: "boss",
+    choirmaster: { name: "The Choirmaster", hp: 260, atk: 15, def: 4, spd: 7, xp: 140, coin: [30, 30], sprite: "choirmaster", boss: true, music: "boss",
       moves: [{ name: "Dirge", w: 2, power: 0.5, all: true, weakAll: 2 }, { name: "Stitch", w: 3, power: 1.35, bleed: [3, 3] }, { name: "Requiem", w: 0, charge: true, power: 1.5, all: true }] },
     voss: { name: "Magister Voss, the Salt-Flayed", hp: 290, atk: 14, def: 5, spd: 6, xp: 180, coin: [40, 40], sprite: "voss", boss: true, music: "boss",
       moves: [{ name: "Toll of Salt", w: 2, power: 0.8, all: true, stunChance: 0.2 }, { name: "Flay", w: 3, power: 1.5, bleed: [4, 3] }, { name: "Crystal Carapace", w: 1, guard: true, heal: 12 }, { name: "The Bell Screams", w: 0, power: 1.15, all: true, phase2: true }] },
@@ -839,7 +839,7 @@
     G.relics = [...(G.relics || []), id]; save();
     setTimeout(() => toast(`Relic found: ${RELICS[id].name}. Equip it from the party screen (P).`), 900);
   }
-  const DIFFS = { story: { hp: 0.75, dmg: 0.7, note: "Story: gentler monsters. For enjoying the tale." }, normal: { hp: 1, dmg: 1, note: "Normal: hard but fair. Guard, heal and plan." }, hard: { hp: 1.25, dmg: 1.2, note: "Hard: monsters hit harder and last longer. For veterans." } };
+  const DIFFS = { story: { hp: 0.75, dmg: 0.7, note: "Story: gentler monsters. For enjoying the tale." }, normal: { hp: 1.45, dmg: 1.4, note: "Normal: hard but fair. Read their moves, break their charges, guard and heal." }, hard: { hp: 1.8, dmg: 1.7, note: "Hard: monsters hit much harder and last longer. Every turn counts." } };
   let difficulty = "normal";
   try { difficulty = localStorage.getItem("salt-road-diff") || "normal"; } catch { /* storage unavailable */ }
   if (!DIFFS[difficulty]) difficulty = "normal";
@@ -1922,7 +1922,7 @@
     }
     if (act.kind === "item") {
       const it = ITEMS[act.item]; G.items[act.item]--;
-      if (it.dmg) { flash(0.7); const parts = []; for (const f of battle.foes) if (!f.dead) { parts.push(damage(f, it.dmg)); gore(f, 6); if (it.stunChance && !f.dead && Math.random() < (f.boss ? it.stunChance / 2 : it.stunChance)) f.st.stun = true; } Music.sound("crit"); blog(`${name} ${it.stunChance ? "throws a Thunder Echo. The storm remembers" : "hurls an Oil Bomb. Fire everywhere"} (${parts.join(", ")}).`); await wait(800); return; }
+      if (it.dmg) { flash(0.7); const parts = []; for (const f of battle.foes) if (!f.dead) { parts.push(damage(f, it.dmg)); gore(f, 6); if (it.stunChance && !f.dead && !f.st.stunGuard && Math.random() < (f.boss ? it.stunChance / 2 : it.stunChance)) f.st.stun = true; } Music.sound("crit"); blog(`${name} ${it.stunChance ? "throws a Thunder Echo. The storm remembers" : "hurls an Oil Bomb. Fire everywhere"} (${parts.join(", ")}).`); await wait(800); return; }
       if (it.healAll) { for (const h of battle.heroes) if (alive(h)) { h.ref.hp = Math.min(h.ref.maxHp, h.ref.hp + it.healAll); delete h.st.bleed; popupText(h, `+${it.healAll}`, "#6bff9a"); } flash(0.4); Music.sound("heal"); blog(`${name} passes around ${it.name}. It tastes terrible. It works.`); await wait(700); return; }
       const t = act.unit;
       if (it.heal) { t.ref.hp = Math.min(t.ref.maxHp, t.ref.hp + it.heal); popupText(t, `+${it.heal}`, "#6bff9a"); }
@@ -1941,7 +1941,7 @@
     else if (s.wall) { for (const h of battle.heroes) if (alive(h)) { h.st.guard = true; h.st.guardSource = u.id; } u.st.taunt = 3; u.ref.hp = Math.min(u.ref.maxHp, u.ref.hp + 18); popupText(u, "+18", "#6bff9a"); shake = 5; blog(`${name} raises Oru's Wall. "Behind me. All of you."`); }
     else if (s.brkAll || s.stunAll) {
       flash(0.8); shake = 7; const parts = [];
-      for (const f of liveFoes()) { const r = attackRoll(u, f, s.power, { noCrit: true }); parts.push(r.dmg); if (!f.dead && s.brkAll) f.st.brk = s.brkAll + 1; if (!f.dead && s.stunAll && Math.random() < (f.boss ? s.stunAll / 2 : s.stunAll)) { f.st.stun = true; popupText(f, "stunned", "#ffcf4a"); } }
+      for (const f of liveFoes()) { const r = attackRoll(u, f, s.power, { noCrit: true }); parts.push(r.dmg); if (!f.dead && s.brkAll) f.st.brk = s.brkAll + 1; if (!f.dead && s.stunAll && !f.st.stunGuard && Math.random() < (f.boss ? s.stunAll / 2 : s.stunAll)) { f.st.stun = true; popupText(f, "stunned", "#ffcf4a"); } }
       blog(`${name} unleashes ${s.name} (${parts.join(", ")}).${s.brkAll ? " Armour shatters." : ""}`);
     }
     else if (s.veil) { u.st.veil = true; blog(`${name}'s scarf snaps like a banner. The next blow will miss.`); }
@@ -1966,7 +1966,7 @@
       let extra = exec && !r.dodged ? " The prayer finds a dying heart." : "";
       if (!r.dodged && s.bleed && !t.dead) { t.st.bleed = { dmg: s.bleed[0], turns: s.bleed[1] }; extra += " It bleeds."; }
       if (!r.dodged && s.brk && !t.dead) { t.st.brk = s.brk + 1; extra += " Armour broken."; }
-      if (!r.dodged && s.stun && !t.dead && Math.random() < (t.boss ? s.stun * 0.5 : s.stun)) { t.st.stun = true; extra += " Stunned!"; }
+      if (!r.dodged && s.stun && !t.dead && !t.st.stunGuard && Math.random() < (t.boss ? s.stun * 0.5 : s.stun)) { t.st.stun = true; extra += " Stunned!"; }
       blog(r.dodged ? `${t.name} dodges.` : `${name} uses ${s.name} on ${t.name} for ${r.dmg}.${extra}`);
     }
     await wait(800);
@@ -2004,7 +2004,7 @@
         if (hits > 1) await wait(220);
       }
       if (!dodged && mv.bleed && alive(t)) t.st.bleed = { dmg: mv.bleed[0], turns: mv.bleed[1] };
-      if (!dodged && mv.weakAll && alive(t)) t.st.weak = mv.weakAll + 1;
+      if (!dodged && (mv.weakAll || mv.weakOne) && alive(t)) t.st.weak = (mv.weakAll || mv.weakOne) + 1;
       if (!dodged && mv.stunChance && alive(t) && Math.random() < mv.stunChance) t.st.stun = true;
       if (!dodged && mv.drain && total) { const h = Math.round(total * mv.drain); f.hp = Math.min(f.maxHp, f.hp + h); popupText(f, `+${h}`, "#6bff9a"); }
       texts.push(dodged ? `${t.name} dodges` : `${t.name} takes ${total}${mv.bleed ? " and bleeds" : ""}`);
@@ -3756,7 +3756,7 @@
       moves: [{ name: "Drowning Sermon", w: 2, power: 0.8, all: true, weakAll: 2 }, { name: "Sacrament of Brine", w: 3, power: 1.3, drain: 0.5 }] },
     angler: { name: "Angler Horror", hp: 100, atk: 22, def: 7, spd: 6, xp: 60, coin: [12, 18], sprite: "angler",
       moves: [{ name: "Lure", w: 1, weakAll: 2 }, { name: "Engulf", w: 3, power: 1.5, bleed: [4, 3] }, { name: "Glow", w: 1, guard: true, heal: 14 }] },
-    king: { name: "Aurel, the Drowned King", hp: 820, atk: 19, def: 8, spd: 8, xp: 0, coin: [0, 0], sprite: "king", boss: true, music: "final", tall: true,
+    king: { name: "Aurel, the Drowned King", hp: 1000, atk: 22, def: 8, spd: 8, xp: 0, coin: [0, 0], sprite: "king", boss: true, music: "final", tall: true,
       moves: [{ name: "Tide of the Dead", w: 3, power: 1.0, all: true }, { name: "Crown of Hands", w: 3, power: 1.6, drain: 0.5 },
               { name: "Brine Lungs", w: 1, bleedAll: [5, 3] }, { name: "Royal Decree", w: 1, weakAll: 3 },
               { name: "Court of the Drowned", w: 0, summonKind: "priest", summonText: "The King raises a hand of a hundred fused fingers. His drowned court rises from the floor to kneel." },
@@ -7698,6 +7698,348 @@
     return _extraJournalA() + (a ? `<h3>Aurel's letter</h3><p>${a === "carry" ? "Sealed in green wax, addressed to the council of Oru. Four hundred years late. Take it to Mayor Ines." : G.flags.apologyRead ? "Delivered, answered, and read aloud at the bottom of the sea." : "Delivered. Answered. It goes down to the King with the Apology."}</p>` : "");
   };
 
+  // ================================================================== COMBAT DEPTH
+  // Two rules that reward reading the enemy instead of mashing Attack:
+  // 1. Break the charge. A foe winding up a big attack can be staggered by dealing enough damage before it lands:
+  //    it loses the attack, is stunned, and is Exposed (takes 25% more) for 2 rounds. The intent shows what's needed.
+  // 2. Bosses shake off stuns: after losing a turn to a stun, a boss can't be stunned again for 2 rounds.
+  // the prologue is a tutorial: on a first playthrough its fights keep their hand-tuned numbers on every difficulty
+  // (New Game+ starts at chapter 0 too, and keeps its scaling)
+  const tutorial = () => G.stage === 0 && !(G.ng > 0);
+  const _unitFromMonsterX = unitFromMonster;
+  unitFromMonster = function (id, i, n) { const u = _unitFromMonsterX(id, i, n); if (tutorial()) u.maxHp = u.hp = MONSTERS[id].hp; return u; };
+  const _foeAtkX = foeAtk;
+  foeAtk = function (f) { return _foeAtkX(f) / (tutorial() ? DIFFS[difficulty].dmg : 1); };
+  const breakNeed = f => Math.round(f.maxHp * (f.boss ? 0.15 : 0.3));
+  const winding = f => f.charged || (f.intent && f.intent.release);
+  const _damageX = damage;
+  damage = function (target, amount, o = {}) {
+    const foe = target.side === "foe";
+    const dealt = _damageX(target, foe && target.st.exposed ? Math.round(amount * 1.25) : amount, o);
+    if (foe && battle && !target.dead && winding(target)) {
+      target.chargeDmg = (target.chargeDmg || 0) + dealt;
+      if (target.chargeDmg >= breakNeed(target)) {
+        target.charged = false; target.chargeDmg = 0; target.intent = { name: "Staggered" };
+        target.st.stun = true; target.st.exposed = 3;   // counts down at the start of each round: 2 full rounds
+        popupText(target, "BROKEN", "#ffcf4a"); shake = Math.max(shake, 8); Music.sound("crit");
+        setTimeout(() => battle && blog(`${target.name}'s attack breaks apart! It staggers, exposed.`), 60);
+      }
+    }
+    return dealt;
+  };
+  const _chooseIntentX = chooseIntent;
+  chooseIntent = function (f) {   // runs once per foe at the start of each round
+    for (const k of ["exposed", "stunGuard"]) if (f.st[k] && --f.st[k] <= 0) delete f.st[k];
+    if (f.boss && f.st.stun) f.st.stunGuard = 3;   // it loses this turn; immune for the next two
+    if (!winding(f)) f.chargeDmg = 0;
+    let mv = _chooseIntentX(f);
+    // a boss with a big wind-up it rarely reaches uses it every few rounds, so breaking it is part of every boss fight
+    const big = f.boss && MONSTERS[f.id].moves.find(m => m.charge && !m.w);
+    if (big && battle && !f.charged && !mv.release && !mv.charge && !mv.announce && battle.round >= 3 && battle.round - (f.lastCharge || 0) >= 4) mv = { ...big };
+    if (mv.charge && !mv.release) {
+      f.lastCharge = battle ? battle.round : 0;
+      if (!G.flags.breakTip) { G.flags.breakTip = true; setTimeout(() => toast("Tip: a foe winding up a big attack can be broken. Hit it hard enough before it lands (see BREAK on its card) and it staggers."), 1200); }
+    }
+    return mv;
+  };
+  const _intentLabelX = intentLabel;
+  intentLabel = function (f) {
+    const base = _intentLabelX(f);
+    if (f.st.stun || !winding(f)) return f.st.exposed && !f.st.stun ? `${base} · EXPOSED` : base;
+    return `${base} · BREAK: ${Math.max(0, breakNeed(f) - (f.chargeDmg || 0))} more`;
+  };
+
+  // ================================================================== THE DRY SEA (rows 90-139)
+  // The old seabed south of the Glass Flats, where the salt caravans run. Opens after Chapter I.
+  const DRY = { y0: 90, y1: 139, gate: [44, 52], land: [44, 92] };
+  // an integer-safe hash (the shared one loses precision on large inputs, and changing it would reshuffle the old map)
+  const rnd = (a, b) => { let h = Math.imul(a ^ 0x9e3779b9, 0x85ebca6b) ^ Math.imul(b + 0x632be5ab, 0xc2b2ae35); h ^= h >>> 15; h = Math.imul(h, 0x2c1b3c6d); h ^= h >>> 12; return (h >>> 0) / 4294967296; };
+  const PANS = [];   // brine pans for salt raking: [x, y] of each pan's top-left corner
+  for (let y = 97; y <= 131; y += 7) for (let x = 6; x <= 36; x += 8) PANS.push([x, y]);
+  const STAR_STONES = [[10, 100], [30, 135], [121, 95], [163, 131], [104, 135]];
+  const _buildMapD = buildMap;
+  buildMap = function () {
+    _buildMapD();
+    const Y0 = DRY.y0;
+    rect(0, Y0, W - 1, DRY.y1, T.CLIFF);
+    for (let y = Y0 + 1; y < DRY.y1; y++) for (let x = 1; x < W - 1; x++) set(x, y, x <= 44 ? T.SALT : rnd(x * 5 + 3, y * 7 + 1) < 0.03 ? T.BONES : T.SAND);
+    for (const [x, y] of PANS) rect(x, y, x + 3, y + 2, T.SHALLOW);                       // brine pans
+    for (let i = 0; i < 90; i++) {                                                        // dune ridges in the east
+      const x = 100 + Math.floor(rnd(i * 17 + 3, 811) * 64), y = Y0 + 3 + Math.floor(rnd(813, i * 23 + 5) * 44), len = 3 + Math.floor(rnd(i * 7 + 1, 817) * 5), horiz = rnd(819, i * 11 + 2) < 0.6;
+      for (let k = 0; k < len; k++) { const tx = horiz ? x + k : x, ty = horiz ? y : y + k; if (Math.abs(ty - 113) > 2 && tx < W - 1 && ty < DRY.y1) set(tx, ty, T.ROCK); }
+    }
+    carve([[44, Y0 + 1], [44, 113], [166, 113]], T.PATH);                                // the caravan road
+    carve([[52, 113], [52, 126]], T.PATH); carve([[152, 113], [152, 104]], T.PATH);
+    rect(62, 104, 96, 124, T.WALL); rect(63, 105, 95, 123, T.COBBLE);                    // Tamar's Rest
+    for (const y of [112, 113, 114]) { set(62, y, T.COBBLE); set(96, y, T.COBBLE); }
+    carve([[62, 113], [96, 113]], T.PATH);
+    house(65, 106, 7); house(86, 106, 7); house(65, 118, 6); house(87, 118, 6);
+    set(79, 108, T.WELL);
+    for (let y = 124; y <= 136; y++) for (let x = 40; x <= 64; x++) if (rnd(Math.floor(x / 2) * 31 + 7, Math.floor(y / 2) * 17 + 3) < 0.5) set(x, y, T.STONE);   // reed-boat ruins
+    rect(145, 95, 159, 104, T.WALL); rect(146, 96, 158, 103, T.STONE); set(152, 104, T.PATH);                                  // the tollhouse
+    set(DRY.gate[0], DRY.gate[1], T.PATH);                                                 // the way down from the Flats
+    carve([[44, 45], [44, 52]], T.PATH);
+    fixSpots();
+  };
+  const _addProp2D = addProp2;
+  addProp2 = () => {
+    _addProp2D();
+    addProp("sign", 45, 51, { text: "A post driven into the salt, hung with bells for the wind: THE CARAVAN ROAD. TAMAR'S REST, TWO DAYS. BEYOND THE CARAVANSERAI THE DUNES BITE. TRAVEL IN COMPANY." });
+    for (const [x, y] of [[72, 115], [76, 115], [84, 115]]) addProp("stall", x, y);
+    addProp("campfire", 79, 117); addProp("cart", 69, 122); addProp("cart", 90, 122); addProp("barrel", 93, 110); addProp("crate", 64, 110); addProp("banner", 80, 105);
+    for (const [x, y] of STAR_STONES) addProp("cairn", x, y);
+    for (const [x, y] of [[44, 127], [49, 131], [57, 128], [61, 134], [47, 135]]) addProp("pillar", x, y);
+    addProp("statue", 152, 97); addProp("candles", 149, 99); addProp("candles", 155, 99); addProp("chains", 147, 101);
+    for (let i = 0; i < 12; i++) addProp("deadtree", 110 + Math.floor(rnd(i, 901) * 55), 94 + Math.floor(rnd(i, 903) * 12));
+    addProp("sign", 153, 105, { text: "Brass letters, sanded almost smooth: GUILD TOLLHOUSE No. 4. ALL GOODS DECLARED. ALL TOLLS PAID. ALL DEBTS REMEMBERED." });
+  };
+  WARPS.push({ x: DRY.gate[0], y: DRY.gate[1], to: DRY.land, req: () => G.stage >= 2, msg: "Dust storms are blowing up from the old seabed. The caravan road opens once the Butcher is dealt with. (After Chapter I)" },
+    { x: DRY.land[0], y: DRY.y0 + 1, to: [DRY.gate[0], DRY.gate[1] - 1] });
+  const _regionOfD = regionOf;
+  regionOf = function (x, y) { return y >= DRY.y0 ? "drysea" : _regionOfD(x, y); };
+  REGION_LINKS.drysea = { old: [DRY.land[0], DRY.y0 + 1] }; REGION_LINKS.old.drysea = DRY.gate;
+  REGIONS.unshift({ name: "Tamar's Rest", x0: 62, y0: 104, x1: 96, y1: 124, music: "village" }, { name: "The Salt Pans", x0: 1, y0: 91, x1: 44, y1: 138, music: "flats" },
+    { name: "The Reed-Boat Ruins", x0: 40, y0: 124, x1: 64, y1: 138, music: "deep" }, { name: "Tollhouse No. 4", x0: 145, y0: 95, x1: 159, y1: 104, music: "deep" },
+    { name: "The Dune Sea", x0: 97, y0: 91, x1: 168, y1: 138, music: "coast" }, { name: "The Dry Sea", x0: 45, y0: 91, x1: 96, y1: 138, music: "flats" });
+  MAP_LABELS.push(["Tamar's Rest", 79, 102], ["Salt Pans", 22, 94], ["Dune Sea", 135, 120], ["Reed-Boat Ruins", 52, 138], ["Tollhouse", 152, 93]);
+
+  Object.assign(MONSTERS, {
+    scorpion: { name: "Dune Scorpion", hp: 64, atk: 15, def: 11, spd: 6, xp: 34, coin: [5, 9], sprite: "crawler",
+      moves: [{ name: "Sting", w: 3, power: 1.0, bleed: [3, 3] }, { name: "Pincer", w: 2, power: 1.3 }, { name: "Dig In", w: 1, guard: true, heal: 10 }] },
+    wraith: { name: "Salt Wraith", hp: 52, atk: 17, def: 3, spd: 11, xp: 36, coin: [4, 8], sprite: "wraith",
+      moves: [{ name: "Grave Chill", w: 3, power: 1.0, weakOne: 2 }, { name: "Salt Wail", w: 1, charge: true, power: 1.5, all: true }] },
+    mirage: { name: "Mirage Hound", hp: 40, atk: 14, def: 2, spd: 17, xp: 28, coin: [3, 6], sprite: "jackal",
+      moves: [{ name: "Flicker", w: 3, power: 0.7, hits: 2 }, { name: "Shimmer Away", w: 1, guard: true }] },
+    tollkeeper: { name: "The Tollkeeper, Guild Tollhouse No. 4", hp: 780, atk: 21, def: 9, spd: 7, xp: 400, coin: [160, 160], sprite: "quill", boss: true, music: "boss", tall: true,
+      moves: [{ name: "Levy", w: 3, power: 0.9, all: true }, { name: "Seize Goods", w: 3, power: 1.5, drain: 0.5 }, { name: "Recount", w: 1, guard: true, heal: 30 },
+        { name: "Final Audit", w: 0, charge: true, power: 1.9, all: true },
+        { name: "Call the Collectors", w: 0, summonKind: "scorpion", summonText: "The Tollkeeper stamps a ledger. Two scorpions crawl out of the strongbox, wearing little brass collars." }] },
+  });
+  BESTIARY.scorpion = "Armoured in salt-crust. Hammers and spears crack them; bare blades skate off.";
+  BESTIARY.wraith = "The drowned of the old sea, dried to salt. Their wail builds slowly. Hit them hard while it builds, and it breaks.";
+  BESTIARY.mirage = "Hounds made of heat and hunger. Fast enough to hit twice; thin enough to kill quickly.";
+  BESTIARY.tollkeeper = "Guild Tollhouse No. 4 was buried by a dune a century ago. The toll-collector inside never stopped collecting.";
+  FIELD.push(
+    { id: "d1", x: 30, y: 104, group: ["jackal", "jackal", "ghoul"], minStage: 2 }, { id: "d2", x: 20, y: 124, group: ["ghoul", "ghoul"], minStage: 2 },
+    { id: "d3", x: 58, y: 100, group: ["mirage", "jackal"], minStage: 3 }, { id: "d4", x: 55, y: 130, group: ["wraith", "ghoul"], minStage: 4 },
+    { id: "d5", x: 110, y: 118, group: ["scorpion", "mirage"], minStage: 5 }, { id: "d6", x: 125, y: 104, group: ["wraith", "wraith"], minStage: 5 },
+    { id: "d7", x: 140, y: 125, group: ["scorpion", "scorpion"], minStage: 6 }, { id: "d8", x: 160, y: 118, group: ["mirage", "mirage", "wraith"], minStage: 6, elite: true },
+    { id: "d9", x: 132, y: 132, group: ["scorpion", "wraith", "mirage"], minStage: 7, elite: true });
+  LORE.push(
+    { id: 20, x: 50, y: 133, title: "The Reed-Boat City", text: "Scratched on a pillar where the waterline used to be: \"We lived on the water, on boats of reed lashed together, forty thousand of us. When the sea went, the boats sat down on the salt, and we learned to walk.\"" },
+    { id: 21, x: 26, y: 112, title: "A Salt-Raker's Count", text: "Rows of marks on a board by the pans: \"One cart of salt, one cup of water from the Guild well. The Guild sets the price of both.\"" },
+    { id: 22, x: 158, y: 101, title: "The Tollkeeper's Motto", text: "Stamped on every coin in the strongbox: \"NOTHING PASSES FREE.\" Someone has scratched underneath, very small: \"Not even me.\"" });
+  RELICS.tollcoin = { name: "The Last Toll", from: "tollkeeper", desc: "A brass coin that won't be spent. +2 attack, +2 speed, +8% critical chance.", atk: 2, spd: 2, crit: 0.08 };
+
+  // ---- the people of Tamar's Rest, and what they do all day
+  const DESERT = { tamar: { robe: "#8a5a2a", hair: "#2a1a10", skin: "#a8703a", style: { hair: "tail", eye: "#3a2a1a" } },
+    qasim: { robe: "#5a3a7a", hair: "#1b1633", skin: "#c98d63", style: { hair: "cap", eye: "#4a3020" } },
+    idris: { robe: "#2a3a6a", hair: "#e8e4f0", skin: "#8a5a33", style: { hair: "hood", hood: "#1a2a4a", eye: "#8a8ad8" } },
+    sefa: { robe: "#d8d0c0", hair: "#6a6a6a", skin: "#b07a4a", style: { hair: "veil", dress: true, eye: "#4a3020" } },
+    halvard: { robe: "#6a4a3a", hair: "#c8a050", skin: "#e0a878", style: { hair: "helm", eye: "#3a6a8a" } },
+    nima: { robe: "#c8c0e0", hair: "#1b1633", skin: "#c98d63", style: { hair: "fringe", eye: "#3a2a1a" } },
+    bako: { robe: "#7a6a4a", hair: "#3a2a1e", skin: "#8a5a33", style: { hair: "cap", eye: "#3a2a1a" } } };
+  const dsShow = () => G.stage >= 2;
+  npc2({ id: "tamar", name: "Tamar, Caravan Master", x: 74, y: 111, look: DESERT.tamar, show: dsShow });
+  npc2({ id: "qasim", name: "Qasim the Trader", x: 76, y: 114, look: DESERT.qasim, show: dsShow });
+  npc2({ id: "idris", name: "Idris the Stargazer", x: 91, y: 121, look: DESERT.idris, show: dsShow });
+  npc2({ id: "sefa", name: "Old Sefa", x: 36, y: 112, look: DESERT.sefa, show: dsShow });
+  npc2({ id: "halvard", name: "Halvard", x: 95, y: 111, look: DESERT.halvard, show: dsShow });
+  npc2({ id: "nima", name: "Nima", x: 70, y: 116, look: DESERT.nima, show: dsShow });
+  npc2({ id: "caravan", name: "Bako the Drover", x: 96, y: 113, look: DESERT.bako, show: () => !!escort });
+  for (const id of ["tamar", "qasim", "idris", "sefa", "halvard", "nima", "caravan"]) SPEAKERS[id] = NPCS.find(n => n.id === id).name;
+  Object.assign(ACTS, {
+    sefa: { draw: (P, t) => { const a = Math.sin(t * 2.2) * 4; P(9 + a, -18, 2, 18, "#6b3f24"); P(6 + a, -1, 8, 2, "#857ea5"); } },
+    qasim: { draw: (P, t, n, g2, x, y) => { if (Math.sin(t * 0.9) > 0.55) drawEmote(g2, x + 8, y - 30, "dots"); } },
+    idris: { draw: (P, t, n, g2, x, y) => { P(10, -24, 2, 22, "#3a3450"); P(8, -26, 8, 3, "#9ea8d8"); if (isNight() && Math.sin(t) > 0.3) drawEmote(g2, x + 8, y - 30, "bang"); } },
+    halvard: { draw: (P, t) => { P(-10, -26, 2, 28, "#6b3f24"); P(-11, -30, 4, 5, "#c8c8d8"); } },
+    nima: { pace: 10, draw: (P, t, n, g2, x, y) => { if (!n.walking && Math.sin(t * 1.4) > 0.6) drawEmote(g2, x + 8, y - 30, "note"); } },
+    caravan: { draw: (P, t, n) => { const bob = n.walking ? Math.round(Math.abs(Math.sin(t * 6))) : 0; P(-26, -10 - bob, 16, 9, "#1b1633"); P(-25, -9 - bob, 14, 7, "#c8b08a"); P(-12, -8 - bob, 5, 4, "#c8b08a"); P(-24, -2, 2, 4, "#6b3f24"); P(-15, -2, 2, 4, "#6b3f24"); P(-44, -14, 16, 12, "#1b1633"); P(-43, -13, 14, 9, "#8a6a3a"); P(-43, -4, 3, 3, "#3a2a1e"); P(-32, -4, 3, 3, "#3a2a1e"); } },
+  });
+  Object.assign(D, {
+    tamar_0: { who: "tamar", text: "Salt goes east, water comes west, and the dunes eat whoever travels alone. I need a guard for today's caravan to the east bend. Bako drives; you keep him breathing. Fifty coin.", choices: [
+      { t: "\"I'll take it.\"", go: "tamar_go", req: () => escortFree(), reqText: "one caravan a day" },
+      { t: "\"Why does the salt go east?\"", go: "tamar_why" }, { t: "\"Not today.\"", go: null } ] },
+    tamar_why: say("tamar", "Because the Guild buys it there, for twice what they pay us here, and sells it back to the Flats for four times. I don't make the prices, courier. I just make sure the carts arrive.", "tamar_0"),
+    tamar_go: say("tamar", "Good. Stay close to him. Bako stops when you wander off. He's not brave, he's just old enough to know what's out there.", null, () => startEscort()),
+    tamar_done: say("tamar", "Bako says you fought like someone who'd done it before. Here. Fifty coin, and the salve the drovers didn't need. Come back tomorrow; there's always another cart.", null),
+    qasim_0: { who: "qasim", text: () => `Salt, courier? I buy honest salt at four coin a block. ${saltN() ? `You have ${saltN()}.` : "You have none. Old Sefa at the pans will teach you, if you ask nicely."}`, choices: [
+      { t: () => `Sell all your salt (${saltN() * 4} coin).`, go: null, req: () => saltN() > 0, reqText: "salt blocks", act: () => { const n = saltN(); G.coins += n * 4; G.flags.salt = 0; G.flags.saltSold = (G.flags.saltSold || 0) + n; toast(`Sold ${n} salt for ${n * 4} coin.`); Music.sound("item"); save(); updateHud(); } },
+      { t: "Buy a Salve (6 coin).", go: null, req: () => G.coins >= 6, reqText: "6 coin", act: () => { G.coins -= 6; G.items.salve = (G.items.salve || 0) + 1; toast("Bought a Salve."); save(); updateHud(); } },
+      { t: "Leave.", go: null } ] },
+    sefa_0: say("sefa", "(Old Sefa leans on her rake.) The brine sits in the pans all night. In the morning the sun draws the water off and leaves the salt. You rake it when the crust is ready: not too early, not too late. Like bread.", "sefa_1"),
+    sefa_1: say("sefa", "Try a pan. Stand by the edge and press to rake when the rake is over the crust. One pan each, each day; the brine needs a night to come back. Qasim will buy what you get.", null, () => { G.flags.sefaTaught = true; save(); }),
+    sefa_idle: say("sefa", () => G.flags.saltRaked >= 30 ? "Thirty blocks and more. You have salt-raker's wrists now. They'll ache in the rain. That's how you know." : "The pans don't care who owns them. The Guild does. The pans don't."),
+    idris_0: say("idris", () => (G.flags.stars || []).length >= STARS.length ? "The whole chart. You've seen the sky the reed-boat people saw. Most people only ever look down." : isNight() ? "There. Five stones in the Dry Sea, set by the reed-boat people to read the sky. Stand at one after dark and look up. Tell me what you see." : "Come back after dark, courier. The sky is only interesting to people who stay up.", null, () => { if ((G.flags.stars || []).length >= STARS.length && !G.flags.astrolabe) { G.flags.astrolabe = true; giveRelic("astrolabe"); } }),
+    halvard_0: say("halvard", () => G.flags.tollDead ? "The tollhouse is quiet. First time in my life I've walked past it without paying. Felt like stealing." : "Past the bend there's an old Guild tollhouse, half under a dune. Something inside still wants its toll. Don't go in until you can take a beating."),
+    nima_0: say("nima", () => G.members.includes("maru") && !(G.flags.fallen || []).includes("maru") ? "The blind lady sings better than the drovers! She says I'm flat. I'm not flat. I'm SALTY." : "Did you know the stars have names? Idris knows all of them. He made some up. I can tell."),
+  });
+  const saltN = () => G.flags.salt || 0;
+  Object.assign(RELICS, { astrolabe: { name: "Idris's Astrolabe", from: "_idris", desc: "The five reed-boat stars in brass. +2 SP each turn, +1 speed.", spRegen: 2, spd: 1 } });
+
+  // ---- salt raking: a timing mini-game at the brine pans
+  const rakeEl = document.createElement("div");
+  rakeEl.id = "rakeUI"; rakeEl.hidden = true;
+  rakeEl.innerHTML = `<b>Raking salt</b><div class="rbar"><i class="rzone"></i><i class="rmark"></i></div><p id="rakeMsg"></p><small class="dim">Press E / Space, tap ACT or tap the bar when the rake is over the crust.</small>`;
+  $("fishUI").parentElement.appendChild(rakeEl);   // inside the game frame, like the fishing panel
+  const rakeCss = document.createElement("style");
+  rakeCss.textContent = "#rakeUI{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:8;width:min(340px,86%);background:var(--panel);border:2px solid var(--edge);border-radius:10px;padding:12px 14px;text-align:center;color:var(--text)}#rakeUI .rbar{position:relative;height:22px;margin:10px 0;border:2px solid var(--edge);border-radius:6px;background:#e8e4f0;cursor:pointer}#rakeUI .rzone{position:absolute;top:0;bottom:0;background:#c8a050}#rakeUI .rmark{position:absolute;top:-4px;bottom:-4px;width:4px;background:#1b1633}#rakeUI p{margin:4px 0;min-height:1.4em;font-size:14px}";
+  document.head.appendChild(rakeCss);
+  let rake = null;
+  const panAt = (px, py) => PANS.findIndex(([x, y]) => px >= (x - 1) * TILE && px <= (x + 5) * TILE && py >= (y - 1) * TILE && py <= (y + 4) * TILE);
+  function startRake(i) {
+    rake = { i, stroke: 0, got: 0, pos: 0, dir: 1, speed: 0.9, zone: 0.35 + rnd(i, G.day || 1) * 0.3, w: 0.2, prev: mode };
+    mode = "rake"; rakeEl.hidden = false; drawRake(); $("rakeMsg").textContent = "Five strokes. Wait for the crust...";
+  }
+  function drawRake() { const z = rakeEl.querySelector(".rzone"), m = rakeEl.querySelector(".rmark"); z.style.left = `${rake.zone * 100}%`; z.style.width = `${rake.w * 100}%`; m.style.left = `calc(${rake.pos * 100}% - 2px)`; }
+  function rakeStroke() {
+    if (!rake) return;
+    const c = rake.zone + rake.w / 2, d = Math.abs(rake.pos - c), hit = d <= rake.w / 2, perfect = d <= rake.w / 6;
+    rake.got += perfect ? 2 : hit ? 1 : 0; rake.stroke++; Music.sound(hit ? "item" : "miss");
+    $("rakeMsg").textContent = perfect ? "A clean sheet of salt! +2" : hit ? "Good crust. +1" : "Too soon, or too late. Mud.";
+    rake.speed += 0.18; rake.w = Math.max(0.1, rake.w - 0.02); rake.zone = 0.1 + rnd(rake.stroke * 13 + rake.i, G.day || 1) * 0.7;
+    if (rake.stroke >= 5) setTimeout(endRake, 500);
+  }
+  function endRake() {
+    if (!rake) return;
+    const r = rake; rake = null; rakeEl.hidden = true; mode = "play";
+    G.flags.salt = saltN() + r.got; G.flags.saltRaked = (G.flags.saltRaked || 0) + r.got;
+    G.flags.raked = { ...(G.flags.raked || {}), [r.i]: G.day || 1 };
+    toast(r.got ? `You rake ${r.got} block${r.got > 1 ? "s" : ""} of salt. (${saltN()} carried; Qasim buys them.)` : "Nothing but mud this time. The brine will be back tomorrow.");
+    save(); updateHud();
+  }
+  rakeEl.querySelector(".rbar").addEventListener("pointerdown", e => { e.preventDefault(); if (mode === "rake") rakeStroke(); });
+  $("bA").addEventListener("pointerdown", () => { if (mode === "rake") rakeStroke(); });
+  addEventListener("keydown", e => { if (mode !== "rake") return; const k = e.key.toLowerCase(); if (["e", " ", "enter"].includes(k)) { e.stopImmediatePropagation(); e.preventDefault(); if (!e.repeat) rakeStroke(); } else if (k === "escape" || k === "q") { e.stopImmediatePropagation(); rake.stroke = 5; endRake(); } }, true);
+
+  // ---- the caravan escort
+  let escort = null;
+  const ESCORT_PATH = [[96, 113], [112, 113], [128, 113], [144, 113], [160, 113]];
+  const AMBUSHES = [[["mirage", "jackal"], ["scorpion"], ["wraith", "jackal"]], [["scorpion", "mirage"], ["wraith", "mirage"], ["scorpion", "wraith"]]];
+  const escortFree = () => !escort && G.flags.escortDay !== (G.day || 1);
+  function startEscort() {
+    escort = { leg: 0, fought: [false, false], waitMsg: 0 };
+    const n = NPCS.find(n => n.id === "caravan"); n.px = ESCORT_PATH[0][0] * TILE + 8; n.py = ESCORT_PATH[0][1] * TILE + 8;
+    toast("Walk with Bako. He only moves while you're close.");
+  }
+  function escortStep(dt) {
+    const n = NPCS.find(n => n.id === "caravan"); if (!n) return;
+    const d = Math.hypot(G.px - n.px, G.py - n.py);
+    if (d > 110) { n.walking = false; if ((escort.waitMsg -= dt) <= 0) { escort.waitMsg = 12; toast("Bako has stopped. He won't go on without you."); } return; }
+    const tgt = ESCORT_PATH[escort.leg + 1];
+    if (!tgt) return finishEscort();
+    const tx = tgt[0] * TILE + 8, ty = tgt[1] * TILE + 8, dx = tx - n.px, dy = ty - n.py, dd = Math.hypot(dx, dy), sp = 24 * dt;
+    n.walking = true; n.dir = dx > 0 ? "right" : "left";
+    if (dd <= sp) { n.px = tx; n.py = ty; escort.leg++;
+      const amb = escort.leg === 1 ? 0 : escort.leg === 3 ? 1 : -1;
+      if (amb >= 0 && !escort.fought[amb]) { escort.fought[amb] = true; n.walking = false; toast("Ambush on the road!"); const g = AMBUSHES[amb][((G.day || 1) + amb) % 3]; setTimeout(() => { if (mode === "play") startBattle(g, { area: "flats" }); }, 300); }
+    } else { n.px += dx / dd * sp; n.py += dy / dd * sp; }
+    n.x = Math.floor(n.px / TILE); n.y = Math.floor(n.py / TILE);
+  }
+  function finishEscort() {
+    escort = null; G.flags.escortDay = G.day || 1; G.flags.escorts = (G.flags.escorts || 0) + 1;
+    G.coins += 50; G.items.salve = (G.items.salve || 0) + 1; Music.sound("victory");
+    toast(`The caravan reaches the east bend. +50 coin, +1 Salve. (Caravans guarded: ${G.flags.escorts})`); save(); updateHud();
+  }
+
+  // ---- stargazing: five stones, five constellations, only after dark
+  const STARS = [
+    ["The Courier", "A woman with a satchel, striding west. The reed-boat people said she carried the first rain across the sky, and has been walking back for more ever since."],
+    ["The Two Brothers", "Two bright stars, one high and one low. They never rise on the same night. The salt-rakers say one climbed and one stayed, and they are still trying to meet."],
+    ["The Thumb on the Scale", "The Guild's astronomers named it The Scales. The salt-rakers renamed it. Look closely: one pan hangs lower than the other, and there's a star pressing on it."],
+    ["The Reed Boat", "A long curve of faint stars, like a hull. Sailors on the old sea steered by it. It still points to where the water was."],
+    ["The Empty Chair", "A ring of seven stars with a gap where an eighth should be. It is for whoever is missing from the table. Everyone who looks at it sees someone different."],
+  ];
+  const starAt = (px, py) => STAR_STONES.findIndex(([x, y]) => Math.hypot(px - x * TILE - 8, py - y * TILE - 8) < 26);
+
+  // ---- companions at Tamar's Rest: whoever travels with you finds something to do
+  const CAMP_ACTS = {
+    ilse: [66, 111, ["(Ilse is re-shoeing a drover's ox with borrowed tools.) Oxen don't lie about how they feel. You nail a shoe wrong, they tell you. I like that in a customer.", "(Ilse holds up a horseshoe.) First thing I've made in a year that isn't for hurting something. Feels strange. Feels good."]],
+    maru: [82, 118, ["(Maru is teaching the caravan children a song. They are terrible. She is delighted.) Again! And this time, Nima, pretend the note is a friend.", "(Maru hums the four notes, very quietly, and the children hum them back without being told.) ...Everybody knows it. Nobody knows how."]],
+    rook: [92, 116, ["(Rook has set up a target on a crate and is showing Nima how to hold a bow.) Elbow up. Breathe out. Don't aim at it; look at it and let your hands work it out.", "(Rook watches Nima's arrow hit the crate.) She's better than I was. Nobody's going to tell her who to shoot, either."]],
+    ada: [68, 120, ["(Ada is changing a sick drover's bandages, and humming, so softly you can barely hear it.)", "(Ada writes on her slate for a feverish child: 'You're safe. Sleep.' The child can't read. It works anyway.)"]],
+    kest: [88, 110, ["(Kest is boiling something in a borrowed pot that smells like mint and turpentine.) Dune scorpion venom, cut with salt-brine. Heart medicine, if you don't drink the whole cup.", "(Kest hands a drover a small bottle.) For the cough. Not poison. I checked. Twice."]],
+    ren: [94, 114, ["(Ren is drilling the caravan guards with Halvard.) Shields up. Together. A wall isn't strong because the stones are strong. It's strong because they don't move away from each other.", "(Ren wipes his face.) Halvard asked if I'd ever held a gate. I said once, for the wrong reasons. He said that counts as practice."]],
+    warden: [79, 110, ["(The Warden is hauling water up from the well, bucket after bucket, for every trough in the caravanserai. Nobody asked him to.)", "(The Warden sets down the bucket.) Four hundred years I guarded water from people. It is more pleasant this way round."]],
+    nell: [72, 121, ["(Nell is mending a torn cart canvas with a sailmaker's needle.) Sail, tarp, tent, same thing. Stitch it tight and it'll carry you anywhere.", "(Nell squints at the dunes.) Looks like a sea that forgot to be wet. I don't trust it. I want to dive in it anyway."]],
+  };
+  for (const [id, [x, y, lines]] of Object.entries(CAMP_ACTS)) {
+    npc2({ id: "cmp_" + id, name: HEROES[id].name, x, y, look: HEROES[id].look, show: () => G.members.includes(id) && G.stage >= 2 });
+    D["cmp_" + id + "_0"] = say(id, () => lines[(G.day || 1) % lines.length]);
+    SPEAKERS["cmp_" + id] = HEROES[id].name;
+  }
+  Object.assign(ACTS, {
+    cmp_ilse: { draw: (P, t, n) => { anvil(P, 11); const ph = sparks(P, t, 11, -8, 0.3); P(4, -20 + (ph < 0.12 ? 8 : 0), 2, 8, "#6b3f24"); P(2, -22 + (ph < 0.12 ? 8 : 0), 6, 3, "#857ea5"); n.dir = "right"; } },
+    cmp_maru: { draw: (P, t, n, g2, x, y) => { if (Math.sin(t * 1.6) > 0.2) drawEmote(g2, x + 8, y - 30, "note"); } },
+    cmp_rook: { draw: (P, t) => { P(14, -16, 10, 12, "#1b1633"); P(15, -15, 8, 10, "#e8e2d0"); P(18, -12, 2, 4, "#c8102e"); } },
+    cmp_ada: { draw: (P, t, n, g2, x, y) => { if (Math.sin(t * 0.8) > 0.5) drawEmote(g2, x + 8, y - 30, "heart"); } },
+    cmp_kest: { draw: (P, t) => { P(9, -4, 8, 6, "#1b1633"); P(10, -3, 6, 4, "#3a3450"); for (let i = 0; i < 3; i++) { const ph = (t * 0.7 + i / 3) % 1; P(11 + i * 2, -6 - ph * 12, 2, 2, ph < 0.5 ? "#8ad08a" : "#cfe8cf"); } } },
+    cmp_ren: { draw: (P, t) => { const a = Math.sin(t * 3); P(10, -26 + a * 2, 2, 26, "#6b3f24"); P(9, -30 + a * 2, 4, 5, "#c8c8d8"); } },
+    cmp_warden: { draw: (P, t) => { const up = Math.abs(Math.sin(t * 1.2)); P(10, -10 - up * 10, 7, 6, "#1b1633"); P(11, -9 - up * 10, 5, 4, "#3a8fbf"); } },
+    cmp_nell: { draw: (P, t) => { const a = Math.sin(t * 4) * 3; P(8, -6, 12, 6, "#c8b08a"); P(12 + a, -10, 1, 6, "#e8e4f0"); } },
+  });
+
+  // ---- routing: talk, rake, look up; the tollhouse; and what the region keeps in the journal
+  const _dialogForDS = dialogFor;
+  dialogFor = function (n) {
+    if (n.id.startsWith("cmp_")) return n.id + "_0";
+    if (n.id === "tamar") return !escort && G.flags.escortDay === (G.day || 1) && G.flags.escortPaid !== (G.day || 1) ? (G.flags.escortPaid = G.day || 1, "tamar_done") : "tamar_0";
+    if (n.id === "sefa") return G.flags.sefaTaught ? "sefa_idle" : "sefa_0";
+    if (n.id === "caravan") return (D.__bako = say("caravan", "Stay close, courier. Oxen can smell a scorpion three dunes off. So can I, and I'm not ashamed to say I'd rather not."), "__bako");
+    for (const k of ["qasim", "idris", "halvard", "nima"]) if (n.id === k) return k + "_0";
+    return _dialogForDS(n);
+  };
+  const _interactDS = interact;
+  interact = function () {
+    if (mode === "play" && G.py >= DRY.y0 * TILE) {
+      const i = panAt(G.px, G.py);
+      if (i >= 0 && !nearestNpc()) {
+        if (isNight()) { toast("The brine is still wet. Salt is raked by day."); return true; }
+        if ((G.flags.raked || {})[i] === (G.day || 1)) { toast("You've raked this pan today. The brine comes back overnight."); return true; }
+        startRake(i); return true;
+      }
+      const s = starAt(G.px, G.py);
+      if (s >= 0 && !nearestNpc()) {
+        if (!isNight()) { toast("A ring of old stones, set to face the sky. Nothing to see until dark."); return true; }
+        const [name, text] = STARS[s], fresh = !(G.flags.stars || []).includes(s);
+        if (fresh) { G.flags.stars = [...(G.flags.stars || []), s]; save(); }
+        card("The night sky", name, text + (fresh ? ` (Star chart: ${G.flags.stars.length}/${STARS.length})` : ""));
+        return true;
+      }
+    }
+    return _interactDS();
+  };
+  Object.assign(D, {
+    toll_0: say("tollkeeper", "(Inside the buried tollhouse, a figure in a rotted Guild coat sits behind a counter, stamping empty paper. It looks up. Its face is a ledger.) Goods to declare? Everything is goods. Everyone is goods. Nothing passes free.", "toll_1"),
+    toll_1: { who: "tollkeeper", text: "Your toll is: everything you carry. Pay, or be counted.", choices: [
+      { t: "\"We don't owe you anything.\"", go: "toll_fight" }, { t: "(Back away.)", go: null } ] },
+    toll_fight: say("tollkeeper", "Everyone says that. Everyone pays.", null, () => startBattle(["tollkeeper"], { boss: "tollkeeper", area: "hall" })),
+    toll_after: say(null, "(The Tollkeeper's ledger-face tears down the middle. Inside, on every page, the same entry, over and over, in a hand that gets shakier as it goes: PAID. PAID. PAID. PAID. Then, on the last page: I would like to go home now.)", null, () => { G.flags.tollDead = true; save(); updateHud(); }),
+  });
+  SPEAKERS.tollkeeper = "The Tollkeeper";
+  const _act2BossEndDS = act2BossEndB;
+  act2BossEndB = function (boss) { _act2BossEndDS(boss); if (boss === "tollkeeper") setTimeout(() => openDialog("toll_after"), 300); };
+  const _updateDS = update;
+  update = function (dt) {
+    _updateDS(dt);
+    if (mode !== "play" || !G) return;
+    if (escort) escortStep(dt);
+    if (G.stage >= 6 && !G.flags.tollDead && Math.hypot(G.px - (152 * TILE + 8), G.py - (99 * TILE + 8)) < 30) once("tollPrompt", () => openDialog("toll_0"));
+  };
+  const _updateRake = update;
+  update = function (dt) { _updateRake(dt); if (mode === "rake" && rake) { rake.pos += rake.dir * rake.speed * dt; if (rake.pos > 1) { rake.pos = 1; rake.dir = -1; } if (rake.pos < 0) { rake.pos = 0; rake.dir = 1; } drawRake(); } };
+  const _extraJournalDS = extraJournalHtml;
+  extraJournalHtml = function () {
+    const f = G.flags; if (G.stage < 2) return _extraJournalDS();
+    const bits = [`Salt raked: ${f.saltRaked || 0} (${saltN()} carried)`, `Caravans guarded: ${f.escorts || 0}`, `Star chart: ${(f.stars || []).length}/${STARS.length}`];
+    const names = (f.stars || []).map(i => STARS[i][0]);
+    return _extraJournalDS() + `<h3>The Dry Sea</h3><p>${bits.join(" · ")}</p>${names.length ? `<p class="dim" style="font-size:13px">Stars seen: ${names.join(", ")}.</p>` : ""}`;
+  };
+  ACHIEVEMENTS.push(["salt30", "Salt-Raker's Wrists", "Rake 30 blocks of salt in the Dry Sea.", () => (G.flags.saltRaked || 0) >= 30],
+    ["escort3", "Safe Passage", "Guard three caravans to the east bend.", () => (G.flags.escorts || 0) >= 3],
+    ["stars", "The Reed-Boat Sky", "See all five constellations from the star stones.", () => (G.flags.stars || []).length >= 5],
+    ["toll", "Nothing Passes Free", "Defeat the Tollkeeper.", () => !!G.flags.tollDead]);
+
   // ================================================================== BOOT
   const saved = load();          // read the save before a fresh game could overwrite it
   newGame(false);
@@ -7735,7 +8077,7 @@
     const spots = { ...Object.fromEntries(NPCS.map(n => [n.id, [n.x, n.y]])), ...Object.fromEntries(CHESTS.map(c => ["chest_" + c.id, [c.x, c.y]])), ...Object.fromEntries(LORE.map(l => ["lore" + l.id, [l.x, l.y]])),
       ...Object.fromEntries(SHARDS.map(c => ["shard" + c.id, [c.x, c.y]])), key: [40, 17], charm: [11, 15], mother: [62, 43], voss: [34, 8], hollis: [61, 12], bell: [34, 6], gaterest: [56, 15], groverest: [60, 44], wyrm: [7, 11] };
     return Object.entries(spots).filter(([, [x, y]]) => ![[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => seen.has((x + dx) + "," + (y + dy)))).map(([k]) => k);
-  }, props: () => PROPS.length, battleState: () => battle && battle.foes.map(f => f.name + ":" + f.hp + "/" + f.maxHp).join(" "), clearField: () => { field = []; }, rest: () => restParty(), fish: () => fishing, field: () => field, storm: () => { stormWait = 0; return storm; }, cineTest: k => playCine({ crown: CROWN_END, keeper: KEEPER_END, butcher: CINE_BEFORE.maru_scene0.shots, quill: CINE_BEFORE.quill_scene.shots, maw: CINE_BEFORE.maw_scene.shots, vela: CINE_BEFORE.vela_scene.shots, corvin: CINE_BEFORE.corvin_scene.shots, mother: CINE_BEFORE.mother_scene.shots, maru: MARU_SONG, rook: ROOK_LAST, ren: REN_DOOR, hollis: HOLLIS_UNMASKED, king: KING_RISES, salt: SALT_CHILD, teodor: CINE_BEFORE.hermit5_0.shots, lanterns: CINE_BEFORE.love_h3_0.shots, whistle: CINE_BEFORE.gulp_love0.shots }[k], null, { music: "cine_deep" }), propsList: () => PROPS.map(p => [p.type, p.x, p.y, get(p.x, p.y)]), bopts: () => battle && JSON.stringify(battle.opts), tile: (x, y) => get(x, y), win: () => battle && battle.foes.forEach(f => { f.hp = 1; }), end: k => ending(k), ach: () => achGot(), tp: (x, y) => { G.px = x * TILE + 8; G.py = y * TILE + 8; }, blocked: (x, y) => blocked(x, y), goal: () => goal(), warps: () => WARPS, dialogs: () => D, dlg: () => dlg, talkTo: id => { const n = NPCS.find(n => n.id === id); return n && npcVisible(n) ? dialogFor(n) : undefined; }, npcIds: () => NPCS.filter(n => npcVisible(n)).map(n => n.id) };
+  }, props: () => PROPS.length, battleState: () => battle && battle.foes.map(f => f.name + ":" + f.hp + "/" + f.maxHp).join(" "), clearField: () => { field = []; }, rest: () => restParty(), fish: () => fishing, field: () => field, storm: () => { stormWait = 0; return storm; }, cineTest: k => playCine({ crown: CROWN_END, keeper: KEEPER_END, butcher: CINE_BEFORE.maru_scene0.shots, quill: CINE_BEFORE.quill_scene.shots, maw: CINE_BEFORE.maw_scene.shots, vela: CINE_BEFORE.vela_scene.shots, corvin: CINE_BEFORE.corvin_scene.shots, mother: CINE_BEFORE.mother_scene.shots, maru: MARU_SONG, rook: ROOK_LAST, ren: REN_DOOR, hollis: HOLLIS_UNMASKED, king: KING_RISES, salt: SALT_CHILD, teodor: CINE_BEFORE.hermit5_0.shots, lanterns: CINE_BEFORE.love_h3_0.shots, whistle: CINE_BEFORE.gulp_love0.shots }[k], null, { music: "cine_deep" }), propsList: () => PROPS.map(p => [p.type, p.x, p.y, get(p.x, p.y)]), bopts: () => battle && JSON.stringify(battle.opts), tile: (x, y) => get(x, y), win: () => battle && battle.foes.forEach(f => { f.hp = 1; }), end: k => ending(k), ach: () => achGot(), tp: (x, y) => { G.px = x * TILE + 8; G.py = y * TILE + 8; }, blocked: (x, y) => blocked(x, y), goal: () => goal(), warps: () => WARPS, dialogs: () => D, dlg: () => dlg, talkTo: id => { const n = NPCS.find(n => n.id === id); return n && npcVisible(n) ? dialogFor(n) : undefined; }, npcIds: () => NPCS.filter(n => npcVisible(n)).map(n => n.id), caravanPos: () => { const n = NPCS.find(n => n.id === 'caravan'); return n && npcVisible(n) ? [n.px, n.py] : null; }, sim: () => ({ makeHero, levelUp, xpNeed, MONSTERS, FIELD, DIFFS, setDiff: d => { difficulty = d; } }) };
 })();
 </script>
 </body>
