@@ -315,7 +315,7 @@
 </div>
 <div class="help" id="help">
   <span><kbd>WASD</kbd> / <kbd>←↑↓→</kbd> move</span>
-  <span><kbd>Shift</kbd> dash (hold to run)</span>
+  <span><kbd>Shift</kbd>/<kbd>K</kbd> dash (hold to run)</span>
   <span><kbd>E</kbd> talk, rest, confirm</span>
   <span><kbd>Q</kbd> back</span>
   <span><kbd>P</kbd> party</span>
@@ -1415,12 +1415,12 @@
     if (mode !== "play") return;
     if (k === "e" || k === "enter" || k === " ") interact();
     if (k === "m") showMap = !showMap;
-    if (k === "shift") dash();
+    if (k === "shift" || k === "k") dash();
     if (k === "p") openRoster();
     if (k === "j") openJournal();
   });
   addEventListener("keyup", e => { keys[e.key.toLowerCase()] = false; });
-  addEventListener("blur", () => { for (const k in keys) keys[k] = false; });
+  addEventListener("blur", () => { for (const k in keys) keys[k] = false; if (mode === "play" || mode === "battle") pauseGame(); });
   addEventListener("pointerdown", () => Music.init(), { once: true });
   const stickEl = $("stick"), knob = $("knob");
   let stickId = null;
@@ -2181,7 +2181,7 @@
     if (len > 1) { mx /= len; my /= len; }
     const moving = len > 0.1 || player.dashT > 0;
     player.moving = moving;
-    player.sprint = keys["shift"] || player.sprintTouch;
+    player.sprint = keys["shift"] || keys["k"] || player.sprintTouch;
     player.dashCd = Math.max(0, player.dashCd - dt);
     const dashing = player.dashT > 0;
     if (dashing) { player.dashT -= dt; mx = player.dashX; my = player.dashY; if (player.dashT <= 0 && !REDUCED) burst(G.px, G.py, "#d8d0e6", 4, 30); }
@@ -4699,7 +4699,7 @@
   function showControls() {
     showPanel("Controls", `<div class="keys">
       <span><kbd>WASD</kbd> <kbd>Arrows</kbd></span><span>Move, and choose in menus</span>
-      <span><kbd>Shift</kbd></span><span>Dash (hold to run). Dash into a monster to ambush it.</span>
+      <span><kbd>Shift</kbd> or <kbd>K</kbd></span><span>Dash (hold to run). Dash into a monster to ambush it. If tapping Shift brings up Windows' Sticky Keys box, use K.</span>
       <span><kbd>E</kbd> <kbd>Space</kbd></span><span>Talk, rest, read, confirm</span>
       <span><kbd>Q</kbd></span><span>Back</span>
       <span><kbd>P</kbd></span><span>Party: choose fighters, equip relics, talk with companions</span>
@@ -8602,11 +8602,18 @@
   updateHud(); resize();
   addEventListener("resize", resize);
   let last = performance.now();
+  const loopErrors = window.__saltRoadErrors = [];
+  addEventListener("unhandledrejection", e => { const msg = String(e.reason && e.reason.message || e.reason); if (!loopErrors.includes(msg)) { loopErrors.push(msg); console.error("Salt Road async error:", e.reason); } });
   function loop(now) {
+    requestAnimationFrame(loop);          // queued first, so one bad frame can never stop the game
     const dt = Math.min(0.05, (now - last) / 1000); last = now;
-    if (!paused) { update(dt); if (G && mode !== "title") { G.stats = G.stats || {}; G.stats.time = (G.stats.time || 0) + dt; } }
-    render(); paintScene();
-    requestAnimationFrame(loop);
+    try {
+      if (!paused) { update(dt); if (G && mode !== "title") { G.stats = G.stats || {}; G.stats.time = (G.stats.time || 0) + dt; } }
+      render(); paintScene();
+    } catch (err) {
+      const msg = String(err && err.message || err);
+      if (!loopErrors.includes(msg)) { loopErrors.push(msg); console.error("Salt Road frame error:", err); }
+    }
   }
   requestAnimationFrame(loop);
   // For quick checks from a browser console, e.g. window.__saltRoad.battle(["ghoul","jackal"])
@@ -8623,7 +8630,7 @@
     const spots = { ...Object.fromEntries(NPCS.map(n => [n.id, [n.x, n.y]])), ...Object.fromEntries(CHESTS.map(c => ["chest_" + c.id, [c.x, c.y]])), ...Object.fromEntries(LORE.map(l => ["lore" + l.id, [l.x, l.y]])),
       ...Object.fromEntries(SHARDS.map(c => ["shard" + c.id, [c.x, c.y]])), key: [40, 17], charm: [11, 15], mother: [62, 43], voss: [34, 8], hollis: [61, 12], bell: [34, 6], gaterest: [56, 15], groverest: [60, 44], wyrm: [7, 11] };
     return Object.entries(spots).filter(([, [x, y]]) => ![[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => seen.has((x + dx) + "," + (y + dy)))).map(([k]) => k);
-  }, props: () => PROPS.length, battleState: () => battle && battle.foes.map(f => f.name + ":" + f.hp + "/" + f.maxHp).join(" "), clearField: () => { field = []; }, rest: () => restParty(), fish: () => fishing, field: () => field, storm: () => { stormWait = 0; return storm; }, cineTest: k => playCine({ crown: CROWN_END, keeper: KEEPER_END, butcher: CINE_BEFORE.maru_scene0.shots, quill: CINE_BEFORE.quill_scene.shots, maw: CINE_BEFORE.maw_scene.shots, vela: CINE_BEFORE.vela_scene.shots, corvin: CINE_BEFORE.corvin_scene.shots, mother: CINE_BEFORE.mother_scene.shots, maru: MARU_SONG, rook: ROOK_LAST, ren: REN_DOOR, hollis: HOLLIS_UNMASKED, king: KING_RISES, salt: SALT_CHILD, teodor: CINE_BEFORE.hermit5_0.shots, lanterns: CINE_BEFORE.love_h3_0.shots, whistle: CINE_BEFORE.gulp_love0.shots }[k], null, { music: "cine_deep" }), propsList: () => PROPS.map(p => [p.type, p.x, p.y, get(p.x, p.y)]), bopts: () => battle && JSON.stringify(battle.opts), tile: (x, y) => get(x, y), win: () => battle && battle.foes.forEach(f => { f.hp = 1; }), end: k => ending(k), ach: () => achGot(), tp: (x, y) => { G.px = x * TILE + 8; G.py = y * TILE + 8; }, blocked: (x, y) => blocked(x, y), goal: () => goal(), warps: () => WARPS, dialogs: () => D, dlg: () => dlg, talkTo: id => { const n = NPCS.find(n => n.id === id); return n && npcVisible(n) ? dialogFor(n) : undefined; }, npcIds: () => NPCS.filter(n => npcVisible(n)).map(n => n.id), layout: () => {   // screen-space boxes of characters and texts, for the overlap audit
+  }, props: () => PROPS.length, battleState: () => battle && battle.foes.map(f => f.name + ":" + f.hp + "/" + f.maxHp).join(" "), clearField: () => { field = []; }, respawn: () => spawnField(), rest: () => restParty(), fish: () => fishing, field: () => field, storm: () => { stormWait = 0; return storm; }, cineTest: k => playCine({ crown: CROWN_END, keeper: KEEPER_END, butcher: CINE_BEFORE.maru_scene0.shots, quill: CINE_BEFORE.quill_scene.shots, maw: CINE_BEFORE.maw_scene.shots, vela: CINE_BEFORE.vela_scene.shots, corvin: CINE_BEFORE.corvin_scene.shots, mother: CINE_BEFORE.mother_scene.shots, maru: MARU_SONG, rook: ROOK_LAST, ren: REN_DOOR, hollis: HOLLIS_UNMASKED, king: KING_RISES, salt: SALT_CHILD, teodor: CINE_BEFORE.hermit5_0.shots, lanterns: CINE_BEFORE.love_h3_0.shots, whistle: CINE_BEFORE.gulp_love0.shots }[k], null, { music: "cine_deep" }), propsList: () => PROPS.map(p => [p.type, p.x, p.y, get(p.x, p.y)]), bopts: () => battle && JSON.stringify(battle.opts), tile: (x, y) => get(x, y), win: () => battle && battle.foes.forEach(f => { f.hp = 1; }), end: k => ending(k), ach: () => achGot(), tp: (x, y) => { G.px = x * TILE + 8; G.py = y * TILE + 8; }, blocked: (x, y) => blocked(x, y), goal: () => goal(), warps: () => WARPS, dialogs: () => D, dlg: () => dlg, talkTo: id => { const n = NPCS.find(n => n.id === id); return n && npcVisible(n) ? dialogFor(n) : undefined; }, npcIds: () => NPCS.filter(n => npcVisible(n)).map(n => n.id), layout: () => {   // screen-space boxes of characters and texts, for the overlap audit
     const cr = canvas.getBoundingClientRect(), d = cr.width / canvas.width, sx = VP.k * d, sy = VP.k * d;
     const box = (x, y, w, h, name) => ({ name, x: cr.left + VP.ox * d + x * sx, y: cr.top + VP.oy * d + y * sy, w: w * sx, h: h * sy });
     const chars = [];
