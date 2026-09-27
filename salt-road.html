@@ -2877,6 +2877,7 @@
       const label = intentLabel(f), danger = f.intent && (f.intent.all || (f.intent.power || 0) >= 1.3 || (f.intent.charge && !f.intent.release));
       const ly = f.boss ? by + 12 : by - 4;
       hiText(label, p.x, ly, 7, f.st.stun ? "#ffcf4a" : danger ? "#ff6b6b" : "#f3efe6");
+      const ak = affShort(f.id); if (ak) hiText(ak, p.x, f.boss ? ly + 9 : ly - 9, 6, "#ffcf4a");   // weaknesses and resistances learned so far
       const sts = Object.keys(f.st).filter(k => ["bleed", "stun", "weak", "guard", "mark", "brk"].includes(k));
       sts.forEach((k, i) => { g.fillStyle = { bleed: "#c8102e", stun: "#ffcf4a", weak: "#b08aff", guard: "#6fc0d0", mark: "#ff9a3d", brk: "#aa5a5a" }[k]; g.fillRect(p.x + bw / 2 + 3 + i * 5, by, 4, 3); });
       if (B.hoverTarget === f || B.current === f) { g.strokeStyle = B.current === f ? "#ff6b6b" : "#ffcf4a"; g.lineWidth = 1; const w2 = f.boss ? 60 : 34; g.strokeRect(p.x - w2 / 2 + .5, p.y - (f.boss ? 108 : 56) + .5, w2, f.boss ? 112 : 58); }
@@ -5551,19 +5552,19 @@
 
   // night hunts: pale packs that only walk after dark, and stay dead once killed
   Object.assign(MONSTERS, {
-    wraith: { name: "Salt Wraith", hp: 70, atk: 17, def: 4, spd: 11, xp: 60, coin: [10, 16], sprite: "ghoul",
+    nightwraith: { name: "Night Wraith", hp: 50, atk: 12, def: 4, spd: 11, xp: 60, coin: [10, 16], sprite: "ghoul",
       pal: { "#e8e2f0": "#bfe8ff", "#d8d0e6": "#8ab8d8", "#a3242e": "#2a6aff", "#f2ead8": "#e8ffff", "#5a0f18": "#0a1a4a" },
       moves: [{ name: "Cold Hand", w: 3, power: 1.2, weakOne: 2 }, { name: "Wail", w: 1, power: 0.7, all: true }, { name: "Drink Warmth", w: 2, power: 1.0, drain: 0.6 }] },
     moonmother: { name: "The Moon-Mother", hp: 260, atk: 21, def: 6, spd: 9, xp: 220, coin: [60, 60], sprite: "ghoul",
       pal: { "#e8e2f0": "#f0f0ff", "#d8d0e6": "#c0c0e8", "#a3242e": "#e8e8ff", "#f2ead8": "#ffffff", "#5a0f18": "#3a3a8a" },
-      moves: [{ name: "Lullaby of Salt", w: 2, power: 0.8, all: true, stunChance: 0.15 }, { name: "Embrace", w: 3, power: 1.5, drain: 0.5 }, { name: "Call the Pale", w: 1, summonKind: "wraith", summonText: "The Moon-Mother opens her arms. Pale shapes rise out of the salt to fill them." }] },
+      moves: [{ name: "Lullaby of Salt", w: 2, power: 0.8, all: true, stunChance: 0.15 }, { name: "Embrace", w: 3, power: 1.5, drain: 0.5 }, { name: "Call the Pale", w: 1, summonKind: "nightwraith", summonText: "The Moon-Mother opens her arms. Pale shapes rise out of the salt to fill them." }] },
   });
-  BESTIARY.wraith = "The dead of the salt who were never buried. They walk at night looking for warmth, and take it from whoever they find.";
+  BESTIARY.nightwraith = "The dead of the salt who were never buried. They walk at night looking for warmth, and take it from whoever they find.";
   BESTIARY.moonmother = "The first of the Wraiths: a woman who walked into the Flats at night four hundred years ago to find her children. She is still looking. She thinks you might be them.";
   const NIGHT_HUNTS = [
-    { id: "n1", x: 26, y: 33, group: ["wraith", "wraith"], minStage: 2 }, { id: "n2", x: 50, y: 22, group: ["wraith", "wraith", "wraith"], minStage: 3 },
-    { id: "n3", x: 44, y: 44, group: ["wraith", "ghoul", "wraith"], minStage: 4 }, { id: "n4", x: 20, y: 70, group: ["wraith", "wraith", "bogghoul"], minStage: 8 },
-    { id: "n5", x: 100, y: 72, group: ["wraith", "wraith", "wraith"], minStage: 9 }, { id: "n6", x: 27, y: 2, group: ["moonmother", "wraith"], minStage: 5, elite: true },
+    { id: "n1", x: 26, y: 33, group: ["nightwraith", "nightwraith"], minStage: 2 }, { id: "n2", x: 50, y: 22, group: ["nightwraith", "nightwraith", "nightwraith"], minStage: 3 },
+    { id: "n3", x: 44, y: 44, group: ["nightwraith", "ghoul", "nightwraith"], minStage: 4 }, { id: "n4", x: 20, y: 70, group: ["nightwraith", "nightwraith", "bogghoul"], minStage: 8 },
+    { id: "n5", x: 100, y: 72, group: ["nightwraith", "nightwraith", "nightwraith"], minStage: 9 }, { id: "n6", x: 27, y: 2, group: ["moonmother", "nightwraith"], minStage: 5, elite: true },
   ];
   const walkableNear = (x, y) => { for (let r = 0; r < 6; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) { const t = get(x + dx, y + dy); if ([T.SALT, T.SAND, T.GRASS, T.MUD, T.SHALLOW, T.PATH].includes(t)) return [x + dx, y + dy]; } return [x, y]; };
   const _spawnFieldN = spawnField;
@@ -7810,7 +7811,7 @@
   Object.assign(MONSTERS, {
     scorpion: { name: "Dune Scorpion", hp: 64, atk: 15, def: 11, spd: 6, xp: 34, coin: [5, 9], sprite: "crawler",
       moves: [{ name: "Sting", w: 3, power: 1.0, bleed: [3, 3] }, { name: "Pincer", w: 2, power: 1.3 }, { name: "Dig In", w: 1, guard: true, heal: 10 }] },
-    wraith: { name: "Salt Wraith", hp: 52, atk: 17, def: 3, spd: 11, xp: 36, coin: [4, 8], sprite: "wraith",
+    dunewraith: { name: "Dune Wraith", hp: 52, atk: 17, def: 3, spd: 11, xp: 36, coin: [4, 8], sprite: "wraith",
       moves: [{ name: "Grave Chill", w: 3, power: 1.0, weakOne: 2 }, { name: "Salt Wail", w: 1, charge: true, power: 1.5, all: true }] },
     mirage: { name: "Mirage Hound", hp: 40, atk: 14, def: 2, spd: 17, xp: 28, coin: [3, 6], sprite: "jackal",
       moves: [{ name: "Flicker", w: 3, power: 0.7, hits: 2 }, { name: "Shimmer Away", w: 1, guard: true }] },
@@ -7820,15 +7821,15 @@
         { name: "Call the Collectors", w: 0, summonKind: "scorpion", summonText: "The Tollkeeper stamps a ledger. Two scorpions crawl out of the strongbox, wearing little brass collars." }] },
   });
   BESTIARY.scorpion = "Armoured in salt-crust. Hammers and spears crack them; bare blades skate off.";
-  BESTIARY.wraith = "The drowned of the old sea, dried to salt. Their wail builds slowly. Hit them hard while it builds, and it breaks.";
+  BESTIARY.dunewraith = "The drowned of the old sea, dried to salt. Their wail builds slowly. Hit them hard while it builds, and it breaks.";
   BESTIARY.mirage = "Hounds made of heat and hunger. Fast enough to hit twice; thin enough to kill quickly.";
   BESTIARY.tollkeeper = "Guild Tollhouse No. 4 was buried by a dune a century ago. The toll-collector inside never stopped collecting.";
   FIELD.push(
     { id: "d1", x: 30, y: 104, group: ["jackal", "jackal", "ghoul"], minStage: 2 }, { id: "d2", x: 20, y: 124, group: ["ghoul", "ghoul"], minStage: 2 },
-    { id: "d3", x: 58, y: 100, group: ["mirage", "jackal"], minStage: 3 }, { id: "d4", x: 55, y: 130, group: ["wraith", "ghoul"], minStage: 4 },
-    { id: "d5", x: 110, y: 118, group: ["scorpion", "mirage"], minStage: 5 }, { id: "d6", x: 125, y: 104, group: ["wraith", "wraith"], minStage: 5 },
-    { id: "d7", x: 140, y: 125, group: ["scorpion", "scorpion"], minStage: 6 }, { id: "d8", x: 160, y: 118, group: ["mirage", "mirage", "wraith"], minStage: 6, elite: true },
-    { id: "d9", x: 132, y: 132, group: ["scorpion", "wraith", "mirage"], minStage: 7, elite: true });
+    { id: "d3", x: 58, y: 100, group: ["mirage", "jackal"], minStage: 3 }, { id: "d4", x: 55, y: 130, group: ["dunewraith", "ghoul"], minStage: 4 },
+    { id: "d5", x: 110, y: 118, group: ["scorpion", "mirage"], minStage: 5 }, { id: "d6", x: 125, y: 104, group: ["dunewraith", "dunewraith"], minStage: 5 },
+    { id: "d7", x: 140, y: 125, group: ["scorpion", "scorpion"], minStage: 6 }, { id: "d8", x: 160, y: 118, group: ["mirage", "mirage", "dunewraith"], minStage: 6, elite: true },
+    { id: "d9", x: 132, y: 132, group: ["scorpion", "dunewraith", "mirage"], minStage: 7, elite: true });
   LORE.push(
     { id: 20, x: 50, y: 133, title: "The Reed-Boat City", text: "Scratched on a pillar where the waterline used to be: \"We lived on the water, on boats of reed lashed together, forty thousand of us. When the sea went, the boats sat down on the salt, and we learned to walk.\"" },
     { id: 21, x: 26, y: 112, title: "A Salt-Raker's Count", text: "Rows of marks on a board by the pans: \"One cart of salt, one cup of water from the Guild well. The Guild sets the price of both.\"" },
@@ -7919,7 +7920,7 @@
   // ---- the caravan escort
   let escort = null;
   const ESCORT_PATH = [[96, 113], [112, 113], [128, 113], [144, 113], [160, 113]];
-  const AMBUSHES = [[["mirage", "jackal"], ["scorpion"], ["wraith", "jackal"]], [["scorpion", "mirage"], ["wraith", "mirage"], ["scorpion", "wraith"]]];
+  const AMBUSHES = [[["mirage", "jackal"], ["scorpion"], ["dunewraith", "jackal"]], [["scorpion", "mirage"], ["dunewraith", "mirage"], ["scorpion", "dunewraith"]]];
   const escortFree = () => !escort && G.flags.escortDay !== (G.day || 1);
   function startEscort() {
     escort = { leg: 0, fought: [false, false], waitMsg: 0 };
@@ -8080,6 +8081,71 @@
     const a = G.flags.abaLetter;
     return _extraJournalAL() + (a ? `<h3>Aba's last run</h3><p>${a === "carry" ? "A letter from the drover Aba, folded twice, for his wife in Kessa. Tamar kept it a year." : "Delivered, a year late. It still came."}</p>` : "");
   };
+
+  // ================================================================== DAMAGE TYPES AND WEAKNESSES
+  // Who hits what matters: each hero strikes with a type, some skills and items override it, and monster
+  // families are weak (x1.5) or resistant (x0.6) to some types. You learn an affinity by hitting with it;
+  // what you know shows on the enemy's card and in the journal.
+  const HERO_TYPE = { sable: "blade", ilse: "blunt", maru: "storm", rook: "pierce", ada: "light", ren: "pierce", kest: "poison", nell: "blade", warden: "blunt" };
+  const SKILL_TYPE = { "Acid Flask": "poison", "Philosopher's Fire": "fire", "Broadside": "fire", "Cannon Salvo": "fire", "Memory Beam": "light", "Lantern Flare": "light", "Last Rites": "light" };
+  const ITEM_TYPE = { fire: "fire" };
+  const AF = (weak, resist = []) => ({ weak, resist });
+  const UNDEAD = AF(["light"], ["poison"]), HOLLOW = AF(["light"], ["blade", "pierce"]), SHELL = AF(["blunt"], ["blade", "pierce"]),
+    BRINE = AF(["storm", "fire"], ["blunt"]), BRASS = AF(["storm"], ["blade", "pierce", "poison"]), CRYSTAL = AF(["blunt"], ["blade"]), WOOD = AF(["fire"], []);
+  const AFFINITY = {
+    jackal: AF(["fire"]), rotfang: AF(["fire"]), houndg: AF([]), mirage: AF(["light"], ["poison"]),
+    ghoul: UNDEAD, bogghoul: UNDEAD, minerghoul: UNDEAD, dvillager: UNDEAD, corvin: AF(["blunt"], ["poison"]),
+    wraith: HOLLOW, nightwraith: HOLLOW, dunewraith: HOLLOW, choir: HOLLOW, singer: HOLLOW, priest: HOLLOW, moonmother: HOLLOW, angler: AF(["light"]),
+    leech: BRINE, spawn: BRINE, toad: BRINE, eel: BRINE, mother: BRINE, gulp: BRINE,
+    crawler: SHELL, scorpion: SHELL, crab: SHELL, pincer: SHELL,
+    clerk: BRASS, sluicer: BRASS, widow: BRASS, tollkeeper: AF(["storm"], ["blade"]), jonas: BRASS,
+    colossus: CRYSTAL, wyrm: CRYSTAL, voss: AF(["blunt"], ["blade"]), saltworm: CRYSTAL,
+    drowned: AF(["storm"]), sailor: AF(["storm"]), maw: AF(["storm"], ["poison"]), hollis: AF(["storm"], ["poison"]), quill: AF(["storm"]),
+    harpy: AF(["pierce"]), spark: AF(["blunt"], ["storm"]), vela: AF(["pierce"], ["storm"]),
+    rootbound: WOOD, ledgertree: AF(["fire"], ["pierce"]), ledgercrow: AF(["pierce", "fire"]),
+    butcher: AF(["pierce"]), choirmaster: AF(["light"]), thug: AF([]), king: AF([], ["poison"]), oldmouth: AF(["storm"]),
+  };
+  const affOf = (id, type) => { const a = AFFINITY[id]; return !a || !type ? 1 : a.weak.includes(type) ? 1.5 : a.resist.includes(type) ? 0.6 : 1; };
+  const typeOf = att => {
+    if (!att || att.side !== "hero") return null;
+    const a = battle && battle.act;
+    if (a && a.u === att && a.skill && SKILL_TYPE[a.skill.name]) return SKILL_TYPE[a.skill.name];
+    return HERO_TYPE[att.id] || null;
+  };
+  function learnAffinity(id, type, mult) {
+    const known = G.flags.aff || (G.flags.aff = {}), k = known[id] || (known[id] = { weak: [], resist: [] });
+    const list = mult > 1 ? k.weak : k.resist;
+    if (!list.includes(type)) { list.push(type); if (!G.flags.affTip) { G.flags.affTip = true; setTimeout(() => toast("Tip: some enemies are WEAK to a kind of hit (blade, blunt, pierce, storm, light, poison, fire) and take 50% more; others resist. What you learn shows on their card."), 900); } }
+  }
+  const _doHeroA = doHero;
+  doHero = async function (u, act) {
+    if (battle) battle.act = { u, skill: act && act.skill, item: act && act.kind === "item" ? act.item : null };
+    try { return await _doHeroA(u, act); } finally { if (battle) battle.act = null; }
+  };
+  const _attackRollA = attackRoll;
+  attackRoll = function (att, target, power, o) {
+    if (battle) battle.curAtt = att;
+    try { return _attackRollA(att, target, power, o); } finally { if (battle) battle.curAtt = null; }
+  };
+  const _damageA = damage;
+  damage = function (target, amount, o = {}) {
+    if (!battle || target.side !== "foe") return _damageA(target, amount, o);
+    const a = battle.act, type = battle.curAtt ? typeOf(battle.curAtt) : a && a.item ? ITEM_TYPE[a.item] : null;
+    const m = affOf(target.id, type);
+    if (m === 1) return _damageA(target, amount, o);
+    learnAffinity(target.id, type, m);
+    const dealt = _damageA(target, Math.max(1, Math.round(amount * m)), o);
+    popupText(target, m > 1 ? `WEAK: ${type}` : `resists ${type}`, m > 1 ? "#ffcf4a" : "#9a94b8");
+    return dealt;
+  };
+  const knownAff = id => { const k = (G.flags.aff || {})[id]; if (!k) return ""; const parts = []; if (k.weak.length) parts.push(`weak ${k.weak.join("/")}`); if (k.resist.length) parts.push(`resists ${k.resist.join("/")}`); return parts.join(" · "); };
+  function affShort(id) { const k = (G.flags.aff || {})[id]; return k ? [...k.weak.map(t => "+" + t), ...k.resist.map(t => "-" + t)].join(" ") : ""; }
+  const _extraJournalA2 = extraJournalHtml;
+  extraJournalHtml = function () {
+    const rows = Object.keys(G.flags.aff || {}).filter(id => MONSTERS[id] && knownAff(id)).map(id => `<li><b>${MONSTERS[id].name.split(",")[0]}</b>: ${knownAff(id)}</li>`);
+    return _extraJournalA2() + (rows.length ? `<h3>Weaknesses learned</h3><ul>${rows.join("")}</ul>` : "");
+  };
+  ACHIEVEMENTS.push(["weak20", "Know Your Enemy", "Learn twenty weaknesses or resistances.", () => Object.values(G.flags.aff || {}).reduce((s, k) => s + k.weak.length + k.resist.length, 0) >= 20]);
 
   // ================================================================== BOOT
   const saved = load();          // read the save before a fresh game could overwrite it
