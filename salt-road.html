@@ -161,7 +161,13 @@
   .screen .big:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
   #cardArt { width: min(480px, 88%); height: auto; image-rendering: pixelated; border-radius: 8px; border: 2px solid var(--edge); box-shadow: 0 10px 40px -10px #000; }
   @media (max-height: 560px) { #cardArt { width: min(300px, 60%); } }
-  #card { background: radial-gradient(ellipse at 50% 45%, rgba(10,8,22,.84), rgba(10,8,22,.95)); }
+  #card { background: radial-gradient(ellipse at 50% 45%, rgba(10,8,22,.84), rgba(10,8,22,.95)); justify-content: safe center; overflow-y: auto; }
+  #cardText { max-height: min(56vh, 540px); overflow-y: auto; padding: 0 8px; scrollbar-width: thin; }
+  #cardText.long { font-size: 13.5px; line-height: 1.5; text-align: left; max-width: min(760px, 92vw); }
+  @media (max-aspect-ratio: 4/5) {   /* an upright phone: the story card takes the whole screen, not the small game frame */
+    #card { position: fixed; inset: 0; z-index: 60; padding: max(16px, env(safe-area-inset-top)) 16px 16px; gap: 10px; }
+    #card #cardText { max-height: 52vh; font-size: 14px; }
+  }
   @media (max-height: 460px) { #dialog { grid-template-columns: 44px 1fr; gap: 8px; padding: 8px 10px; max-height: 58%; overflow-y: auto; } #dialog canvas { width: 44px; height: 44px; } #dialog .line { font-size: 13px; line-height: 1.35; } #dialog .next { font-size: 11px; } }
   @media (max-height: 460px) { .screen { gap: 6px; padding: 10px 16px; overflow-y: auto; } .screen h1 { font-size: clamp(24px, 9vh, 40px); } .screen h2 { font-size: 11px; } .screen p { font-size: 12.5px; line-height: 1.35; } .screen .big { padding: 7px 18px; font-size: 16px; } .screen p.diffNote { font-size: 11.5px; } }
   .screen .ghost { font: 500 14px var(--font); color: var(--muted); background: transparent; border: 1px solid var(--edge); border-radius: 8px; padding: 7px 14px; cursor: pointer; }
@@ -2179,6 +2185,7 @@
     }
   }
   function unitPos(u) {
+    if (!u) return { x: VIEW_W / 2, y: 120 };   // never let a missing unit stop a frame
     if (u.side === "foe") {
       const bossU = battle.foes.find(f => f.boss && !f.dead);
       if (bossU && !u.boss) { const minions = battle.foes.filter(f => !f.boss); const i = minions.indexOf(u), n = minions.length; const xs = n === 1 ? [60] : n === 2 ? [50, 270] : [40, 280, 70, 250]; return { x: xs[i % xs.length], y: 104 + (i >= 2 ? 6 : 0) }; }
@@ -10307,7 +10314,8 @@
   }
   const _doHeroRig = doHero;
   doHero = async function (u, act) {
-    if (!battle || !act || act.kind === "nothing" || !FIGHTER[u.id]) return _doHeroRig(u, act);
+    if (!battle) return;   // the battle ended while this turn waited in the queue
+    if (!act || act.kind === "nothing" || !FIGHTER[u.id]) return _doHeroRig(u, act);
     const F = FIGHTER[u.id], liveF = () => battle.foes.filter(f => !f.dead);
     if (act.kind === "guard") { playAct(u, "guard", 0.5); return _doHeroRig(u, act); }
     if (act.kind === "item") { playAct(u, "item", 0.7); return _doHeroRig(u, act); }
@@ -10326,6 +10334,7 @@
   // monsters: rear back before the move
   const _doFoeRig = doFoe;
   doFoe = async function (f) {
+    if (!battle) return;   // the battle ended while this turn waited in the queue
     if (battle && !f.dead && !(f.st && f.st.stun)) { const b0 = battle; f.anim = { k: "wind", t0: time }; await wait(260); f.anim = null; if (battle !== b0 || f.dead) return; }   // the battle may have ended during the wind-up
     return _doFoeRig(f);
   };
@@ -10473,8 +10482,8 @@
   const _drawRigFxSig = drawRigFx;
   drawRigFx = function (k) {
     for (let i = RIG_FX.length - 1; i >= 0; i--) {
-      const f = RIG_FX[i]; if (!f.dur) continue;
-      const a = (time - f.t0) / f.dur; if (a >= 1 || !battle) { RIG_FX.splice(i, 1); continue; }
+      const f = RIG_FX[i]; if (!f.dur || !(f.kind === "say" || (f.kind || "").startsWith("sig:"))) continue;   // only this module's own effects (skills draw theirs elsewhere)
+      const a = (time - f.t0) / f.dur; if (a >= 1 || !battle || !f.unit) { RIG_FX.splice(i, 1); continue; }
       ctx.save();
       if (f.kind === "say") drawSay(f, a, k);
       else { const p = unitPos(f.unit), X = VP.ox + p.x * k, Y = VP.oy + (p.y - (f.unit.boss ? 60 : 30)) * k, fn = SIG_DRAW[f.kind.slice(4)]; if (fn) fn(f.unit, a, k, X, Y, f); }
@@ -10691,6 +10700,8 @@
     _drawRigFxPh(k);
   };
 
+  // long card texts (the endings run to many paragraphs) scroll inside the card in a compact style
+  { const t = $("cardText"); new MutationObserver(() => { const long = t.textContent.length > 600; if (t.classList.contains("long") !== long) t.classList.toggle("long", long); t.scrollTop = 0; }).observe(t, { childList: true, characterData: true, subtree: true }); }
   // ================================================================== NO TEXT OVER CHARACTERS
   // 1. Viewport inset: when a panel covers the bottom of the screen (dialogue, cutscene captions, scene lines),
   //    the picture is drawn smaller above it instead of behind it, so nobody is ever under the text.
@@ -11738,7 +11749,7 @@
     return { peak: pk, rms, wav: btoa(bin) };
   }, trackKeys: () => Object.keys(TRACKS), rigSheet: (ids, poses, zoom = 3) => { const c = document.createElement("canvas"); c.width = poses.length * RIG_W * zoom; c.height = ids.length * RIG_H * zoom; const g = c.getContext("2d"); g.imageSmoothingEnabled = false; g.fillStyle = "#1d1830"; g.fillRect(0, 0, c.width, c.height);
     ids.forEach((id, r) => poses.forEach((ps, i) => { const fr = rigFrame(id, POSE[ps], "sheet:" + ps + "|g" + gearTiers(id).join("."), 0.3, false); g.drawImage(fr, i * RIG_W * zoom, r * RIG_H * zoom, RIG_W * zoom, RIG_H * zoom); })); return c.toDataURL(); },
-  rigPose: (i, name, secs = 3) => { if (battle && battle.heroes[i]) { playAct(battle.heroes[i], name, secs); return true; } return false; }, bossMoves: () => Object.entries(MONSTERS).filter(([, m]) => m.boss).map(([id, m]) => id + ': ' + m.moves.map(mv => mv.name + (mv.announce ? '[A]' : '') + (mv.charge ? '[C]' : '') + (mv.target ? '[' + mv.target + ']' : '') + (mv.all ? '[all]' : '')).join(', ')).join('\n'), sigFx: (kind) => { if (!battle) return false; const f = battle.foes[0]; RIG_FX.push({ kind: 'sig:' + kind, unit: f, t0: time, dur: 1.2, heroes: battle.heroes.map(h => unitPos(h)) }); return true; }, heroSkills: () => Object.entries(HEROES).map(([id, hh]) => id + ': ' + (hh.skills || []).map(s => s.name + '{' + Object.keys(s).filter(k => !['name','desc','cost','lvl','pcost'].includes(k)).map(k => k + (typeof s[k] === 'string' ? '=' + s[k] : '')).join(',') + '}').join(' | ')).join('\n'), skillFxTest: (heroIdx, name, foeTargets) => { if (!battle) return false; const u = battle.heroes[heroIdx]; const s = { name, target: foeTargets ? 'allEnemies' : 'party' }; battle.act = { u, skill: s }; return skillFx(u, { skill: s, unit: null }); }, chainTest: () => { if (!battle) return false; battle.chainT = time; battle.chainN = battle.heroes.length; const t = battle.foes[0]; battle.heroes.forEach((h, i) => setTimeout(() => chainBlow(h, t, i === battle.heroes.length - 1), 400 + i * 380)); return true; }, setStatus: (side, i, st) => { if (!battle) return false; const u = (side === 'hero' ? battle.heroes : battle.foes)[i]; if (!u) return false; Object.assign(u.st, st); return true; }, gearTest: (id, w, a) => { G.gear = G.gear || {}; const cur = G.gear[id] || (G.gear[id] = {}); for (const [slot, t] of [['weapon', w], ['armor', a]]) { if (cur[slot]) applyGear(G.party[id], cur[slot], -1); delete cur[slot]; if (t) { const key = (slot === 'weapon' ? 'w_' + WCLASS[id] : 'a_' + ACLASS[id]) + '_' + t; applyGear(G.party[id], key, 1); cur[slot] = key; } } return { ...G.party[id] }; }, gearShop: who => { refreshGear(who, 'odo_0'); return D.gear_shop.choices.map(c => typeof c.t === 'function' ? c.t() : c.t); }, bossPhaseTest: () => { if (!battle) return null; const f = battle.foes[0]; const before = { hp: f.hp, atk: f.atk }; damage(f, Math.ceil(f.hp - f.maxHp * 0.49), { silent: true }); return { before, after: { hp: f.hp, max: f.maxHp, atk: f.atk, spd: f.spd, phase2: !!f.phase2, charged: !!f.charged } }; }, foeStats: () => battle ? battle.foes.map(f => f.id + ' hp' + f.maxHp + ' atk' + f.atk) : null, forceWin: () => { if (!battle) return false; for (const f of battle.foes) { f.hp = 0; f.dead = true; } victory(); return true; }, cont: () => battle && battle.waitingContinue ? (battle.waitingContinue(), true) : false, lose: () => battle ? (endBattle("lost"), true) : false, dlgChoices: () => dlg && dlg.choices ? dlg.choices.map(c => typeof c.t === "function" ? c.t() : c.t) : null, voiceWav: async (who, text) => {   // a character's voice speaking a line, rendered offline for previews and level checks
+  rigPose: (i, name, secs = 3) => { if (battle && battle.heroes[i]) { playAct(battle.heroes[i], name, secs); return true; } return false; }, bossMoves: () => Object.entries(MONSTERS).filter(([, m]) => m.boss).map(([id, m]) => id + ': ' + m.moves.map(mv => mv.name + (mv.announce ? '[A]' : '') + (mv.charge ? '[C]' : '') + (mv.target ? '[' + mv.target + ']' : '') + (mv.all ? '[all]' : '')).join(', ')).join('\n'), sigFx: (kind) => { if (!battle) return false; const f = battle.foes[0]; RIG_FX.push({ kind: 'sig:' + kind, unit: f, t0: time, dur: 1.2, heroes: battle.heroes.map(h => unitPos(h)) }); return true; }, heroSkills: () => Object.entries(HEROES).map(([id, hh]) => id + ': ' + (hh.skills || []).map(s => s.name + '{' + Object.keys(s).filter(k => !['name','desc','cost','lvl','pcost'].includes(k)).map(k => k + (typeof s[k] === 'string' ? '=' + s[k] : '')).join(',') + '}').join(' | ')).join('\n'), skillFxTest: (heroIdx, name, foeTargets) => { if (!battle) return false; const u = battle.heroes[heroIdx]; const s = { name, target: foeTargets ? 'allEnemies' : 'party' }; battle.act = { u, skill: s }; return skillFx(u, { skill: s, unit: null }); }, chainTest: () => { if (!battle) return false; battle.chainT = time; battle.chainN = battle.heroes.length; const t = battle.foes[0]; battle.heroes.forEach((h, i) => setTimeout(() => chainBlow(h, t, i === battle.heroes.length - 1), 400 + i * 380)); return true; }, setStatus: (side, i, st) => { if (!battle) return false; const u = (side === 'hero' ? battle.heroes : battle.foes)[i]; if (!u) return false; Object.assign(u.st, st); return true; }, gearTest: (id, w, a) => { G.gear = G.gear || {}; const cur = G.gear[id] || (G.gear[id] = {}); for (const [slot, t] of [['weapon', w], ['armor', a]]) { if (cur[slot]) applyGear(G.party[id], cur[slot], -1); delete cur[slot]; if (t) { const key = (slot === 'weapon' ? 'w_' + WCLASS[id] : 'a_' + ACLASS[id]) + '_' + t; applyGear(G.party[id], key, 1); cur[slot] = key; } } return { ...G.party[id] }; }, gearShop: who => { refreshGear(who, 'odo_0'); return D.gear_shop.choices.map(c => typeof c.t === 'function' ? c.t() : c.t); }, bossPhaseTest: () => { if (!battle) return null; const f = battle.foes[0]; const before = { hp: f.hp, atk: f.atk }; damage(f, Math.ceil(f.hp - f.maxHp * 0.49), { silent: true }); return { before, after: { hp: f.hp, max: f.maxHp, atk: f.atk, spd: f.spd, phase2: !!f.phase2, charged: !!f.charged } }; }, foeStats: () => battle ? battle.foes.map(f => f.id + ' hp' + f.maxHp + ' atk' + f.atk) : null, endingTest: k => { ending(k); const c = document.getElementById('card'), t = document.getElementById('cardText'), tt = document.getElementById('cardTitle'); const r = tt.getBoundingClientRect(), rt = t.getBoundingClientRect(); return { titleTop: Math.round(r.top), textBottom: Math.round(rt.bottom), vh: innerHeight, scrolls: t.scrollHeight > t.clientHeight, long: t.classList.contains('long') }; }, dialogKeys: () => Object.keys(D), forceWin: () => { if (!battle) return false; for (const f of battle.foes) { f.hp = 0; f.dead = true; } victory(); return true; }, cont: () => battle && battle.waitingContinue ? (battle.waitingContinue(), true) : false, lose: () => battle ? (endBattle("lost"), true) : false, dlgChoices: () => dlg && dlg.choices ? dlg.choices.map(c => typeof c.t === "function" ? c.t() : c.t) : null, voiceWav: async (who, text) => {   // a character's voice speaking a line, rendered offline for previews and level checks
     const buf = await Voice.render(who, text), d = buf.getChannelData(0), sr = buf.sampleRate, n = d.length; let pk = 0, sq = 0; for (let i = 0; i < n; i++) { const a = Math.abs(d[i]); if (a > pk) pk = a; sq += d[i] * d[i]; }
     const ab = new ArrayBuffer(44 + n * 2), v = new DataView(ab), w = (o, str) => { for (let i = 0; i < str.length; i++) v.setUint8(o + i, str.charCodeAt(i)); };
     w(0, "RIFF"); v.setUint32(4, 36 + n * 2, true); w(8, "WAVE"); w(12, "fmt "); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, sr, true); v.setUint32(28, sr * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, "data"); v.setUint32(40, n * 2, true);
