@@ -12395,6 +12395,8 @@
     }
     if (a === "export") {
       const data = JSON.stringify({ game: "The Salt Road", ...snapshotOf() }), filename = `salt-road-${(goal().ch || "save").replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.json`;
+      const dl = window.claude && typeof window.claude.use === "function" ? await window.claude.use("downloads").catch(() => null) : null;   // inside the claude.ai viewer, files go through its download prompt
+      if (dl) { try { await dl.save({ filename, data }); toast("Save file ready."); } catch (e) { if (!e || e.code !== "declined") toast("Couldn't offer the file here. Use a save code."); } return; }
       try { const u = URL.createObjectURL(new Blob([data], { type: "application/json" })), l = document.createElement("a"); l.href = u; l.download = filename; document.body.appendChild(l); l.click(); l.remove(); setTimeout(() => URL.revokeObjectURL(u), 4000); toast("Save file downloading. If nothing arrives, use a save code."); }
       catch { toast("This browser won't download files here. Use a save code."); }
     }
