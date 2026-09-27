@@ -8952,6 +8952,90 @@
     } },
   };
   BOSS_ART.tollkeeper = { ...BOSS_ART.quill, variant: "tollkeeper" };
+  // ---- boss paintings, second pass: the two that borrowed a body, and fuller versions of the Colossus and the Ledger Tree
+  Object.assign(BOSS_ART, {
+    angler: { w: 124, h: 96, ramps: ["ink", "brine", "corpse", "bone", "blood", "glowc", "rust", "night"], paint(K, ph) {
+      const b = Math.sin(ph * Math.PI * 2) * 3, W = 372, H = 288, cx = 158;
+      // The Old Mouth: an angler older than the lake, barnacled, three lures, the teeth full of what it caught
+      const lures = [[cx - 110, 34], [cx - 40, 14], [cx + 30, 30]];
+      lures.forEach(([lx0, ly0], i) => { const lx = lx0 + Math.sin(ph * Math.PI * 2 + i * 2) * 10, ly = ly0 + b; K.Q([[cx - 40 + i * 30, 110], [lx0 + 20, ly0 + 40], [lx, ly]], 3, "#28626e"); K.E(lx, ly, 18, 18, K.RG(lx, ly, 1, 18, [[0, "rgba(255,255,255,0.95)"], [0.4, "rgba(158,240,245,0.7)"], [1, "rgba(62,224,232,0)"]])); K.E(lx, ly, 5, 5, "#ffffff"); });
+      K.vol(cx + 20, 176 + b, 150, 96, ["#28626e", "#10283a", "#08141e"]);
+      K.dots(120, cx - 120, 100, cx + 160, 260, "rgba(108,184,184,0.3)", 1.3);
+      for (let i = 0; i < 40; i++) { const a = K.rng() * 6.28, r = 60 + K.rng() * 70, x = cx + 40 + Math.cos(a) * r * 1.3, y = 170 + Math.sin(a) * r * 0.75; K.vol(x, y, 4, 4, ["#e8e0cc", "#a2957c", "#4a4238"]); K.E(x, y - 1, 1.2, 1.2, ink); }
+      for (let i = 0; i < 5; i++) K.Q([[cx + 70 + i * 16, 110], [cx + 80 + i * 18, 170], [cx + 72 + i * 16, 250]], 3, "#1a4252");
+      // the jaw: most of the body, hinged open
+      K.P([[cx - 150, 172 + b], [cx + 60, 96 + b], [cx + 70, 248 + b]], "#1e0306");
+      for (let i = 0; i < 12; i++) { const t2 = i / 11, x = cx - 140 + t2 * 190, y0 = 172 + b - t2 * 72, y1 = 172 + b + t2 * 72; K.P([[x, y0], [x + 11, y0 - 3], [x + 6, y0 + 22 + (i % 3) * 8]], "#e8e0cc"); K.P([[x, y1], [x + 11, y1 + 3], [x + 6, y1 - 20 - (i % 2) * 8]], "#c8bca2"); }
+      K.vol(cx - 40, 182 + b, 10, 12, ["#e8e0cc", "#a2957c", "#4a4238"]); K.E(cx - 44, 180 + b, 2.4, 3, ink); K.E(cx - 36, 180 + b, 2.4, 3, ink);
+      K.S([[cx - 10, 150 + b], [cx + 10, 200 + b]], 3, "#4e2410"); K.Q([[cx + 10, 200 + b], [cx + 18, 210 + b], [cx + 10, 216 + b]], 3, "#76381a");
+      K.eye(cx + 60, 120 + b, 11, "#9ef0f5", ink); K.E(cx + 60, 120 + b, 16, 16, "rgba(158,240,245,0.15)");
+      for (const s of [-1, 1]) K.Q([[cx + 168, 176 + b], [cx + 196, 176 + b + s * 30], [cx + 184, 176 + b + s * 60]], 7, "#1a4252");
+      for (let i = 0; i < 6; i++) K.drip(cx - 100 + i * 34, 240 + b, 8 + K.rng() * 10, 1.6, "#3f8a90");
+    } },
+    houndg: { w: 100, h: 60, ramps: ["ink", "blood", "gold", "rust", "bone", "leather", "glowr", "cloth"], paint(K, ph) {
+      const run = Math.sin(ph * Math.PI * 2), W = 300, H = 180, cx = 132;
+      // the Guild Hound: a jackal bred for the gate, in plate and a brass muzzle, dragging its own chain
+      for (const [x, d] of [[62, 1], [92, -1], [166, 1], [192, -1]]) { const sw = run * d * 9; K.S([[x, 110], [x + sw * 0.4, 140], [x + sw, 168]], 11, "#6a0c18"); K.S([[x, 112], [x + sw * 0.4, 140]], 4, "#c8182e"); K.P([[x + sw - 8, 164], [x + sw + 10, 164], [x + sw + 8, 174], [x + sw - 6, 174]], "#2e1e06"); }
+      K.vol(cx, 100, 86, 38, ["#ee3a46", "#9a1224", "#1e0306"]);
+      for (let i = 0; i < 9; i++) K.Q([[cx - 64 + i * 15, 76], [cx - 58 + i * 15, 100], [cx - 64 + i * 15, 124]], 3, "#e8e0cc");
+      // plates of Guild armour riveted straight into the flesh
+      for (let i = 0; i < 4; i++) { const x = cx - 70 + i * 34; K.P([[x, 66], [x + 34, 62], [x + 36, 92], [x + 2, 96]], K.LG(x, 62, x + 36, 96, [[0, "#f6e07a"], [0.5, "#b08a28"], [1, "#2e1e06"]])); K.E(x + 6, 70, 2, 2, "#2e1e06"); K.E(x + 30, 68, 2, 2, "#2e1e06"); K.drip(x + 18, 94, 8, 1.4, "#9a1224"); }
+      K.Q([[cx - 84, 94], [cx - 116, 70 + run * 6], [cx - 124, 44]], 7, "#9a1224"); for (let i = 0; i < 5; i++) K.E(cx - 90 - i * 7, 88 - i * 9 + run, 3, 3, "#c8bca2");
+      // the chain from its collar, links dragging behind
+      for (let i = 0; i < 12; i++) { const x = cx - 40 - i * 10, y = 132 + Math.sin(i * 0.8 + ph * 6.28) * 3 + i * 2.6; K.S([[x - 4, y - 3], [x + 4, y + 3]], 3, i % 2 ? "#76381a" : "#9a5226"); }
+      // head: bare skull under a brass muzzle cage, one eye burning
+      K.vol(cx + 96, 64, 28, 24, ["#e8e0cc", "#a2957c", "#4a4238"]);
+      K.P([[cx + 100, 72], [cx + 150, 76], [cx + 146, 92], [cx + 98, 90]], "#c8bca2"); K.teeth(cx + 104, 76, 9, 4, 7, "#ffffff"); K.teeth(cx + 102, 90, 8, 4, -6, "#e8e0cc");
+      for (let i = 0; i < 5; i++) K.S([[cx + 102 + i * 11, 66], [cx + 100 + i * 11, 98]], 2.2, "#d8b440"); K.S([[cx + 96, 70], [cx + 152, 74]], 2.4, "#b08a28"); K.S([[cx + 96, 94], [cx + 150, 96]], 2.4, "#b08a28");
+      K.E(cx + 86, 58, 7, 6, ink); K.eye(cx + 86, 58, 3.4, "#ff2d2d", null);
+      K.P([[cx + 72, 44], [cx + 80, 20], [cx + 88, 46]], "#766a58"); K.P([[cx + 94, 40], [cx + 104, 18], [cx + 108, 44]], "#766a58");
+      K.S([[cx + 70, 84], [cx + 86, 104]], 9, "#b08a28"); K.vol(cx + 76, 96, 5, 5, ["#f6e07a", "#b08a28", "#2e1e06"]);
+      K.drip(cx + 128, 98, 16, 2, "#9a1224");
+    } },
+  });
+  // the Colossus: salt grown, not stacked; cracks bleeding brine, the Choir's faces pushing out of it
+  BOSS_ART.colossus.paint = function (K, ph) {
+    const b = Math.sin(ph * Math.PI * 2) * 2, W = 336, H = 354, cx = 168;
+    const salt = (x, y, rx, ry, rot = 0) => K.vol(x, y, rx, ry, ["#ffffff", "#a6aac2", "#565a74"], rot);
+    const crys = (x, y, h2, a) => { const w2 = h2 * 0.3, tip = [x + Math.cos(a) * h2, y + Math.sin(a) * h2], l = [x + Math.cos(a - 1.57) * w2, y + Math.sin(a - 1.57) * w2], r = [x + Math.cos(a + 1.57) * w2, y + Math.sin(a + 1.57) * w2]; K.P([l, tip, r], "#cacee0"); K.P([l, tip, [x, y]], "#ffffff"); K.P([r, tip, [x, y]], "#7e829c"); };
+    for (const s of [-1, 1]) { salt(cx + s * 44, 300, 30, 50, s * 0.1); salt(cx + s * 48, 340, 38, 14); }
+    salt(cx, 180, 104, 112);
+    for (const s of [-1, 1]) { salt(cx + s * 112, 150, 34, 52, s * 0.4); salt(cx + s * 126, 236, 30, 56, s * 0.15); salt(cx + s * 128, 296, 34, 24); for (let f = 0; f < 3; f++) crys(cx + s * (116 + f * 12), 312, 20, 1.57 + s * 0.2); }
+    for (let i = 0; i < 16; i++) K.crack(cx - 90 + K.rng() * 180, 90 + K.rng() * 180, 28 + K.rng() * 30, K.rng() * 6.28, "#565a74", 1.6);
+    for (let i = 0; i < 6; i++) { const x = cx - 80 + K.rng() * 160, y = 110 + K.rng() * 140; K.crack(x, y, 26, 1.4, "#6a0c18", 2); K.drip(x + 2, y + 18, 16 + K.rng() * 12, 1.6, "#9a1224"); }
+    // faces pressing out of the salt, mouths open on the note that holds it together
+    for (let r = 0; r < 3; r++) for (let q = 0; q < 4 - (r % 2); q++) { const x = cx - 66 + q * 44 + (r % 2) * 22, y = 132 + r * 44; K.vol(x, y, 15, 17, ["#ececf2", "#a8a8ba", "#5e5e70"]); K.E(x - 5, y - 4, 3, 3.6, ink); K.E(x + 5, y - 4, 3, 3.6, ink); K.E(x, y + 7, 4, 6 + Math.sin(ph * 6.28 + r * 2 + q) * 2, ink); K.Q([[x - 16, y - 12], [x, y - 20], [x + 16, y - 12]], 2.4, "#848498"); }
+    // the head: a crystal skull, a crown of spears of salt
+    salt(cx, 64 + b, 40, 38);
+    K.E(cx - 15, 62 + b, 9, 10, ink); K.E(cx + 15, 62 + b, 9, 10, ink); K.eye(cx - 15, 62 + b, 5, "#3ee0e8", null); K.eye(cx + 15, 62 + b, 5, "#3ee0e8", null);
+    K.P([[cx - 20, 84 + b], [cx + 20, 84 + b], [cx + 14, 98 + b], [cx - 14, 98 + b]], ink); K.teeth(cx - 18, 84 + b, 8, 4, 8, "#ffffff");
+    for (let i = 0; i < 9; i++) crys(cx - 36 + i * 9, 36 + b, 24 + (i % 3) * 14 + (i === 4 ? 26 : 0), -1.57 + (i - 4) * 0.14);
+    for (const [x, y, h2, a] of [[cx - 96, 104, 40, -2.4], [cx + 96, 104, 44, -0.7], [cx - 60, 110, 26, -2.0], [cx + 64, 112, 28, -1.1]]) crys(x, y, h2, a);
+    K.E(cx, 30, 70, 20, K.RG(cx, 30, 2, 70, [[0, "rgba(158,240,245,0.3)"], [1, "rgba(158,240,245,0)"]]));
+  };
+  // the Ledger Tree: a real crown of gnarled branches, leaves of paper, the hanged debtors, a face in the trunk
+  BOSS_ART.ledgertree.paint = function (K, ph) {
+    const b = Math.sin(ph * Math.PI * 2) * 2, W = 336, H = 354, cx = 168;
+    for (let i = 0; i < 8; i++) { const x0 = cx - 34 + i * 10, x1 = cx - 160 + i * 46; K.Q([[x0, 286], [(x0 + x1) / 2, 306], [x1, 350]], 11, "#1e140c"); K.Q([[x0, 286], [(x0 + x1) / 2, 306], [x1, 350]], 5, "#58391e"); }
+    for (const [x, y] of [[cx - 118, 326], [cx + 104, 330], [cx - 44, 340], [cx + 36, 344]]) { K.vol(x, y - 14, 8, 9, ["#ccccd8", "#848498", "#3a3a4a"]); K.S([[x, y - 5], [x + 2, y + 14]], 9, "#848498"); K.S([[x - 12, y + 2], [x + 12, y + 10]], 4, "#3a2616"); K.E(x - 3, y - 15, 1.6, 1.6, ink); K.E(x + 3, y - 15, 1.6, 1.6, ink); K.E(x, y - 9, 2.4, 3, ink); }
+    // trunk: bark of ledger spines, twisted
+    K.P([[cx - 48, 292], [cx + 48, 292], [cx + 34, 180], [cx + 24, 90], [cx - 24, 90], [cx - 34, 180]], K.LG(cx - 48, 0, cx + 48, 0, [[0, "#1e140c"], [0.35, "#58391e"], [0.6, "#78502a"], [1, "#1e140c"]]));
+    for (let i = 0; i < 14; i++) { const y = 282 - i * 14; K.Q([[cx - 44 + i * 1.4, y], [cx, y - 6 + Math.sin(i) * 4], [cx + 44 - i * 1.4, y]], 2, i % 3 === 0 ? "#bab08e" : "#3a2616"); }
+    for (let i = 0; i < 10; i++) K.P([[cx - 36 + K.rng() * 60, 120 + K.rng() * 150], [cx - 26 + K.rng() * 60, 118 + K.rng() * 150], [cx - 28 + K.rng() * 60, 132 + K.rng() * 150]], "#ddd4b0");
+    K.E(cx - 15, 176, 9, 7, ink); K.E(cx + 15, 176, 9, 7, ink); K.eye(cx - 15, 176, 3.4, "#ff2d2d", null); K.eye(cx + 15, 176, 3.4, "#ff2d2d", null);
+    K.P([[cx - 24, 204], [cx + 24, 204], [cx + 18, 228 + b], [cx - 18, 228 + b]], "#1e0306"); K.teeth(cx - 22, 204, 9, 4, 7, "#ddd4b0"); K.teeth(cx - 18, 226 + b, 8, 4, -6, "#bab08e");
+    // branches reaching out like arms, knuckled and forked
+    const br = (x0, y0, x1, y1, w2, d) => { const mx = (x0 + x1) / 2 + d * 20, my = Math.min(y0, y1) - 18; K.Q([[x0, y0], [mx, my], [x1, y1]], w2, "#1e140c"); K.Q([[x0, y0], [mx, my], [x1, y1]], w2 * 0.45, "#58391e"); return [x1, y1]; };
+    const tips = [];
+    for (const [x1, y1, w2, d] of [[cx - 150, 64, 14, -1], [cx + 150, 58, 14, 1], [cx - 100, 18, 10, -1], [cx + 104, 14, 10, 1], [cx - 30, 4, 9, 0], [cx + 40, 8, 9, 0]]) { const t = br(cx, 104, x1, y1, w2, d); tips.push(t); br(t[0], t[1], t[0] + d * 22 + 10, t[1] - 16, 4, d); br(t[0], t[1], t[0] + d * 26 - 8, t[1] + 14, 4, d); }
+    // leaves of paper in clusters, with red ink bleeding through
+    for (let i = 0; i < 60; i++) { const [tx, ty] = tips[i % tips.length], x = tx + (K.rng() - 0.5) * 70, y = ty + (K.rng() - 0.5) * 44; const a = K.rng() * 6.28; K.P([[x, y], [x + Math.cos(a) * 8, y + Math.sin(a) * 8], [x + Math.cos(a + 0.9) * 9, y + Math.sin(a + 0.9) * 9]], i % 4 === 0 ? "#948a70" : "#ddd4b0"); if (i % 5 === 0) K.E(x + 2, y + 2, 1.6, 1.6, "#9a1224"); }
+    // the hanged: debtors on ropes of red tape, and pages turning on threads
+    for (let i = 0; i < 10; i++) { const x = cx - 140 + i * 31, y = 64 + (i % 3) * 10, L = 18 + (i % 4) * 8 + Math.sin(ph * 6.28 + i) * 3; K.S([[x, y], [x, y + L]], 1.2, "#9a1224"); if (i % 3 === 1) { K.vol(x, y + L + 8, 6, 8, ["#ccccd8", "#848498", "#3a3a4a"]); K.S([[x, y + L + 14], [x, y + L + 34]], 6, "#848498"); K.S([[x - 6, y + L + 18], [x + 6, y + L + 18]], 3, "#848498"); } else { K.P([[x - 6, y + L], [x + 6, y + L], [x + 6, y + L + 14], [x - 6, y + L + 14]], "#ddd4b0"); K.S([[x - 4, y + L + 5], [x + 4, y + L + 5]], 0.8, "#9a1224"); } }
+    for (let i = 0; i < 8; i++) { const [tx, ty] = tips[i % tips.length]; K.eye(tx + (K.rng() - 0.5) * 40, ty + (K.rng() - 0.5) * 24, 2.6, "#ff2d2d", null); }
+  };
+
+
   // ================================================================== MONSTER ART: THE REST OF THE BESTIARY
   // The same fine pixels for every regular monster. Thirteen bodies; the monsters that share a body get their own
   // colour shift (and named elites a bigger frame), so a Bog Ghoul is not a grey Salt Ghoul painted green by rule.
@@ -9227,12 +9311,12 @@
   // a variant's palette: its own ramps shifted the same way, so the dither lands on colours of that creature
   const variantRamps = (ramps, v) => { const key = "v" + JSON.stringify(v) + ramps.join(); if (!RAMP[key]) { const shifted = ramps.flatMap(r => RAMP[r]).map(hx => { let [hh, s, l] = toHSL(...hexRGB(hx)); hh = v.set ? v.hue + hh * 0.08 : hh + v.hue; const [r, g2, b2] = toRGB(hh, Math.min(1, s * v.sat), Math.min(1, l * v.lum)); return "#" + [r, g2, b2].map(n => Math.round(n).toString(16).padStart(2, "0")).join(""); }); RAMP[key] = [...new Set([...shifted, ...RAMP.ink])]; } return [key]; };
 
-  for (const [id, M] of Object.entries(MONSTERS)) if (M.boss && (BOSS_ART[M.sprite] || id === "tollkeeper")) M.tall = true;
+  for (const [id, M] of Object.entries(MONSTERS)) if (M.boss && (BOSS_ART[M.sprite] || BOSS_ART[id])) M.tall = true;
   const ART_FRAMES = 6, artCache = new Map();
   const artMemo = new Map();
   const bossArtFor = u => {   // the fine art for any monster: a boss's own painting, or the body its kind shares, in its colours
     const M = u && MONSTERS[u.id]; if (!M) return null;
-    if (M.boss && (u.id === "tollkeeper" || BOSS_ART[u.sprite])) { const A = u.id === "tollkeeper" ? BOSS_ART.tollkeeper : BOSS_ART[u.sprite]; A.key = A.key || (u.id === "tollkeeper" ? "tollkeeper" : u.sprite); return A; }
+    if (M.boss && (BOSS_ART[u.id] || BOSS_ART[u.sprite])) { const k = BOSS_ART[u.id] && u.id !== u.sprite ? u.id : u.sprite; const A = u.id === "oldmouth" ? BOSS_ART.angler : BOSS_ART[k]; A.key = A.key || (u.id === "oldmouth" ? "oldmouth" : k); return A; }
     const base = REG_ART_ID[u.id] || REG_ART[u.sprite]; if (!base) return null;
     if (artMemo.has(u.id)) return artMemo.get(u.id);
     const v = REG_ART_ID[u.id] ? null : VARIANT[u.id] || null, sc = (v && v.scale) || (M.boss ? 1.6 : 1);
