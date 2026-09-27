@@ -10152,6 +10152,7 @@
   // ---- the painter: a pose in art pixels, feet at (20, RIG_FOOT)
   function paintFighter(K, c, id, P, t) {
     const F = FIGHTER[id] || FIGHTER.sable, look = HEROES[id].look, d2r = Math.PI / 180;
+    const [wT, aT] = gearTiers(id), MT = METAL[wT] || { hi: "#e8ecf8", lo: "#8a90a8" }, AM = METAL[aT];   // what the smiths have fitted
     const skin = ramp5(look.skin), hair = ramp5(look.hair), robe = ramp5(look.robe), pants = ramp5(F.pants || hexShade(look.robe, -0.45)), boot = ["#07060c", "#120c0a", "#1e140e", "#36241a", "#523828", "#6e4e38"];
     const R3 = r => [r[4], r[2], r[0]];
     const dir = a => [Math.sin(a * d2r), Math.cos(a * d2r)];
@@ -10190,6 +10191,7 @@
       if (F.coat === "apron") { K.S([shL, add(waist, rt, 2.8)], 0.7, F.apron); K.S([shR, add(waist, rt, -2.8)], 0.7, F.apron); K.P([add(wL, up, 0.4), add(wR, up, 0.4), add(add(pel, rt, 3.8), up, -8), add(add(pel, rt, -3.8), up, -8)], hexShade(F.apron, -0.1)); }
       if (F.coat === "armor") { K.vol((shL[0] + shR[0]) / 2, (shL[1] + waist[1]) / 2, 4.2, 5.6, ["#cacee0", "#7e829c", "#3a3a4a"]); for (const p of [shL, shR]) K.vol(p[0], p[1], 2.8, 2.2, ["#e8ecf8", "#8a90a8", "#3a3a4a"]); for (let i = 0; i < 3; i++) K.P([add(add(pel, rt, -4 + i * 2.8), up, 0.5), add(add(pel, rt, -1.6 + i * 2.8), up, 0.5), add(add(pel, rt, -1.6 + i * 2.8), up, -4), add(add(pel, rt, -4 + i * 2.8), up, -4)], "#7e829c"); }
     }
+    if (AM) { K.S([shL, add(top, up, 0.4), shR], 0.7, AM.hi); K.S([wL, wR], 0.6, AM.lo); if (aT >= 3) for (const p of [shL, shR]) { K.vol(p[0], p[1] - 0.4, 2.6, 2, [AM.hi, AM.lo, "#1d1830"]); if (AM.glow) K.E(p[0], p[1] - 0.4, 3.2, 2.6, AM.glow); } }
     // gear on the back: quiver, satchel, the scarf's tails
     if (F.quiver) { K.P([add(add(top, rt, 1.2), up, 1.6), add(add(top, rt, 3.4), up, 0.8), add(add(waist, rt, -0.8), up, 1), add(add(waist, rt, -3), up, 1.6)], "#6b3f24"); for (let i = 0; i < 3; i++) K.S([add(add(top, rt, 1.6 + i * 0.8), up, 1.4), add(add(top, rt, 1.8 + i * 0.9), up, 3.6)], 0.5, i % 2 ? "#e8e2d0" : "#9a1224"); }
     if (F.bag) { K.S([shL, add(waist, rt, 3)], 0.8, "#6b3f24"); K.vol(...add(add(waist, rt, 3.2), up, -1.8), 2.2, 1.8, ["#a8703f", "#6b3f24", "#2a1810"]); }
@@ -10223,22 +10225,23 @@
     const ww = (len, a = fa) => [hF[0] + Math.cos(a) * len, hF[1] + Math.sin(a) * len];
     if (F.weapon === "bow") {   // the bow in the back hand, pointed at the enemy; an arrow on the string while drawn
       const ba = Math.atan2(hB[1] - eB[1], hB[0] - eB[0]), px = -Math.sin(ba), py = Math.cos(ba);
-      K.Q([[hB[0] + px * 7, hB[1] + py * 7], [hB[0] + Math.cos(ba) * 3.2, hB[1] + Math.sin(ba) * 3.2], [hB[0] - px * 7, hB[1] - py * 7]], 1.1, "#6b3f24");
+      K.Q([[hB[0] + px * 7, hB[1] + py * 7], [hB[0] + Math.cos(ba) * 3.2, hB[1] + Math.sin(ba) * 3.2], [hB[0] - px * 7, hB[1] - py * 7]], 1.1, wT >= 3 ? MT.lo : "#6b3f24");
       K.S([[hB[0] + px * 7, hB[1] + py * 7], hF, [hB[0] - px * 7, hB[1] - py * 7]], 0.35, "#e8e2d0");
       if (P.fl < -100) K.S([hF, [hB[0] + Math.cos(ba) * 4, hB[1] + Math.sin(ba) * 4]], 0.6, "#c8bca2");
     }
     if (F.weapon === "book") K.P([[hB[0] - 2.4, hB[1] - 1.6], [hB[0] + 2.4, hB[1] - 2.2], [hB[0] + 2.6, hB[1] + 1.6], [hB[0] - 2.2, hB[1] + 2]], "#6a0c18");
-    if (F.weapon === "spear") { K.S([ww(-9), ww(15)], 0.9, "#6e4e38"); K.P([ww(15), ww(19.5), [ww(15)[0] + Math.cos(fa + 1.57) * 1.2, ww(15)[1] + Math.sin(fa + 1.57) * 1.2]], "#e8ecf8"); K.P([ww(15), ww(19.5), [ww(15)[0] - Math.cos(fa + 1.57) * 1.2, ww(15)[1] - Math.sin(fa + 1.57) * 1.2]], "#8a90a8"); }
+    if (F.weapon === "spear") { K.S([ww(-9), ww(15)], 0.9, "#6e4e38"); if (MT.glow) K.E(ww(17)[0], ww(17)[1], 2.6, 2.6, MT.glow); K.P([ww(15), ww(19.5), [ww(15)[0] + Math.cos(fa + 1.57) * 1.2, ww(15)[1] + Math.sin(fa + 1.57) * 1.2]], MT.hi); K.P([ww(15), ww(19.5), [ww(15)[0] - Math.cos(fa + 1.57) * 1.2, ww(15)[1] - Math.sin(fa + 1.57) * 1.2]], MT.lo); }
     L(sF, eF, 2.5, 2.1, sleeve); L(eF, hF, 2.1, 1.7, F.bare ? skin : sleeve, false); cuff(eF, hF);
     if (F.weapon === "sword" || F.weapon === "cutlass") {
       const tip = ww(12), mid = ww(6), bend = F.weapon === "cutlass" ? 1.8 : 0, n = [Math.cos(fa + 1.57), Math.sin(fa + 1.57)];
-      K.P([ww(1.6), [tip[0] + n[0] * bend, tip[1] + n[1] * bend], [mid[0] + n[0] * (1.2 + bend * 0.5), mid[1] + n[1] * (1.2 + bend * 0.5)]], "#e8ecf8");
-      K.P([ww(1.6), [tip[0] + n[0] * bend, tip[1] + n[1] * bend], [mid[0] - n[0] * 0.9, mid[1] - n[1] * 0.9]], "#8a90a8");
+      if (MT.glow) K.S([ww(2), [tip[0] + n[0] * bend, tip[1] + n[1] * bend]], 3.4, MT.glow);
+      K.P([ww(1.6), [tip[0] + n[0] * bend, tip[1] + n[1] * bend], [mid[0] + n[0] * (1.2 + bend * 0.5), mid[1] + n[1] * (1.2 + bend * 0.5)]], MT.hi);
+      K.P([ww(1.6), [tip[0] + n[0] * bend, tip[1] + n[1] * bend], [mid[0] - n[0] * 0.9, mid[1] - n[1] * 0.9]], MT.lo);
       K.S([[hF[0] + n[0] * 2, hF[1] + n[1] * 2], [hF[0] - n[0] * 2, hF[1] - n[1] * 2]], 0.9, F.weapon === "cutlass" ? "#c9a227" : "#6e4e38");
       if (F.scarf) K.S([ww(3), ww(10)], 0.35, "#9ef0f5");
     }
-    if (F.weapon === "hammer") { K.S([ww(-1), ww(9)], 1, "#6e4e38"); const hd = ww(9.5), n = [Math.cos(fa + 1.57), Math.sin(fa + 1.57)]; K.P([[hd[0] + n[0] * 3, hd[1] + n[1] * 3], [hd[0] - n[0] * 3, hd[1] - n[1] * 3], [ww(12.5)[0] - n[0] * 3, ww(12.5)[1] - n[1] * 3], [ww(12.5)[0] + n[0] * 3, ww(12.5)[1] + n[1] * 3]], K.LG(hd[0] - 3, 0, hd[0] + 3, 0, [[0, "#cacee0"], [1, "#565a74"]])); }
-    if (F.weapon === "flask") { K.vol(hF[0] + 0.6, hF[1] - 1.8, 1.5, 1.8, ["#caffa0", "#62c04a", "#1e5a1e"]); K.E(hF[0] + 0.6, hF[1] - 3.6, 0.6, 0.7, "#c8bca2"); }
+    if (F.weapon === "hammer") { K.S([ww(-1), ww(9)], 1, "#6e4e38"); const hd = ww(9.5), n = [Math.cos(fa + 1.57), Math.sin(fa + 1.57)]; K.P([[hd[0] + n[0] * 3, hd[1] + n[1] * 3], [hd[0] - n[0] * 3, hd[1] - n[1] * 3], [ww(12.5)[0] - n[0] * 3, ww(12.5)[1] - n[1] * 3], [ww(12.5)[0] + n[0] * 3, ww(12.5)[1] + n[1] * 3]], K.LG(hd[0] - 3, 0, hd[0] + 3, 0, [[0, MT.hi], [1, MT.lo]])); if (MT.glow) K.E(hd[0], hd[1], 3.6, 3.6, MT.glow); }
+    if (F.weapon === "flask") { if (MT.glow) K.E(hF[0] + 0.6, hF[1] - 1.8, 3.2, 3.2, MT.glow); K.vol(hF[0] + 0.6, hF[1] - 1.8, 1.5 + wT * 0.12, 1.8 + wT * 0.12, ["#caffa0", "#62c04a", "#1e5a1e"]); K.E(hF[0] + 0.6, hF[1] - 3.6, 0.6, 0.7, "#c8bca2"); }
     hand(hF, skin);
     if (F.caster && P.fu > 120) for (const p of [hF, hB]) { K.E(p[0], p[1], 3.4, 3.4, K.RG(p[0], p[1], 0.2, 3.6, [[0, "rgba(255,255,255,0.95)"], [0.4, id === "ada" ? "rgba(255,207,74,0.7)" : "rgba(158,240,245,0.7)"], [1, "rgba(62,224,232,0)"]])); }
   }
@@ -10291,7 +10294,7 @@
   // the fine figure is drawn on the screen itself in battle, like the bosses
   function drawBattleHero(g2, h, x, y) {
     const { pose, key, t } = heroPose(h), white = h.hurt > 0 && Math.floor(h.hurt * 30) % 2 === 0;
-    const fr = rigFrame(h.id, pose, key, t, white), X = x - RIG_W / 2, Y = y - RIG_FOOT;
+    const fr = rigFrame(h.id, pose, key + "|g" + gearTiers(h.id).join("."), t, white), X = x - RIG_W / 2, Y = y - RIG_FOOT;
     if (battle && mode === "battle" && !cine) { const m = g2.getTransform ? g2.getTransform() : { e: 0, f: 0 }; HIRES_Q.push({ fr, x: X + m.e, y: Y + m.f, w: RIG_W, h: RIG_H, alpha: g2.globalAlpha }); return; }
     const sm = g2.imageSmoothingEnabled; g2.imageSmoothingEnabled = true; g2.drawImage(fr, Math.round(X), Math.round(Y), RIG_W, RIG_H); g2.imageSmoothingEnabled = sm;
   }
@@ -10567,6 +10570,125 @@
       const fn = SK_DRAW[f.kind.slice(3)]; if (fn) { ctx.save(); ctx.lineCap = "round"; fn(f, Math.max(0, a), k, P); ctx.restore(); }
     }
     _drawRigFxSk(k);
+  };
+
+  // ================================================================== ARMS AND ARMOUR, HARDER ROADS, BOSS PHASES
+  // Each hero has a weapon and an armour slot beside the relic. Gear comes in five tiers per weapon kind, sold by the
+  // smiths (Odo in Kessa, Dov in Oru, Qasim on the Dry Sea) as the story opens up; buying fits it at once and trades
+  // the old piece in for half its price. It shows in battle: the blade's metal and glow, the armour's trim and
+  // pauldrons. Because gear can be bought, every monster is a quarter tougher than before (health and attack).
+  // Bosses have a second phase: at half health they change, speak, grow stronger and faster, and ready their worst.
+  const WCLASS = { sable: "sword", ilse: "hammer", maru: "focus", rook: "bow", ada: "focus", ren: "spear", kest: "flask", nell: "cutlass", warden: "core" };
+  const ACLASS = { sable: "medium", ilse: "heavy", maru: "light", rook: "medium", ada: "light", ren: "heavy", kest: "light", nell: "medium", warden: "heavy" };
+  const WNAMES = {
+    sword: ["Salt-Iron Sword", "Riverglass Blade", "Guild Sabre", "Stormglass Edge", "Tidebreaker"], hammer: ["Smith's Maul", "Rivet Hammer", "Bellfounder", "Thunder Anvil", "Oru's Hammer"],
+    bow: ["Reed Bow", "Horn Bow", "Guild Longbow", "Storm Recurve", "Heron's Reach"], spear: ["Watch Spear", "Ashwood Pike", "Gatewarden", "Stormpike", "Oath of Oru"],
+    cutlass: ["Rusty Cutlass", "Brine Cutlass", "Corsair's Edge", "Gale Cutlass", "Maw's Tooth"], flask: ["Tin Flask", "Copper Still", "Glass Retort", "Storm Alembic", "Philosopher's Vessel"],
+    focus: ["Reed Pipe", "Choir Bell", "Silver Hymnal", "Storm Tuning Fork", "First Rain's Note"], core: ["Salt Core", "Quartz Heart", "Guild Lodestone", "Stormglass Core", "Memory Crystal"],
+  };
+  const ANAMES = { light: ["Travel Cloak", "Padded Robe", "Warded Vestments", "Stormsilk", "Veil of the Nine"], medium: ["Leather Jerkin", "Studded Coat", "Guild Brigandine", "Stormscale", "Tide-Plate Coat"], heavy: ["Iron Vest", "Ring Mail", "Gate Plate", "Storm Plate", "Wall of Oru"] };
+  const WATK = [2, 4, 7, 10, 14], WPRICE = [30, 70, 140, 240, 380], ADEF = [1, 2, 4, 6, 9], AHP = [6, 12, 20, 30, 44], APRICE = [25, 60, 120, 210, 340];
+  const GEAR = {};
+  for (const [cls, names] of Object.entries(WNAMES)) names.forEach((name, i) => {
+    const a = WATK[i], st = cls === "hammer" ? { atk: Math.round(a * 1.25), spd: i >= 2 ? -1 : 0 } : cls === "bow" ? { atk: a, spd: i >= 1 ? 1 : 0 } : cls === "spear" ? { atk: a, def: Math.ceil(i / 2) }
+      : cls === "cutlass" ? { atk: Math.round(a * 0.85), spd: 1 + (i >= 3 ? 1 : 0) } : cls === "flask" ? { atk: Math.round(a * 0.8), maxSp: 2 * (i + 1) } : cls === "focus" ? { atk: Math.round(a * 0.6), maxSp: 3 * (i + 1) }
+      : cls === "core" ? { atk: Math.round(a * 0.8), def: i + 1 } : { atk: a };
+    GEAR[`w_${cls}_${i + 1}`] = { name, slot: "weapon", cls, tier: i + 1, st, price: WPRICE[i] };
+  });
+  for (const [cls, names] of Object.entries(ANAMES)) names.forEach((name, i) => {
+    const d = ADEF[i], st = cls === "heavy" ? { def: Math.round(d * 1.3), maxHp: Math.round(AHP[i] * 1.2), spd: i >= 2 ? -1 : 0 } : cls === "light" ? { def: Math.max(1, Math.round(d * 0.7)), maxHp: Math.round(AHP[i] * 0.8), maxSp: 2 * (i + 1) } : { def: d, maxHp: AHP[i] };
+    GEAR[`a_${cls}_${i + 1}`] = { name, slot: "armor", cls, tier: i + 1, st, price: APRICE[i] };
+  });
+  const statText = st => Object.entries(st).filter(([, v]) => v).map(([k, v]) => `${v > 0 ? "+" : ""}${v} ${{ atk: "ATK", def: "DEF", spd: "SPD", maxHp: "HP", maxSp: "SP" }[k]}`).join(", ");
+  const gearOf = id => ((G.gear || {})[id]) || {};
+  function applyGear(h, key, sign) {
+    const g = GEAR[key]; if (!g) return;
+    for (const [k, v] of Object.entries(g.st)) { if (!v) continue; h[k] += sign * v; }
+    if (g.st.maxHp) h.hp = sign > 0 ? Math.min(h.maxHp, h.hp + g.st.maxHp) : Math.min(h.hp, h.maxHp);
+    if (g.st.maxSp) h.sp = sign > 0 ? Math.min(h.maxSp, h.sp + g.st.maxSp) : Math.min(h.sp, h.maxSp);
+    h.hp = Math.max(1, h.hp);
+  }
+  function fitGear(id, key) {   // buy and fit: the old piece goes back for half its price
+    const g = GEAR[key], h = G.party[id]; if (!g || !h) return;
+    G.gear = G.gear || {}; const cur = G.gear[id] || (G.gear[id] = {}), old = cur[g.slot], refund = old ? Math.floor(GEAR[old].price / 2) : 0;
+    const cost = g.price - refund; if (G.coins < cost) return;
+    G.coins -= cost; if (old) applyGear(h, old, -1); applyGear(h, key, 1); cur[g.slot] = key;
+    Music.sound("item"); toast(`${h.name} takes the ${g.name}.${refund ? ` (${refund} coin back for the old one)` : ""}`); save(); updateHud();
+  }
+  const shopTier = () => G.stage >= 10 ? 5 : G.stage >= 7 ? 4 : G.stage >= 5 ? 3 : G.stage >= 3 ? 2 : 1;
+  const nextGear = (id, slot) => { const cls = slot === "weapon" ? WCLASS[id] : ACLASS[id], have = GEAR[gearOf(id)[slot]], t = have ? have.tier : 0, top = shopTier(); return t < top ? `${slot === "weapon" ? "w" : "a"}_${cls}_${top}` : null; };   // the best in stock, not one step at a time
+  // the shop: next piece for each fighter, weapon and armour; the node is refreshed in place after every purchase
+  D.gear_shop = { who: "odo", text: "", choices: [] };
+  function refreshGear(who, back) {
+    const node = D.gear_shop, fighters = (G.active && G.active.length ? G.active : G.members).slice(0, 4);
+    node.who = who; node.choices.length = 0;
+    node.text = `${{ odo: "(Odo lays out what Ilse's forge can make.) Only the fighters get fitted, mind. Rest someone and bring someone else if you want them seen to.", dov: "(Dov clears the anvil.) Tell me who's fighting and I'll make it fit. The old kit I'll take back at half.", qasim: "(Qasim unrolls a cloth of blades and mail from the caravans.) Salt buys salt, courier. Coin buys the rest." }[who] || "Arms and armour."} (Best on offer now: tier ${shopTier()} of 5.)`;
+    for (const id of fighters) for (const slot of ["weapon", "armor"]) {
+      const key = nextGear(id, slot); if (!key || !WCLASS[id]) continue;
+      const g = GEAR[key], old = gearOf(id)[slot], refund = old ? Math.floor(GEAR[old].price / 2) : 0, cost = g.price - refund;
+      node.choices.push({ t: `${G.party[id].name}: ${g.name} (${statText(g.st)}) · ${cost} coin${refund ? ` after trade-in` : ""}`, go: "gear_shop", act: () => { fitGear(id, key); refreshGear(who, back); }, req: () => G.coins >= cost, reqText: `${cost} coin` });
+    }
+    if (!node.choices.length) node.text += " Your fighters already carry the best I have. Come back when the road opens further.";
+    node.choices.push({ t: "That's all", go: back });
+  }
+  const gearChoice = (who, back) => ({ t: "Arms and armour, fitted to each fighter", go: "gear_shop", act: () => refreshGear(who, back) });
+  if (D.odo_0 && D.odo_0.choices) D.odo_0.choices.splice(D.odo_0.choices.length - 1, 0, gearChoice("odo", "odo_0"));
+  if (D.dov_0 && D.dov_0.choices) D.dov_0.choices.splice(D.dov_0.choices.length - 1, 0, gearChoice("dov", "dov_0"));
+  if (D.qasim_0 && Array.isArray(D.qasim_0.choices)) D.qasim_0.choices.splice(Math.max(0, D.qasim_0.choices.length - 1), 0, gearChoice("qasim", "qasim_0"));
+  // the party screen shows what each hero carries
+  const _renderRosterG = renderRoster;
+  renderRoster = function () {
+    _renderRosterG();
+    const cards = [...$("rosterList").children];
+    G.members.forEach((id, i) => { const c = cards[i]; if (!c || !WCLASS[id]) return; const gr = gearOf(id), row = document.createElement("div"); row.className = "bondline";
+      row.textContent = `Weapon: ${gr.weapon ? `${GEAR[gr.weapon].name} (${statText(GEAR[gr.weapon].st)})` : "the one they came with"} · Armour: ${gr.armor ? `${GEAR[gr.armor].name} (${statText(GEAR[gr.armor].st)})` : "travel clothes"}`;
+      c.insertBefore(row, c.children[1] || null); });
+  };
+  // New Game+ carries coin, not fitted gear: at an ending the gear is sold back at half
+  const _endingG = ending;
+  ending = function (kind) {
+    let back = 0; for (const [id, gr] of Object.entries(G.gear || {})) for (const slot of ["weapon", "armor"]) if (gr[slot] && G.party[id]) { applyGear(G.party[id], gr[slot], -1); back += Math.floor(GEAR[gr[slot]].price / 2); delete gr[slot]; }
+    if (back) { G.coins += back; }
+    return _endingG(kind);
+  };
+  // how gear looks on the battle figure: metal and glow by weapon tier, trim and pauldrons by armour tier
+  const METAL = [null, { hi: "#cacee0", lo: "#6e7290" }, { hi: "#e8fcff", lo: "#8ab8c8", glow: null }, { hi: "#fff4b0", lo: "#b08a28" }, { hi: "#e8ffff", lo: "#3ee0e8", glow: "rgba(158,240,245,0.55)" }, { hi: "#dffff6", lo: "#28a896", glow: "rgba(110,255,220,0.6)" }];
+  const gearTiers = id => { const gr = gearOf(id); return [gr.weapon ? GEAR[gr.weapon].tier : 0, gr.armor ? GEAR[gr.armor].tier : 0]; };
+  // ---- a quarter tougher everywhere
+  const _unitFromMonsterG = unitFromMonster;
+  unitFromMonster = function (id, i, n) { const u = _unitFromMonsterG(id, i, n); u.maxHp = u.hp = Math.round(u.hp * 1.25); u.atk = Math.round(u.atk * 1.25); return u; };
+  // ---- boss phases
+  const PHASE2 = {
+    butcher: ["Now I'm hungry.", "#c8182e"], mother: ["My children. Drink!", "#c07098"], choirmaster: ["Crescendo! All of you, sing!", "#ffcf4a"], voss: ["The Bell is mine. It rings for me!", "#3ee0e8"],
+    hollis: ["The tide comes in. It always comes in!", "#3ee0c8"], quill: ["Audit complete. Seizing everything.", "#c8182e"], gulp: ["Croak! Swallow them whole!", "#a8b068"], maw: ["Down with the ship, then! All of us!", "#28a896"],
+    colossus: ["We scream. We scream.", "#9ef0f5"], vela: ["Hear the storm. Hear it end you.", "#c8d8ff"], king: ["Then drown with us. All of you.", "#9ef0f5"], corvin: ["Every debt. Every name. Paid.", "#ffcf4a"],
+    ledgertree: ["The interest is due.", "#ff2d2d"], tollkeeper: ["Final audit. No appeals.", "#ffcf4a"], oldmouth: ["Hunger.", "#3ee0e8"], wyrm: ["Hhhsssss!", "#e8ecf8"],
+  };
+  function enterPhase2(f) {
+    const [line] = PHASE2[f.id]; f.phase2 = time;
+    f.atk = Math.round(f.atk * 1.2); f.def += 2; f.spd += 2;
+    const M = MONSTERS[f.id]; if (M && M.moves.some(m => m.charge) && !f.charged) f.charged = true;   // its worst move comes next
+    shake = Math.max(shake, 14); flash(1); Music.sound("boss");
+    blog(`${f.name.split(",")[0]} changes. The second phase begins.`);
+    for (let i = RIG_FX.length - 1; i >= 0; i--) if (RIG_FX[i].kind === "say" && RIG_FX[i].unit === f) RIG_FX.splice(i, 1);   // one bubble at a time
+    RIG_FX.push({ kind: "say", text: line, unit: f, t0: time, dur: 3 }); Voice.say(f.id, line);
+  }
+  const _damagePh = damage;
+  damage = function (target, amount, o = {}) {
+    const r = _damagePh(target, amount, o);
+    if (battle && target && target.side === "foe" && target.boss && !target.phase2 && !target.dead && target.hp > 0 && target.hp <= target.maxHp * 0.5 && PHASE2[target.id]) enterPhase2(target);
+    return r;
+  };
+  const _drawRigFxPh = drawRigFx;
+  drawRigFx = function (k) {
+    if (battle) for (const f of battle.foes) if (f.phase2 && !f.dead && PHASE2[f.id]) {   // a pulsing aura and sparks around a boss in its second phase
+      const p = unitPos(f), col = PHASE2[f.id][1], top = unitTop(f), X = VP.ox + p.x * k, Y = VP.oy + (p.y - top * 0.5) * k, pulse = 0.5 + 0.5 * Math.sin(time * 4);
+      ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = 0.18 + 0.12 * pulse + (time - f.phase2 < 0.6 ? 0.5 * (1 - (time - f.phase2) / 0.6) : 0);
+      const g2 = ctx.createRadialGradient(X, Y, 4 * k, X, Y, top * 0.75 * k); g2.addColorStop(0, col); g2.addColorStop(1, "rgba(0,0,0,0)"); ctx.fillStyle = g2; ctx.fillRect(X - top * k, Y - top * k, top * 2 * k, top * 2 * k);
+      ctx.globalAlpha = 0.9; ctx.fillStyle = col; for (let j = 0; j < 10; j++) { const s = (time * 0.8 + j / 10) % 1; ctx.fillRect(X + Math.sin(j * 5.1 + time) * top * 0.45 * k, Y + (top * 0.5 - s * top) * k, 1.6 * k, 1.6 * k); }
+      ctx.restore();
+    }
+    _drawRigFxPh(k);
   };
 
   // ================================================================== NO TEXT OVER CHARACTERS
@@ -11615,8 +11737,8 @@
     let bin = ""; const u8 = new Uint8Array(ab); for (let i = 0; i < u8.length; i += 8192) bin += String.fromCharCode.apply(null, u8.subarray(i, i + 8192));
     return { peak: pk, rms, wav: btoa(bin) };
   }, trackKeys: () => Object.keys(TRACKS), rigSheet: (ids, poses, zoom = 3) => { const c = document.createElement("canvas"); c.width = poses.length * RIG_W * zoom; c.height = ids.length * RIG_H * zoom; const g = c.getContext("2d"); g.imageSmoothingEnabled = false; g.fillStyle = "#1d1830"; g.fillRect(0, 0, c.width, c.height);
-    ids.forEach((id, r) => poses.forEach((ps, i) => { const fr = rigFrame(id, POSE[ps], "sheet:" + ps, 0.3, false); g.drawImage(fr, i * RIG_W * zoom, r * RIG_H * zoom, RIG_W * zoom, RIG_H * zoom); })); return c.toDataURL(); },
-  rigPose: (i, name, secs = 3) => { if (battle && battle.heroes[i]) { playAct(battle.heroes[i], name, secs); return true; } return false; }, bossMoves: () => Object.entries(MONSTERS).filter(([, m]) => m.boss).map(([id, m]) => id + ': ' + m.moves.map(mv => mv.name + (mv.announce ? '[A]' : '') + (mv.charge ? '[C]' : '') + (mv.target ? '[' + mv.target + ']' : '') + (mv.all ? '[all]' : '')).join(', ')).join('\n'), sigFx: (kind) => { if (!battle) return false; const f = battle.foes[0]; RIG_FX.push({ kind: 'sig:' + kind, unit: f, t0: time, dur: 1.2, heroes: battle.heroes.map(h => unitPos(h)) }); return true; }, heroSkills: () => Object.entries(HEROES).map(([id, hh]) => id + ': ' + (hh.skills || []).map(s => s.name + '{' + Object.keys(s).filter(k => !['name','desc','cost','lvl','pcost'].includes(k)).map(k => k + (typeof s[k] === 'string' ? '=' + s[k] : '')).join(',') + '}').join(' | ')).join('\n'), skillFxTest: (heroIdx, name, foeTargets) => { if (!battle) return false; const u = battle.heroes[heroIdx]; const s = { name, target: foeTargets ? 'allEnemies' : 'party' }; battle.act = { u, skill: s }; return skillFx(u, { skill: s, unit: null }); }, chainTest: () => { if (!battle) return false; battle.chainT = time; battle.chainN = battle.heroes.length; const t = battle.foes[0]; battle.heroes.forEach((h, i) => setTimeout(() => chainBlow(h, t, i === battle.heroes.length - 1), 400 + i * 380)); return true; }, setStatus: (side, i, st) => { if (!battle) return false; const u = (side === 'hero' ? battle.heroes : battle.foes)[i]; if (!u) return false; Object.assign(u.st, st); return true; }, forceWin: () => { if (!battle) return false; for (const f of battle.foes) { f.hp = 0; f.dead = true; } victory(); return true; }, cont: () => battle && battle.waitingContinue ? (battle.waitingContinue(), true) : false, lose: () => battle ? (endBattle("lost"), true) : false, dlgChoices: () => dlg && dlg.choices ? dlg.choices.map(c => typeof c.t === "function" ? c.t() : c.t) : null, voiceWav: async (who, text) => {   // a character's voice speaking a line, rendered offline for previews and level checks
+    ids.forEach((id, r) => poses.forEach((ps, i) => { const fr = rigFrame(id, POSE[ps], "sheet:" + ps + "|g" + gearTiers(id).join("."), 0.3, false); g.drawImage(fr, i * RIG_W * zoom, r * RIG_H * zoom, RIG_W * zoom, RIG_H * zoom); })); return c.toDataURL(); },
+  rigPose: (i, name, secs = 3) => { if (battle && battle.heroes[i]) { playAct(battle.heroes[i], name, secs); return true; } return false; }, bossMoves: () => Object.entries(MONSTERS).filter(([, m]) => m.boss).map(([id, m]) => id + ': ' + m.moves.map(mv => mv.name + (mv.announce ? '[A]' : '') + (mv.charge ? '[C]' : '') + (mv.target ? '[' + mv.target + ']' : '') + (mv.all ? '[all]' : '')).join(', ')).join('\n'), sigFx: (kind) => { if (!battle) return false; const f = battle.foes[0]; RIG_FX.push({ kind: 'sig:' + kind, unit: f, t0: time, dur: 1.2, heroes: battle.heroes.map(h => unitPos(h)) }); return true; }, heroSkills: () => Object.entries(HEROES).map(([id, hh]) => id + ': ' + (hh.skills || []).map(s => s.name + '{' + Object.keys(s).filter(k => !['name','desc','cost','lvl','pcost'].includes(k)).map(k => k + (typeof s[k] === 'string' ? '=' + s[k] : '')).join(',') + '}').join(' | ')).join('\n'), skillFxTest: (heroIdx, name, foeTargets) => { if (!battle) return false; const u = battle.heroes[heroIdx]; const s = { name, target: foeTargets ? 'allEnemies' : 'party' }; battle.act = { u, skill: s }; return skillFx(u, { skill: s, unit: null }); }, chainTest: () => { if (!battle) return false; battle.chainT = time; battle.chainN = battle.heroes.length; const t = battle.foes[0]; battle.heroes.forEach((h, i) => setTimeout(() => chainBlow(h, t, i === battle.heroes.length - 1), 400 + i * 380)); return true; }, setStatus: (side, i, st) => { if (!battle) return false; const u = (side === 'hero' ? battle.heroes : battle.foes)[i]; if (!u) return false; Object.assign(u.st, st); return true; }, gearTest: (id, w, a) => { G.gear = G.gear || {}; const cur = G.gear[id] || (G.gear[id] = {}); for (const [slot, t] of [['weapon', w], ['armor', a]]) { if (cur[slot]) applyGear(G.party[id], cur[slot], -1); delete cur[slot]; if (t) { const key = (slot === 'weapon' ? 'w_' + WCLASS[id] : 'a_' + ACLASS[id]) + '_' + t; applyGear(G.party[id], key, 1); cur[slot] = key; } } return { ...G.party[id] }; }, gearShop: who => { refreshGear(who, 'odo_0'); return D.gear_shop.choices.map(c => typeof c.t === 'function' ? c.t() : c.t); }, bossPhaseTest: () => { if (!battle) return null; const f = battle.foes[0]; const before = { hp: f.hp, atk: f.atk }; damage(f, Math.ceil(f.hp - f.maxHp * 0.49), { silent: true }); return { before, after: { hp: f.hp, max: f.maxHp, atk: f.atk, spd: f.spd, phase2: !!f.phase2, charged: !!f.charged } }; }, foeStats: () => battle ? battle.foes.map(f => f.id + ' hp' + f.maxHp + ' atk' + f.atk) : null, forceWin: () => { if (!battle) return false; for (const f of battle.foes) { f.hp = 0; f.dead = true; } victory(); return true; }, cont: () => battle && battle.waitingContinue ? (battle.waitingContinue(), true) : false, lose: () => battle ? (endBattle("lost"), true) : false, dlgChoices: () => dlg && dlg.choices ? dlg.choices.map(c => typeof c.t === "function" ? c.t() : c.t) : null, voiceWav: async (who, text) => {   // a character's voice speaking a line, rendered offline for previews and level checks
     const buf = await Voice.render(who, text), d = buf.getChannelData(0), sr = buf.sampleRate, n = d.length; let pk = 0, sq = 0; for (let i = 0; i < n; i++) { const a = Math.abs(d[i]); if (a > pk) pk = a; sq += d[i] * d[i]; }
     const ab = new ArrayBuffer(44 + n * 2), v = new DataView(ab), w = (o, str) => { for (let i = 0; i < str.length; i++) v.setUint8(o + i, str.charCodeAt(i)); };
     w(0, "RIFF"); v.setUint32(4, 36 + n * 2, true); w(8, "WAVE"); w(12, "fmt "); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, sr, true); v.setUint32(28, sr * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, "data"); v.setUint32(40, n * 2, true);
