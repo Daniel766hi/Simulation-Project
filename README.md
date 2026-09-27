@@ -10,7 +10,7 @@ self-contained: no backend, no build step, no network access required.
 | `bass.html` | Product adoption / Bass diffusion | Agent-based |
 | `m5.html` | Walmart demand forecasting (Kaggle M5) → inventory impact | Machine learning + inventory simulation |
 | `tetris.html` | Line Clear, a Tetris-style block game | Game (canvas) |
-| `salt-road.html` | The Salt Road, a dark adventure RPG: explore, recruit a party, turn-based battles, four chapters, two endings | Game (canvas) |
+| `salt-road.html` | The Salt Road, a dark adventure RPG: explore, recruit a party, turn-based battles, twelve chapters, four endings, an endless dungeon | Game (canvas) |
 
 ---
 
@@ -343,3 +343,20 @@ The site is static HTML (Chart.js is vendored in `vendor/`), so any static host 
   The site then lives at `https://daniel766hi.github.io/Simulation-Project/`.
 - **Vercel:** import the repository at vercel.com/new; `vercel.json` sets the build command and
   output folder, so no settings need changing.
+
+---
+
+# The Salt Road (`salt-road.html`)
+
+A single-file canvas RPG. It needs no build step, and everything, music and voices included, is synthesised live in the browser.
+
+- **Two art styles on purpose.** The world is pixel art. The heroine and the great villains (Sable, Voss, Hollis, Corvin, Vela, Aurel) are also painted as high-resolution tarot-style portraits with chiaroscuro lighting. These appear beside their dialogue, as Sable's key art on the title screen, and as a card reveal when a villain's battle begins.
+- **Voices.** A formant speech synthesiser babbles each line in the speaker's own voice, with pitch, throat size, pace, breath, rasp, growl, choir, water, metal and echo. Settings has Voiced, Blips, Spoken (browser text-to-speech) or Off.
+- **Saves for every player.** The game saves in the browser as you play. Where storage is blocked, progress is kept with the tab and the title screen says so. Save codes and save files carry a game anywhere. There is no account or server.
+- **The Long Road** (Pause menu):
+  - a Courier Rank and perks kept across playthroughs
+  - a daily welcome-back gift with a visiting streak
+  - the Deep Stair, an endless descent with boons between floors
+  - the Hall of Echoes, boss rematches at three tiers
+  - a Weekly Trial
+
