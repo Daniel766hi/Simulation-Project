@@ -8108,6 +8108,7 @@
   const affOf = (id, type) => { const a = AFFINITY[id]; return !a || !type ? 1 : a.weak.includes(type) ? 1.5 : a.resist.includes(type) ? 0.6 : 1; };
   const typeOf = att => {
     if (!att || att.side !== "hero") return null;
+    if (battle && battle.forceType) return battle.forceType;   // a technique that strikes with a set type (Powder Keg: fire)
     const a = battle && battle.act;
     if (a && a.u === att && a.skill && SKILL_TYPE[a.skill.name]) return SKILL_TYPE[a.skill.name];
     return HERO_TYPE[att.id] || null;
@@ -8148,6 +8149,53 @@
     return _extraJournalA2() + (rows.length ? `<h3>Weaknesses learned</h3><ul>${rows.join("")}</ul>` : "");
   };
   ACHIEVEMENTS.push(["weak20", "Know Your Enemy", "Learn twenty weaknesses or resistances.", () => Object.values(G.flags.aff || {}).reduce((s, k) => s + k.weak.length + k.resist.length, 0) >= 20]);
+
+  // ================================================================== DUO TECHNIQUES
+  // Two companions who have bonded with Sable (bond 2+) and fight side by side can act together. The acting hero
+  // pays the first cost, the partner the second. Each hit is struck by its own hero, so damage types still apply.
+  const hitBy = (id, target, power, o) => { const u = battle.heroes.find(h => h.id === id); return u && alive(u) && !target.dead ? attackRoll(u, target, power, o) : { dmg: 0 }; };
+  const DUOS = [
+    { pair: ["sable", "ilse"], name: "Old Friends", target: "enemy", cost: 4, pcost: 3, desc: "Sable cuts, Ilse follows with the hammer: blade then blunt on one target.",
+      run: async (t) => { const a = hitBy("sable", t, 1.1); await wait(300); const b = hitBy("ilse", t, 1.15); return `${a.dmg} + ${b.dmg}`; } },
+    { pair: ["ilse", "rook"], name: "Anvil and Arrow", target: "enemy", cost: 4, pcost: 3, desc: "Ilse cracks the armour; Rook's arrow through the crack is always critical.",
+      run: async (t) => { const a = hitBy("ilse", t, 0.8); if (!t.dead) t.st.brk = 3; await wait(300); if (!t.dead) t.st.mark = true; const b = hitBy("rook", t, 1.5); return `${a.dmg}, armour broken, then ${b.dmg}`; } },
+    { pair: ["maru", "ada"], name: "Twin Hymn", target: "allEnemies", cost: 5, pcost: 4, desc: "Two voices: the party heals 14 and stops bleeding, then a storm hits every enemy.",
+      run: async () => { for (const h of battle.heroes) if (alive(h)) { h.ref.hp = Math.min(h.ref.maxHp, h.ref.hp + 14); delete h.st.bleed; popupText(h, "+14", "#6bff9a"); } Music.sound("heal"); await wait(400); const parts = battle.foes.filter(f => !f.dead).map(f => hitBy("maru", f, 0.75, { noCrit: true }).dmg); return `party healed, storm ${parts.join(", ")}`; } },
+    { pair: ["ren", "warden"], name: "Shieldwall", target: "self", cost: 3, pcost: 3, desc: "Captain and Warden lock shields: the whole party guards, Ren draws every attack, and he heals 18.", std: { wall: true } },
+    { pair: ["kest", "nell"], name: "Powder Keg", target: "allEnemies", cost: 5, pcost: 3, desc: "Kest mixes it, Nell lights it: fire across every enemy.",
+      run: async () => { battle.forceType = "fire"; try { flash(0.7); shake = 8; const parts = battle.foes.filter(f => !f.dead).map(f => hitBy("kest", f, 1.15, { noCrit: true }).dmg); return `fire ${parts.join(", ")}`; } finally { battle.forceType = null; } } },
+    { pair: ["sable", "rook"], name: "Blue Thread", target: "enemy", cost: 4, pcost: 3, desc: "Sable marks the target and Rook shoots through the mark; then Sable finishes it.",
+      run: async (t) => { t.st.mark = true; const a = hitBy("rook", t, 1.25); await wait(300); const b = hitBy("sable", t, 1.25); return `${a.dmg} (critical) + ${b.dmg}`; } },
+  ];
+  const bonded = id => id === "sable" || bondLevel(id) >= 2;
+  const duoFor = (u) => DUOS.filter(d => d.pair.includes(u.id)).map(d => ({ d, partner: d.pair.find(x => x !== u.id) }))
+    .filter(({ d, partner }) => d.pair.every(bonded) && battle.heroes.some(h => h.id === partner));
+  const _menuItemsD = menuItems;
+  menuItems = function () {
+    const items = _menuItemsD(), m = menuState;
+    if (!m || m.page !== "skills" || !battle) return items;
+    const u = m.unit, extra = duoFor(u).map(({ d, partner }) => {
+      const p = battle.heroes.find(h => h.id === partner), ok = alive(p) && p.ref.sp >= d.pcost && u.ref.sp >= d.cost;
+      const skill = { name: d.name, cost: d.cost, target: d.target, duo: d, partner, ...(d.std || {}) };
+      return { label: `★ ${d.name} (${d.cost} SP + ${HEROES[partner].name} ${d.pcost})`, sub: d.desc, disabled: !ok, go: () => toTarget({ kind: "skill", skill, target: d.target }) };
+    });
+    const back = items.findIndex(i => i.label === "Back");
+    return back < 0 ? [...items, ...extra] : [...items.slice(0, back), ...extra, ...items.slice(back)];
+  };
+  const _act2SkillD = act2Skill;
+  act2Skill = async function (u, act, s, name) {
+    if (!s.duo) return _act2SkillD(u, act, s, name);
+    const p = battle.heroes.find(h => h.id === s.partner);
+    if (!p || !alive(p) || p.ref.sp < s.duo.pcost) { u.ref.sp += s.cost; blog(`${HEROES[s.partner].name} can't join in right now.`); return true; }
+    p.ref.sp -= s.duo.pcost; p.lunge = 1; G.flags.duosUsed = [...new Set([...(G.flags.duosUsed || []), s.name])];
+    if (!s.duo.run) { blog(`${name} and ${p.name}: ${s.name}!`); return false; }   // a standard effect (Shieldwall uses Oru's Wall)
+    blog(`${name} and ${p.name}: ${s.name}!`); await wait(450);
+    const target = act.unit && act.unit.side === "foe" && !act.unit.dead ? act.unit : battle.foes.find(f => !f.dead);
+    const text = await s.duo.run(target);
+    blog(`${s.name}: ${text}.`); renderCards();
+    return true;
+  };
+  ACHIEVEMENTS.push(["duos", "Side by Side", "Use three different duo techniques.", () => (G.flags.duosUsed || []).length >= 3]);
 
   // ================================================================== BOOT
   const saved = load();          // read the save before a fresh game could overwrite it
