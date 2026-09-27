@@ -10694,6 +10694,396 @@
   let styleWas = SETTINGS.musicStyle;
   saveSettings = function () { _saveSettingsM(); if (SETTINGS.musicStyle !== styleWas) { styleWas = SETTINGS.musicStyle; if (Music.wanted) { Music.track = null; Music.play(Music.wanted); } } };
 
+  // ================================================================== PORTRAITS: THE HEROINE AND THE VILLAINS, PAINTED
+  // The world is pixel art; its protagonist and its great villains are not. They are painted as smooth, lit portraits
+  // at high resolution (soft shading, rim light, glow, film grain) and shown beside their dialogue, on the title
+  // screen and in a full-screen card when their battle begins. Each is painted once, in idle time, and cached.
+  const PW = 600, PH = 750;
+  const PORTRAIT = {};
+  const pt = {
+    c: null,
+    grad(x0, y0, x1, y1, stops) { const g2 = this.c.createLinearGradient(x0, y0, x1, y1); stops.forEach(([o, col]) => g2.addColorStop(o, col)); return g2; },
+    rad(x, y, r0, r1, stops, x1 = x, y1 = y) { const g2 = this.c.createRadialGradient(x, y, r0, x1, y1, r1); stops.forEach(([o, col]) => g2.addColorStop(o, col)); return g2; },
+    path(pts, close = true) { const c = this.c; c.beginPath(); c.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) { const p = pts[i]; if (p.length === 2) c.lineTo(p[0], p[1]); else if (p.length === 4) c.quadraticCurveTo(p[0], p[1], p[2], p[3]); else c.bezierCurveTo(p[0], p[1], p[2], p[3], p[4], p[5]); } if (close) c.closePath(); },
+    fill(pts, f) { this.path(pts); this.c.fillStyle = f; this.c.fill(); },
+    stroke(pts, w, col, close = false) { this.path(pts, close); const c = this.c; c.lineWidth = w; c.strokeStyle = col; c.lineCap = "round"; c.lineJoin = "round"; c.stroke(); },
+    ell(x, y, rx, ry, f, rot = 0) { const c = this.c; c.beginPath(); c.ellipse(x, y, Math.max(0.1, rx), Math.max(0.1, ry), rot, 0, Math.PI * 2); c.fillStyle = f; c.fill(); },
+    soft(blur, fn) { const c = this.c; c.save(); c.filter = `blur(${blur}px)`; fn(); c.restore(); },
+    glow(col, blur, fn) { const c = this.c; c.save(); c.shadowColor = col; c.shadowBlur = blur; fn(); c.restore(); },
+    clip(pts, fn) { const c = this.c; c.save(); this.path(pts); c.clip(); fn(); c.restore(); },
+    rnd: (() => { let s = 99; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; })(),
+    // a head, three-quarters: skin ramp [light, mid, shadow, deep], eyes, mouth; returns the outline for rim lighting
+    head(o) {
+      const c = this.c, cx = o.x, s = o.s || 1, w = (o.w || 1) * s, jaw = o.jaw || 1, turn = o.turn || 0.1;
+      const Y = v => o.y + v * s, X = v => cx + v * w;
+      const outline = [[X(0), Y(-150)], [X(62), Y(-150), X(94), Y(-100), X(90), Y(-35)], [X(88), Y(25), X(68 * jaw), Y(85), X(38 * jaw), Y(118)], [X(0), Y(140), X(-38 * jaw), Y(118)], [X(-68 * jaw), Y(85), X(-88), Y(25), X(-90), Y(-35)], [X(-94), Y(-100), X(-62), Y(-150), X(0), Y(-150)]];
+      const [L, M, S, D] = o.skin;
+      // neck: short and tapered into the shoulders, then an ear behind the cheek
+      const nb = o.neck || 185;
+      this.fill([[X(-34), Y(70)], [X(32), Y(70)], [X(40), Y(nb - 30)], [X(66), Y(nb)], [X(-70), Y(nb)], [X(-42), Y(nb - 30)]], this.grad(X(-60), 0, X(60), 0, [[0, M], [0.5, S], [1, D]]));
+      this.soft(3 * s, () => { this.stroke([[X(-24), Y(100)], [X(-6), Y(nb - 8)]], 5 * s, "rgba(0,0,0,0.12)"); this.stroke([[X(20), Y(100)], [X(8), Y(nb - 8)]], 5 * s, "rgba(0,0,0,0.18)"); });
+      this.soft(12 * s, () => this.ell(X(6), Y(122), 50 * w, 22 * s, "rgba(0,0,0,0.5)"));
+      if (o.ear !== false) { this.ell(X(86), Y(8), 14 * w, 26 * s, this.grad(X(76), 0, X(100), 0, [[0, S], [1, D]]), 0.15); this.soft(2, () => this.ell(X(88), Y(8), 6 * w, 14 * s, "rgba(0,0,0,0.3)", 0.15)); }
+      // skin
+      this.fill(outline, this.grad(X(-90), Y(-100), X(95), Y(80), [[0, L], [0.45, M], [0.8, S], [1, D]]));
+      this.clip(outline, () => {
+        this.ell(X(-34), Y(-60), 70 * w, 60 * s, this.rad(X(-34), Y(-60), 0, 80 * s, [[0, "rgba(255,255,255,0.22)"], [1, "rgba(255,255,255,0)"]]));
+        this.soft(22 * s, () => this.ell(X(84), Y(10), 46 * w, 150 * s, D));
+        this.soft(16 * s, () => this.ell(X(-48 - turn * 20), Y(16), 26 * w, 14 * s, "rgba(255,255,255,0.22)"));
+        this.soft(10 * s, () => this.ell(X(44 - turn * 20), Y(30), 16 * w, 30 * s, "rgba(0,0,0,0.14)"));
+        this.soft(8 * s, () => this.stroke([[X(78), Y(30)], [X(60 * jaw), Y(90), X(30 * jaw), Y(122)]], 10 * s, "rgba(0,0,0,0.25)"));
+        this.soft(14 * s, () => this.ell(X(-10), Y(-130), 70 * w, 30 * s, "rgba(0,0,0,0.25)"));
+        for (const sx of [-1, 1]) this.ell(X(sx * 42 - turn * 30), Y(40), 26 * w, 18 * s, this.rad(X(sx * 42), Y(40), 0, 28 * s, [[0, o.blush || "rgba(200,80,80,0.18)"], [1, "rgba(200,80,80,0)"]]));
+        // brow ridge and socket shadows
+        for (const sx of [-1, 1]) this.soft(6 * s, () => this.ell(X(sx * 36 - turn * 20), Y(-12), 30 * w, 16 * s, o.socket || "rgba(60,20,30,0.35)"));
+        // under the nose and lower lip
+        this.soft(5 * s, () => { this.ell(X(-turn * 20), Y(52), 18 * w, 6 * s, "rgba(40,10,20,0.35)"); this.ell(X(-turn * 16), Y(92), 16 * w, 5 * s, "rgba(40,10,20,0.3)"); });
+        if (o.age) for (let i = 0; i < 3; i++) this.stroke([[X(-30 + i * 2), Y(-78 - i * 9)], [X(0), Y(-82 - i * 9), X(30 - i * 2), Y(-78 - i * 9)]], 1.4 * s, `rgba(60,30,30,${0.18 * o.age})`);
+        if (o.paint) o.paint(X, Y, w, s);
+      });
+      // eyes
+      const ey = Y(-2), eyes = [X(-37 - turn * 22), X(37 - turn * 22)];
+      eyes.forEach((ex, i) => {
+        const ew = 23 * w * (o.eyeScale || 1) * (i ? 1 - turn * 0.8 : 1), eh = 9 * s * (o.eyeScale || 1) * (o.eyeOpen || 1);
+        const lid = [[ex - ew, ey], [ex - ew * 0.2, ey - eh * 1.6, ex + ew, ey - eh * 0.3], [ex + ew * 0.1, ey + eh * 1.1, ex - ew, ey]];
+        if (o.eyes === "hollow") { this.fill(lid, "#07060c"); if (o.glow) this.glow(o.glow, 22 * s, () => this.ell(ex, ey - 1, 5 * s, 4 * s, o.glow)); }
+        else {
+          this.fill(lid, o.sclera || "#f2ece6");
+          this.clip(lid, () => {
+            const ir = 9.5 * s * (o.iris || 1);
+            this.ell(ex - turn * 4, ey - 1 * s, ir, ir, this.rad(ex - turn * 4, ey - 1, 0, ir, [[0, o.eyeHi || "#9ef0f5"], [0.55, o.eye || "#2a6f9a"], [1, "#0b0916"]]));
+            if (!o.noPupil) this.ell(ex - turn * 4, ey - 1 * s, 3.8 * s, 3.8 * s, "#07060c");
+            this.soft(3 * s, () => this.ell(ex, ey - eh * 0.9, ew, eh * 0.6, "rgba(40,10,30,0.45)"));
+          });
+          if (o.glow) this.glow(o.glow, 24 * s, () => this.ell(ex - turn * 4, ey - 1 * s, 5 * s, 5 * s, o.glow));
+          this.ell(ex - turn * 4 - 3 * s, ey - 4 * s, 2.4 * s, 2 * s, "rgba(255,255,255,0.95)");
+        }
+        // lashes and crease
+        this.stroke([[ex - ew * 1.05, ey + 1], [ex - ew * 0.2, ey - eh * 1.65, ex + ew * 1.1, ey - eh * 0.5]], (o.lash || 3.2) * s, o.lashCol || "#1a1024");
+        this.stroke([[ex - ew * 0.8, ey - eh * 1.9], [ex, ey - eh * 2.6, ex + ew * 0.9, ey - eh * 1.4]], 1.2 * s, "rgba(60,20,30,0.35)");
+        this.stroke([[ex - ew * 0.7, ey + eh * 0.9], [ex, ey + eh * 1.3, ex + ew * 0.8, ey + eh * 0.5]], 1 * s, "rgba(60,20,30,0.25)");
+        // brow
+        const by = ey - (o.browUp || 30) * s, bs = o.brow || [0, 0];
+        this.fill([[ex - ew * 1.1, by + 6 * s + bs[0] * s], [ex - ew * 0.2, by - 5 * s, ex + ew * 1.15, by + 2 * s + bs[1] * s], [ex + ew * 1.1, by + 5 * s + bs[1] * s], [ex - ew * 0.2, by + 1 * s, ex - ew * 1.05, by + 9 * s + bs[0] * s]], o.browCol || "#2b1a2e");
+      });
+      // nose
+      const nx = X(-turn * 26);
+      this.soft(3 * s, () => this.fill([[nx + 4 * s, Y(-4)], [nx + 12 * s, Y(40)], [nx + 2 * s, Y(50)], [nx - 2 * s, Y(10)]], "rgba(60,20,30,0.28)"));
+      this.ell(nx - 3 * s, Y(34), 6 * s, 9 * s, "rgba(255,255,255,0.18)");
+      this.ell(nx - 8 * s, Y(49), 4 * s, 2.4 * s, "rgba(50,15,25,0.55)"); this.ell(nx + 8 * s, Y(49), 4 * s, 2.4 * s, "rgba(50,15,25,0.55)");
+      // mouth
+      const my = Y(78), mx = X(-turn * 20), mw = (o.mouthW || 26) * w;
+      if (o.mouth) o.mouth(mx, my, mw, s);
+      else {
+        this.fill([[mx - mw, my], [mx - mw * 0.4, my - 8 * s, mx, my - 4 * s], [mx + mw * 0.4, my - 8 * s, mx + mw, my], [mx, my + 2 * s, mx - mw, my]], o.lip || "#b8545e");
+        this.fill([[mx - mw * 0.9, my + 1], [mx, my + 16 * s, mx + mw * 0.9, my + 1], [mx, my + 4 * s, mx - mw * 0.9, my + 1]], o.lip2 || "#c86a70");
+        this.stroke([[mx - mw, my + 1], [mx, my + 3 * s, mx + mw, my + 1]], 2 * s, "rgba(60,10,20,0.7)");
+        this.ell(mx - 4 * s, my + 8 * s, 8 * s, 2.4 * s, "rgba(255,255,255,0.28)");
+      }
+      return outline;
+    },
+    rim(outline, col, w, side = 1) {   // light catching one edge of the face: only the cheek and jaw on that side, softened
+      const c = this.c, xs = outline.map(p => p[p.length - 2]), ys = outline.map(p => p[p.length - 1]), cx0 = (Math.min(...xs) + Math.max(...xs)) / 2, top = Math.min(...ys), bot = Math.max(...ys);
+      c.save(); c.beginPath(); c.rect(side > 0 ? cx0 + (Math.max(...xs) - cx0) * 0.35 : 0, top + (bot - top) * 0.22, side > 0 ? PW : cx0 - (cx0 - Math.min(...xs)) * 0.35, (bot - top) * 0.72); c.clip();
+      c.filter = "blur(1.2px)"; c.globalAlpha = 0.85; this.glow(col, 16, () => this.stroke(outline, w, col, true)); c.restore(); },
+    motes(n, col, y0 = 0, y1 = PH, r = 2) { for (let i = 0; i < n; i++) { const x = this.rnd() * PW, y = y0 + this.rnd() * (y1 - y0), rr = r * (0.4 + this.rnd()); this.glow(col, 8, () => this.ell(x, y, rr, rr, col)); } },
+    light(side, key, dark = 0.72) {   // chiaroscuro: the far side falls into shadow, the near side takes a coloured key light
+      const c = this.c; c.save(); c.globalCompositeOperation = "multiply";
+      c.fillStyle = this.grad(side > 0 ? PW * 0.44 : PW * 0.56, 0, side > 0 ? PW * 0.66 : PW * 0.34, 0, [[0, "#ffffff"], [1, `rgba(20,10,34,${dark})`]]);
+      c.fillRect(0, 0, PW, PH); c.globalCompositeOperation = "screen";
+      c.fillStyle = this.rad(side > 0 ? PW * 0.3 : PW * 0.7, PH * 0.4, 10, PW * 0.55, [[0, key], [1, "rgba(0,0,0,0)"]]); c.fillRect(0, 0, PW, PH); c.restore();
+    },
+    frame(num, title, accent) {   // a tarot card's frame: gold rules, corner flourishes, the numeral above and the title below
+      const c = this.c, m = 18, gold = this.grad(0, 0, PW, PH, [[0, "#fff1b0"], [0.3, "#c9a227"], [0.55, "#f6e07a"], [0.8, "#86621a"], [1, "#e8c050"]]);
+      c.save(); c.fillStyle = "rgba(4,2,10,0.9)"; c.fillRect(0, 0, PW, 70); c.fillRect(0, PH - 86, PW, 86); c.fillRect(0, 0, m, PH); c.fillRect(PW - m, 0, m, PH);
+      c.strokeStyle = gold; c.lineWidth = 3; c.strokeRect(m, m, PW - m * 2, PH - m * 2); c.lineWidth = 1.2; c.strokeRect(m + 8, m + 8, PW - m * 2 - 16, PH - m * 2 - 16);
+      c.beginPath(); c.moveTo(m + 8, 70); c.lineTo(PW - m - 8, 70); c.moveTo(m + 8, PH - 86); c.lineTo(PW - m - 8, PH - 86); c.stroke();
+      for (const [x, y, sx, sy] of [[m, m, 1, 1], [PW - m, m, -1, 1], [m, PH - m, 1, -1], [PW - m, PH - m, -1, -1]]) {
+        c.beginPath(); c.arc(x + sx * 26, y + sy * 26, 14, 0, Math.PI * 2); c.lineWidth = 2; c.stroke();
+        c.beginPath(); c.moveTo(x + sx * 40, y + sy * 26); c.quadraticCurveTo(x + sx * 70, y + sy * 10, x + sx * 100, y + sy * 26); c.moveTo(x + sx * 26, y + sy * 40); c.quadraticCurveTo(x + sx * 10, y + sy * 70, x + sx * 26, y + sy * 100); c.lineWidth = 1.4; c.stroke();
+        this.glow(accent, 10, () => this.ell(x + sx * 26, y + sy * 26, 4, 4, accent)); }
+      c.fillStyle = gold; c.textAlign = "center"; c.textBaseline = "middle";
+      c.font = "700 30px Cinzel, Georgia, serif"; c.fillText(num, PW / 2, 45);
+      c.font = "700 30px Cinzel, Georgia, serif"; const t = title.toUpperCase().split("").join(String.fromCharCode(8202)); c.fillText(t, PW / 2, PH - 50);
+      c.strokeStyle = gold; c.lineWidth = 1; for (const sx of [-1, 1]) { c.beginPath(); c.moveTo(PW / 2 + sx * 36, 45); c.lineTo(PW / 2 + sx * 120, 45); c.stroke(); this.ell(PW / 2 + sx * 128, 45, 3, 3, accent); }
+      c.restore();
+    },
+    finish(tint) {   // vignette, a colour wash and film grain
+      const c = this.c;
+      c.fillStyle = this.rad(PW / 2, PH * 0.42, PH * 0.3, PH * 0.78, [[0, "rgba(0,0,0,0)"], [1, "rgba(4,2,10,0.78)"]]); c.fillRect(0, 0, PW, PH);
+      if (tint) { c.save(); c.globalCompositeOperation = "soft-light"; c.fillStyle = tint; c.fillRect(0, 0, PW, PH); c.restore(); }
+      const img = c.getImageData(0, 0, PW, PH), d = img.data; for (let i = 0; i < d.length; i += 4) { const n = (this.rnd() - 0.5) * 14; d[i] += n; d[i + 1] += n; d[i + 2] += n; } c.putImageData(img, 0, 0);
+    },
+  };
+  // ---- Sable, the courier: indigo coat, satchel strap, the cyan scarf in the wind, dusk on the salt behind her
+  PORTRAIT.sable = { card: "0", name: "Sable", title: "The Courier", accent: "#3ee0e8", paint() {
+    const c = pt.c;
+    c.fillStyle = pt.grad(0, 0, 0, PH, [[0, "#140f2e"], [0.45, "#3b2a5c"], [0.62, "#a8566a"], [0.7, "#f0a060"], [0.74, "#6a4a6a"], [1, "#1d1830"]]); c.fillRect(0, 0, PW, PH);
+    pt.fill([[0, 540], [80, 528], [200, 536], [330, 526], [460, 534], [600, 524], [600, PH], [0, PH]], pt.grad(0, 520, 0, PH, [[0, "#cfc6dc"], [0.3, "#7a6f9a"], [1, "#1d1830"]]));
+    pt.soft(30, () => pt.ell(430, 520, 160, 40, "rgba(255,190,120,0.55)"));
+    pt.motes(46, "rgba(255,240,220,0.8)", 60, 700, 1.8);
+    // hair behind: a full mass framing her, streaming right in the wind
+    pt.fill([[300, 150], [210, 150, 176, 220, 178, 320], [172, 420, 160, 500, 186, 560], [260, 590, 330, 560, 380, 540], [460, 560, 540, 520, 596, 470], [560, 420, 470, 390, 430, 330], [430, 230, 400, 150, 300, 150]], pt.grad(170, 150, 590, 560, [[0, "#3e3272"], [0.45, "#2b2350"], [1, "#0e0a1e"]]));
+    for (let i = 0; i < 60; i++) { const y0 = 170 + i * 5, x0 = 320 + (pt.rnd() - 0.4) * 140; pt.stroke([[x0, y0], [x0 + 70, y0 + 50 + pt.rnd() * 30, x0 + 150 + pt.rnd() * 60, y0 + 100 + pt.rnd() * 60, x0 + 200 + pt.rnd() * 90, y0 + 150 + pt.rnd() * 90]], 1 + pt.rnd() * 2.4, i % 6 ? "rgba(14,10,30,0.55)" : "rgba(120,106,190,0.5)"); }
+    for (let i = 0; i < 26; i++) { const x0 = 190 + pt.rnd() * 30; pt.stroke([[x0 + 10, 230 + i * 4], [x0 - 8, 380 + i * 3, x0 + 4, 520 + pt.rnd() * 30]], 1.2 + pt.rnd() * 1.6, i % 5 ? "rgba(14,10,30,0.5)" : "rgba(120,106,190,0.45)"); }
+    // coat: shoulders, high collar, strap
+    pt.fill([[90, PH], [110, 640, 150, 590, 230, 560], [270, 548], [330, 548], [370, 560], [450, 590, 490, 640, 510, PH]], pt.grad(90, 0, 510, 0, [[0, "#1c1640"], [0.35, "#3b2f7a"], [0.6, "#2e2560"], [1, "#120e2a"]]));
+    for (const [a, b2] of [[[170, 600], [150, PH]], [[420, 596], [450, PH]], [[300, 640], [300, PH]]]) pt.stroke([a, [(a[0] + b2[0]) / 2 + 10, (a[1] + b2[1]) / 2, b2[0], b2[1]]], 3, "rgba(10,6,24,0.5)");
+    pt.fill([[228, 556], [262, 500], [300, 540], [338, 500], [372, 556], [340, 600], [300, 580], [260, 600]], pt.grad(228, 500, 372, 600, [[0, "#4a3e8e"], [1, "#221a4a"]]));
+    pt.stroke([[228, 556], [262, 500], [300, 540], [338, 500], [372, 556]], 2.4, "#c9a227");
+    pt.fill([[170, 610], [400, 750], [440, 750], [200, 596]], pt.grad(170, 600, 440, 750, [[0, "#8a5a33"], [0.5, "#6b3f24"], [1, "#3a2210"]]));
+    pt.stroke([[176, 606], [420, 750]], 1.2, "rgba(255,210,150,0.4)");
+    pt.fill([[276, 668], [306, 686], [296, 704], [266, 686]], pt.grad(266, 668, 306, 704, [[0, "#ffe08a"], [0.5, "#c9a227"], [1, "#6a4a10"]]));
+    pt.glow("rgba(62,224,232,0.8)", 14, () => pt.ell(386, 628, 12, 12, pt.rad(382, 624, 1, 12, [[0, "#ffffff"], [0.4, "#9ef0f5"], [1, "#1fb8c2"]])));
+    const out = pt.head({ x: 300, y: 330, s: 1, w: 0.94, turn: 0.14, skin: ["#f6d2b0", "#e8b48a", "#b97a5c", "#6a3a3a"], eyeScale: 1.18, lash: 4, jaw: 0.86, eye: "#3a5aa8", eyeHi: "#9ec8f5", lip: "#b05a60", lip2: "#c8747a", browCol: "#231a3a", brow: [2, -1], blush: "rgba(220,110,110,0.2)" });
+    // the scarf: wound twice at the throat, one end whipping away in the wind
+    pt.fill([[236, 470], [300, 500, 364, 470], [380, 520], [300, 560, 220, 520]], pt.grad(236, 470, 380, 560, [[0, "#9ef0f5"], [0.4, "#3ee0e8"], [1, "#12707a"]]));
+    pt.fill([[230, 505], [300, 540, 376, 508], [370, 552], [300, 590, 236, 552]], pt.grad(230, 505, 376, 590, [[0, "#6ee8ee"], [0.5, "#1fb8c2"], [1, "#0e5a62"]]));
+    pt.glow("rgba(62,224,232,0.6)", 24, () => pt.fill([[360, 500], [430, 470, 500, 430, 590, 440], [600, 470], [520, 470, 450, 520, 380, 548]], pt.grad(360, 440, 600, 548, [[0, "#3ee0e8"], [0.6, "#1fb8c2"], [1, "rgba(31,184,194,0.2)"]])));
+    for (let i = 0; i < 4; i++) pt.stroke([[252 + i * 30, 482 + i * 3], [262 + i * 30, 520 + i * 4]], 2, "rgba(8,60,70,0.35)");
+    // the crown of the head, then side locks falling past the cheeks, then a fringe of separate locks
+    const HAIR = [[0, "#4a3e86"], [0.45, "#2b2350"], [1, "#120c26"]];
+    pt.fill([[206, 262], [196, 180, 244, 132, 304, 130], [372, 130, 408, 182, 400, 262], [380, 210, 340, 188, 300, 186], [256, 188, 222, 212, 206, 262]], pt.grad(200, 130, 400, 262, HAIR));
+    pt.fill([[214, 214], [196, 300, 190, 400, 206, 486], [214, 470, 222, 400, 232, 330], [236, 280, 234, 240, 238, 214]], pt.grad(190, 214, 240, 486, HAIR));
+    pt.fill([[380, 210], [400, 290, 424, 380, 456, 460], [440, 420, 416, 360, 396, 310], [384, 270, 376, 240, 366, 212]], pt.grad(366, 210, 456, 460, HAIR));
+    pt.fill([[214, 250], [220, 190, 260, 160, 304, 158], [350, 158, 388, 186, 394, 250], [376, 232], [360, 250], [344, 224], [324, 244], [306, 218], [284, 238], [266, 214], [246, 242], [232, 222]], pt.grad(214, 158, 394, 250, HAIR));
+    const lock = (x0, y0, x1, y1, bend, wdt) => pt.fill([[x0 - wdt, y0], [x0 + bend, (y0 + y1) / 2, x1, y1], [x0 + bend * 0.6 + wdt * 0.3, (y0 + y1) / 2, x0 + wdt, y0]], pt.grad(x0, y0, x1, y1, HAIR));
+    for (const [x0, x1, y1, bend, wdt] of [[232, 222, 292, -12, 16], [258, 252, 278, -4, 18], [286, 296, 262, 8, 18], [314, 338, 250, 18, 16], [342, 372, 262, 24, 14], [366, 396, 286, 22, 12]]) lock(x0, 170, x1, y1, bend, wdt);
+    for (let i = 0; i < 18; i++) { const x0 = 226 + i * 9; pt.stroke([[x0, 150], [x0 + 6, 200, x0 + (i - 8) * 3, 240 + pt.rnd() * 30]], 1, i % 4 ? "rgba(14,10,30,0.55)" : "rgba(150,136,220,0.55)"); }
+    pt.soft(2, () => pt.stroke([[210, 280], [204, 360, 212, 450]], 2, "rgba(150,136,220,0.4)"));
+    pt.light(1, "rgba(255,170,110,0.35)", 0.6);
+    pt.rim(out, "#9ef0f5", 3);
+    pt.finish("rgba(255,170,120,0.18)");
+  } };
+  // ---- Magister Voss: half a magister's face, half flayed to the skull, the Bell's light coming up from his chest
+  PORTRAIT.voss = { card: "XIII", name: "Magister Voss", title: "The Salt-Flayed", accent: "#ee3a46", paint() {
+    const c = pt.c;
+    c.fillStyle = pt.grad(0, 0, 0, PH, [[0, "#12040a"], [0.5, "#3a0a16"], [1, "#07030a"]]); c.fillRect(0, 0, PW, PH);
+    for (let i = 0; i < 5; i++) pt.soft(18, () => pt.fill([[120 + i * 90, 0], [150 + i * 90, 0], [220 + i * 70, PH], [150 + i * 70, PH]], "rgba(255,120,120,0.07)"));
+    pt.motes(40, "rgba(232,236,248,0.85)", 0, PH, 2);
+    // the judge's collar, fanned
+    pt.fill([[80, 620], [60, 380], [150, 250], [300, 210], [450, 250], [540, 380], [520, 620]], pt.grad(60, 0, 540, 0, [[0, "#07060c"], [0.5, "#2a2046"], [1, "#07060c"]]));
+    for (let i = 0; i < 12; i++) pt.stroke([[300, 560], [80 + i * 40, 300 + Math.abs(i - 5.5) * 14]], 1.4, "rgba(120,100,170,0.4)");
+    pt.stroke([[80, 620], [60, 380], [150, 250], [300, 210], [450, 250], [540, 380], [520, 620]], 4, "#c9a227");
+    // salt shards erupting behind the shoulders
+    const shard = (x, y, h, a) => { const w = h * 0.26, tip = [x + Math.cos(a) * h, y + Math.sin(a) * h], l = [x + Math.cos(a - 1.57) * w, y + Math.sin(a - 1.57) * w], r = [x + Math.cos(a + 1.57) * w, y + Math.sin(a + 1.57) * w];
+      pt.fill([l, tip, r], "#a6aac2"); pt.fill([l, tip, [x, y]], "#f4f6ff"); pt.fill([r, tip, [x + Math.cos(a) * h * 0.2, y + Math.sin(a) * h * 0.2]], "#6e7290"); pt.glow("#9ef0f5", 10, () => pt.stroke([[x, y], tip], 1.2, "rgba(158,240,245,0.8)")); };
+    for (const [x, y, h, a] of [[140, 600, 170, -2.3], [120, 640, 120, -2.8], [470, 600, 190, -0.8], [490, 650, 120, -0.3], [200, 600, 90, -1.9]]) shard(x, y, h, a);
+    // robe and the flayed chest, lit from below by the Bell
+    pt.fill([[70, PH], [110, 640, 180, 600, 240, 590], [360, 590], [420, 600, 490, 640, 530, PH]], pt.grad(70, 0, 530, 0, [[0, "#07060c"], [0.4, "#2a2046"], [1, "#07060c"]]));
+    pt.fill([[230, 600], [370, 600], [350, PH], [250, PH]], pt.grad(0, 600, 0, PH, [[0, "#c8182e"], [1, "#40070e"]]));
+    for (let i = 0; i < 9; i++) pt.stroke([[240 + i * 14, 604], [246 + i * 12, PH]], 1.2, "rgba(40,4,10,0.5)");
+    pt.glow("#3ee0e8", 60, () => pt.ell(300, 740, 70, 40, "rgba(158,240,245,0.9)"));
+    for (let i = 0; i < 4; i++) pt.stroke([[252, 640 + i * 26], [300, 628 + i * 26, 348, 640 + i * 26]], 5, "#e8e0cc");
+    const out = pt.head({ x: 300, y: 380, s: 1.02, w: 0.86, jaw: 0.82, turn: 0.08, age: 1, skin: ["#e8c8b0", "#c89a80", "#8a5a50", "#3a1a1e"], eye: "#5a4a3a", eyeHi: "#c8b8a0", lip: "#8a4a4a", lip2: "#9a5a5a", browCol: "#4a3a3a", brow: [-4, 3], socket: "rgba(40,10,20,0.55)",
+      paint: (X, Y, w, s) => {   // the right half flayed: muscle, then bone
+        pt.fill([[X(4), Y(-150)], [X(62), Y(-150), X(94), Y(-100), X(90), Y(-35)], [X(88), Y(25), X(60), Y(85), X(34), Y(118)], [X(8), Y(130)], [X(14), Y(60)], [X(0), Y(-10)], [X(10), Y(-80)]], pt.grad(X(0), 0, X(90), 0, [[0, "#d0283a"], [0.6, "#8a1020"], [1, "#3a0610"]]));
+        for (let i = 0; i < 14; i++) pt.stroke([[X(10 + i * 5.5), Y(-140 + i * 2)], [X(14 + i * 5), Y(-20), X(6 + i * 4), Y(110 - i * 4)]], 1.3, "rgba(40,4,10,0.55)");
+        pt.fill([[X(20), Y(-40)], [X(78), Y(-50)], [X(80), Y(20)], [X(24), Y(24)]], pt.grad(X(20), Y(-50), X(80), Y(24), [[0, "#f4ecdc"], [1, "#a89a80"]]));
+        pt.fill([[X(14), Y(66)], [X(64), Y(58)], [X(58), Y(92)], [X(12), Y(100)]], "#1a0508");
+        for (let i = 0; i < 6; i++) { pt.fill([[X(16 + i * 8), Y(64)], [X(22 + i * 8), Y(64)], [X(20 + i * 8), Y(78)]], "#f0e8d8"); pt.fill([[X(16 + i * 8), Y(98)], [X(22 + i * 8), Y(98)], [X(19 + i * 8), Y(86)]], "#d8ccb4"); }
+      } });
+    pt.fill([[220, 604], [228, 498], [270, 540], [300, 562], [330, 540], [372, 498], [380, 604]], pt.grad(220, 498, 380, 604, [[0, "#2a2046"], [1, "#07060c"]]));
+    pt.stroke([[228, 498], [270, 540], [300, 562], [330, 540], [372, 498]], 3, "#c9a227");
+    // the salt eye on the flayed side, and the crown of crystal growing out of the skull
+    pt.fill([[310, 366], [352, 360], [354, 394], [314, 398]], "#07060c"); pt.glow("#3ee0e8", 30, () => pt.ell(332, 379, 11, 10, pt.rad(329, 376, 1, 11, [[0, "#ffffff"], [0.5, "#9ef0f5"], [1, "#1fb8c2"]])));
+    for (const [x, h, a] of [[240, 90, -2.0], [270, 130, -1.75], [300, 160, -1.57], [330, 120, -1.35], [360, 80, -1.1], [214, 60, -2.4], [386, 60, -0.8]]) shard(x, 236, h, a);
+    pt.light(1, "rgba(255,90,90,0.25)", 0.72);
+    pt.rim(out, "#ff6a6a", 3, -1); pt.rim(out, "#9ef0f5", 2.4, 1);
+    pt.finish("rgba(200,40,60,0.2)");
+  } };
+  // ---- Guild Master Hollis: a drowned merchant prince, coins in his eyes, a lamprey's mouth
+  PORTRAIT.hollis = { card: "XV", name: "Guild Master Hollis", title: "The Tide-Eater", accent: "#d8b440", paint() {
+    const c = pt.c;
+    c.fillStyle = pt.grad(0, 0, 0, PH, [[0, "#0e2a2a"], [0.5, "#08201e"], [1, "#030a0c"]]); c.fillRect(0, 0, PW, PH);
+    for (let i = 0; i < 6; i++) pt.soft(20, () => pt.fill([[60 + i * 100, 0], [100 + i * 100, 0], [60 + i * 90, PH], [20 + i * 90, PH]], "rgba(120,220,200,0.06)"));
+    for (let i = 0; i < 30; i++) { const x = pt.rnd() * PW, y = pt.rnd() * PH, r = 3 + pt.rnd() * 10; c.strokeStyle = "rgba(166,226,220,0.35)"; c.lineWidth = 1.5; c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.stroke(); pt.ell(x - r * 0.35, y - r * 0.35, r * 0.25, r * 0.18, "rgba(255,255,255,0.6)"); }
+    // the coat of gold brocade over enormous shoulders, the chain of office
+    pt.fill([[0, PH], [0, 600], [90, 520, 200, 500, 300, 500], [400, 500, 510, 520, 600, 600], [600, PH]], pt.grad(0, 500, 600, PH, [[0, "#f6e07a"], [0.35, "#c9a227"], [0.7, "#86621a"], [1, "#2e1e06"]]));
+    for (let y = 520; y < PH; y += 22) for (let x = 0; x < PW; x += 22) { const ox = (y / 22) % 2 ? 11 : 0; pt.fill([[x + ox, y - 5], [x + ox + 5, y], [x + ox, y + 5], [x + ox - 5, y]], "rgba(90,60,14,0.3)"); }
+    pt.fill([[220, 520], [380, 520], [360, PH], [240, PH]], pt.grad(220, 0, 380, 0, [[0, "#5e7466"], [0.5, "#a4b8a6"], [1, "#44584e"]]));
+    for (let i = 0; i <= 18; i++) { const t = i / 18, x = 150 + 300 * t, y = 540 + Math.sin(t * Math.PI) * 120; pt.ell(x, y, 11, 8, pt.rad(x - 3, y - 3, 1, 12, [[0, "#fff4b0"], [0.5, "#d8b440"], [1, "#5a3c0e"]])); }
+    pt.glow("rgba(255,210,90,0.8)", 20, () => pt.ell(300, 672, 34, 34, pt.rad(290, 662, 2, 36, [[0, "#fff4b0"], [0.5, "#d8b440"], [1, "#5a3c0e"]])));
+    pt.ell(300, 666, 7, 7, "#07060c"); pt.fill([[295, 670], [305, 670], [308, 690], [292, 690]], "#07060c");
+    const out = pt.head({ x: 300, y: 350, s: 1.1, w: 1.22, jaw: 1.25, turn: 0.04, skin: ["#cad8c8", "#8ea494", "#4a6056", "#1a2a24"], eyes: "hollow", mouthW: 34, blush: "rgba(40,98,110,0.25)", browCol: "#2e403a", brow: [-2, -2], socket: "rgba(20,40,36,0.6)",
+      paint: (X, Y) => { for (let i = 0; i < 10; i++) { const x = X(-80 + i * 18), y = Y(-150 + (i % 3) * 8); pt.stroke([[x, y], [x + 6, Y(-90), x - 4, Y(-40 + (i % 4) * 10)]], 3, i % 2 ? "rgba(70,82,40,0.8)" : "rgba(98,112,58,0.7)"); }
+        for (let i = 0; i < 18; i++) { const x = X(-80 + pt.rnd() * 160), y = Y(-120 + pt.rnd() * 230); pt.ell(x, y, 3.4, 3, "#e8e0cc"); pt.ell(x, y - 1, 1.2, 1.2, "#07060c"); } },
+      mouth: (mx, my, mw, s) => {   // a lamprey's round mouth, rings of teeth
+        pt.ell(mx, my + 8 * s, mw * 1.35, mw * 1.1, "#44584e"); pt.ell(mx, my + 8 * s, mw * 1.2, mw * 0.98, "#1e0306");
+        for (const [rr, col] of [[1.18, "#f0e8d8"], [0.86, "#d8ccb4"], [0.55, "#b8ac94"]]) for (let k = 0; k < 22; k++) { const a = k / 22 * Math.PI * 2 + rr, R = mw * rr; pt.fill([[mx + Math.cos(a) * R, my + 8 * s + Math.sin(a) * R * 0.83], [mx + Math.cos(a + 0.14) * R, my + 8 * s + Math.sin(a + 0.14) * R * 0.83], [mx + Math.cos(a + 0.07) * (R - 12 * s), my + 8 * s + Math.sin(a + 0.07) * (R - 12 * s) * 0.83]], col); }
+        pt.ell(mx, my + 10 * s, 7 * s, 6 * s, "#9a1224"); } });
+    for (const [y, rx, ry] of [[512, 88, 24], [538, 108, 26]]) { pt.ell(300, y, rx, ry, pt.grad(200, 0, 400, 0, [[0, "#a4b8a6"], [0.5, "#7e9484"], [1, "#2e403a"]])); pt.soft(3, () => pt.stroke([[300 - rx * 0.9, y + 6], [300, y + ry * 1.1, 300 + rx * 0.9, y + 6]], 3, "rgba(20,40,36,0.5)")); }
+    // coins pressed into the eye sockets
+    for (const x of [255, 345]) pt.glow("rgba(255,210,90,0.9)", 16, () => { pt.ell(x, 348, 22, 20, pt.rad(x - 6, 342, 2, 24, [[0, "#fff4b0"], [0.5, "#d8b440"], [1, "#6a4a10"]])); pt.ell(x, 348, 13, 12, "rgba(90,60,14,0.45)"); });
+    for (let i = 0; i < 6; i++) pt.stroke([[270 + i * 12, 450], [272 + i * 12, 470 + pt.rnd() * 30]], 2, "rgba(63,138,144,0.7)");
+    pt.light(1, "rgba(255,210,120,0.28)", 0.7);
+    pt.rim(out, "#a6e2dc", 3, 1);
+    pt.finish("rgba(60,160,140,0.18)");
+  } };
+  // ---- Aurel, the Drowned King: a tired young king under the sea, hair drifting upward, crowned with the hands of his drowned
+  PORTRAIT.king = { card: "XII", name: "Aurel", title: "The Drowned King", accent: "#9ef0f5", paint() {
+    const c = pt.c;
+    c.fillStyle = pt.grad(0, 0, 0, PH, [[0, "#2a7a86"], [0.3, "#12485a"], [0.7, "#082234"], [1, "#030a14"]]); c.fillRect(0, 0, PW, PH);
+    for (let i = 0; i < 7; i++) pt.soft(16, () => pt.fill([[200 + i * 30 - 20, 0], [200 + i * 30 + 20, 0], [100 + i * 70 + 50, PH], [100 + i * 70 - 30, PH]], "rgba(180,240,240,0.07)"));
+    for (let i = 0; i < 14; i++) { const x = 30 + pt.rnd() * 540, y = 380 + pt.rnd() * 300; pt.soft(4, () => { pt.ell(x, y, 16, 20, "rgba(20,50,60,0.6)"); pt.ell(x, y + 40, 12, 36, "rgba(20,50,60,0.5)"); }); }   // the drowned, far off
+    pt.motes(30, "rgba(158,240,245,0.9)", 0, PH, 2.4);
+    // hair drifting upward in the water
+    for (let i = 0; i < 70; i++) { const x0 = 220 + i * 2.3, sw = Math.sin(i * 0.7) * 40; pt.stroke([[x0, 250], [x0 + sw * 0.4 - (i - 35) * 1.2, 160, x0 + sw - (i - 35) * 2.6, 80, x0 + sw * 1.4 - (i - 35) * 4, 10 + (i % 5) * 8]], 1.4 + (i % 3), i % 6 ? "rgba(20,70,80,0.8)" : "rgba(120,200,200,0.6)"); }
+    // robe of weed and a necklace of little bells
+    pt.fill([[80, PH], [120, 620, 190, 580, 250, 570], [350, 570], [410, 580, 480, 620, 520, PH]], pt.grad(80, 0, 520, 0, [[0, "#06121c"], [0.4, "#1a4a52"], [0.6, "#2a6a6e"], [1, "#06121c"]]));
+    for (let i = 0; i < 30; i++) { const x0 = 130 + i * 12; pt.stroke([[x0, PH], [x0 + Math.sin(i) * 20, 660, x0 - 10 + Math.sin(i * 2) * 20, 600]], 2, i % 3 ? "rgba(108,184,184,0.35)" : "rgba(98,112,58,0.6)"); }
+    pt.fill([[250, 570], [350, 570], [336, 640], [264, 640]], pt.grad(250, 0, 350, 0, [[0, "#c8ccd8"], [1, "#6a6e80"]]));
+    for (let i = 0; i < 7; i++) { const x = 256 + i * 15, y = 588 + Math.sin(i / 6 * Math.PI) * 26; pt.glow("rgba(255,210,90,0.7)", 8, () => pt.fill([[x - 4, y], [x + 4, y], [x + 6, y + 10], [x - 6, y + 10]], pt.grad(x - 6, y, x + 6, y + 10, [[0, "#fff4b0"], [1, "#86621a"]]))); }
+    const out = pt.head({ x: 300, y: 370, s: 1, w: 0.9, jaw: 0.84, turn: -0.06, skin: ["#eef2f6", "#b8c4d0", "#6e7c90", "#28324a"], eye: "#1fb8c2", eyeHi: "#e8ffff", glow: "rgba(158,240,245,0.9)", eyeOpen: 0.75, lip: "#6e7c90", lip2: "#8a96a8", browCol: "#10303a", brow: [3, 3], blush: "rgba(60,120,160,0.2)", socket: "rgba(20,40,70,0.5)",
+      paint: (X, Y) => { pt.stroke([[X(-40), Y(18)], [X(-44), Y(60)]], 2, "rgba(158,240,245,0.7)"); } });
+    for (const sx of [-1, 1]) for (let i = 0; i < 14; i++) { const x0 = 300 + sx * (70 + i * 1.5), sw = Math.sin(i * 1.3) * 14; pt.stroke([[x0, 270], [x0 + sx * 16 + sw, 380, x0 + sx * (6 + i) - sw, 470, x0 + sx * (20 + i * 2), 560]], 1.6 + (i % 3), i % 5 ? "rgba(16,56,66,0.85)" : "rgba(120,200,200,0.55)"); }
+    pt.fill([[226, 566], [248, 508], [300, 528], [352, 508], [374, 566], [340, 596], [300, 580], [260, 596]], pt.grad(226, 508, 374, 596, [[0, "#e8d8a0"], [0.4, "#8a7a4a"], [1, "#2e2a1a"]]));
+    for (let i = 0; i < 5; i++) pt.stroke([[240 + i * 4, 530 + i * 12], [300, 548 + i * 10, 360 - i * 4, 530 + i * 12]], 1.2, "rgba(40,50,40,0.5)");
+    pt.glow("rgba(158,240,245,0.8)", 12, () => pt.ell(300, 560, 7, 7, "#9ef0f5"));
+    // the crown: the pale hands of the drowned, reaching up out of his hair
+    for (let i = 0; i < 11; i++) { const a = -Math.PI * (0.12 + i * 0.076), bx = 300 + Math.cos(a) * 80, by = 250 + Math.sin(a) * 50, tx = 300 + Math.cos(a) * 150, ty = 250 + Math.sin(a) * 140;
+      pt.stroke([[bx, by], [tx, ty]], 13, "#8ea4a8"); pt.stroke([[bx, by], [tx, ty]], 6, "#cad8d8");
+      for (let f = 0; f < 5; f++) { const fa = a + (f - 2) * 0.22; pt.stroke([[tx, ty], [tx + Math.cos(fa) * 26, ty + Math.sin(fa) * 26]], 4, "#dae6e6"); }
+      pt.ell(tx, ty, 9, 8, "#cad8d8"); }
+    pt.fill([[212, 290], [220, 220, 270, 200, 300, 200], [340, 200, 382, 222, 388, 290], [360, 250, 330, 240, 300, 262], [270, 240, 240, 250, 212, 290]], pt.grad(212, 200, 388, 290, [[0, "#1a4a56"], [1, "#0a202a"]]));
+    for (let i = 0; i < 6; i++) { const x = 170 + i * 50, y = 700 - i * 90; pt.ell(x, y, 5, 5, "rgba(166,226,220,0.35)"); pt.ell(x - 2, y - 2, 1.4, 1.4, "rgba(255,255,255,0.8)"); }
+    pt.light(1, "rgba(150,240,250,0.3)", 0.66);
+    pt.rim(out, "#bff6f8", 3.4, 1); pt.rim(out, "#5ab8c8", 2, -1);
+    pt.finish("rgba(80,200,210,0.2)");
+  } };
+  // ---- Corvin, the First Guildmaster: a gold mask, cracked across a dried face; a mitre; a halo of coins
+  PORTRAIT.corvin = { card: "IV", name: "Corvin", title: "The First Guildmaster", accent: "#ffcf4a", paint() {
+    const c = pt.c;
+    c.fillStyle = pt.grad(0, 0, 0, PH, [[0, "#1a1206"], [0.5, "#2e1e06"], [1, "#07050a"]]); c.fillRect(0, 0, PW, PH);
+    for (let i = 0; i < 40; i++) { const x = pt.rnd() * PW, y = pt.rnd() * PH, r = 6 + pt.rnd() * 22; pt.soft(6, () => pt.ell(x, y, r, r, `rgba(255,200,90,${(0.05 + pt.rnd() * 0.12).toFixed(2)})`)); }
+    for (let i = 0; i < 20; i++) { const a = i / 20 * Math.PI * 2, x = 300 + Math.cos(a) * 190, y = 300 + Math.sin(a) * 170; pt.glow("rgba(255,210,90,0.7)", 12, () => pt.ell(x, y, 14, 12, pt.rad(x - 4, y - 4, 1, 15, [[0, "#fff4b0"], [0.5, "#d8b440"], [1, "#6a4a10"]]))); }
+    // ermine mantle and chains
+    pt.fill([[60, PH], [90, 620, 170, 570, 250, 560], [350, 560], [430, 570, 510, 620, 540, PH]], pt.grad(60, 0, 540, 0, [[0, "#0e0a1a"], [0.4, "#463e6e"], [1, "#07060c"]]));
+    pt.fill([[150, 600], [300, 640], [450, 600], [460, 650], [300, 690], [140, 650]], pt.grad(0, 600, 0, 690, [[0, "#f0e8d4"], [1, "#a89c80"]]));
+    for (let i = 0; i < 16; i++) pt.fill([[160 + i * 19, 620 + (i % 2) * 24], [164 + i * 19, 634 + (i % 2) * 24], [156 + i * 19, 634 + (i % 2) * 24]], "#07060c");
+    for (const [y0, sag] of [[680, 30], [700, 50]]) for (let i = 0; i <= 20; i++) { const t = i / 20, x = 150 + 300 * t, y = y0 + Math.sin(t * Math.PI) * sag; pt.ell(x, y, 7, 5, i % 2 ? "#86621a" : "#e8c050"); }
+    const out = pt.head({ x: 300, y: 380, s: 1, w: 0.9, jaw: 0.86, turn: 0.06, skin: ["#d8cbb0", "#a2957c", "#5e5240", "#241c12"], eyes: "hollow", glow: "#ffcf4a", mouth: (mx, my, mw, s) => { pt.fill([[mx - mw, my], [mx + mw, my], [mx + mw * 0.8, my + 6 * s], [mx - mw * 0.8, my + 6 * s]], "#07060c"); }, browCol: "rgba(0,0,0,0)" });
+    pt.fill([[206, 606], [214, 480], [262, 524], [300, 566], [338, 524], [386, 480], [394, 606]], pt.grad(206, 480, 394, 606, [[0, "#b8182e"], [0.5, "#6a0c18"], [1, "#2a0408"]]));
+    pt.stroke([[214, 480], [262, 524], [300, 566], [338, 524], [386, 480]], 3, "#e8c050");
+    // the gold mask, cracked, a piece missing over one cheek
+    const mask = [[208, 290], [300, 270], [392, 290], [388, 400], [340, 470], [300, 480], [260, 470], [212, 400]];
+    pt.clip(mask, () => { c.fillStyle = pt.grad(208, 280, 392, 480, [[0, "#fff4b0"], [0.3, "#e8c050"], [0.7, "#a07818"], [1, "#4a3408"]]); c.fillRect(200, 260, 200, 230);
+      pt.ell(250, 320, 50, 60, "rgba(255,255,255,0.25)");
+      pt.fill([[318, 350], [390, 330], [388, 400], [350, 450], [330, 420]], pt.grad(318, 330, 390, 450, [[0, "#b8a888"], [1, "#4a3e2e"]]));
+      for (let i = 0; i < 5; i++) pt.stroke([[334 + i * 8, 400], [336 + i * 8, 440]], 3, "#e8dcc4"); });
+    pt.stroke(mask, 2.4, "#6a4a10", true);
+    pt.stroke([[320, 272], [330, 310], [316, 346], [334, 380], [322, 420]], 2.2, "#3a2606");
+    for (const x of [266, 332]) { pt.fill([[x - 20, 372], [x + 20, 368], [x + 16, 384], [x - 18, 386]], "#07060c"); }
+    pt.glow("#ffcf4a", 30, () => pt.ell(332, 377, 6, 5, "#ffcf4a"));
+    pt.fill([[270, 440], [330, 440], [326, 446], [274, 446]], "#07060c");
+    // the mitre
+    pt.fill([[212, 292], [388, 292], [360, 120], [300, 40], [240, 120]], pt.grad(212, 0, 388, 0, [[0, "#86621a"], [0.4, "#fff4b0"], [0.6, "#e8c050"], [1, "#4a3408"]]));
+    pt.stroke([[300, 50], [300, 290]], 8, "#7a0c1c"); pt.stroke([[228, 190], [372, 190]], 8, "#7a0c1c");
+    pt.glow("rgba(255,210,90,0.9)", 18, () => { pt.ell(300, 190, 24, 24, pt.rad(294, 184, 1, 26, [[0, "#fff4b0"], [0.5, "#d8b440"], [1, "#5a3c0e"]])); pt.ell(300, 190, 11, 6, "#07060c"); pt.ell(300, 190, 3.4, 3.4, "#ffcf4a"); });
+    pt.fill([[206, 280], [394, 280], [394, 300], [206, 300]], "#7a0c1c");
+    pt.light(1, "rgba(255,200,110,0.35)", 0.76);
+    pt.rim(out, "#ffe08a", 2.4, 1);
+    pt.finish("rgba(255,190,90,0.18)");
+  } };
+  // ---- Sister Vela, the Storm Tyrant: a nun become the storm; white eyes, a stitched mouth torn open, lightning for hair
+  PORTRAIT.vela = { card: "XVI", name: "Sister Vela", title: "The Storm Tyrant", accent: "#c8d8ff", paint() {
+    const c = pt.c;
+    c.fillStyle = pt.grad(0, 0, 0, PH, [[0, "#0a1024"], [0.5, "#1a2440"], [1, "#05060e"]]); c.fillRect(0, 0, PW, PH);
+    for (let i = 0; i < 16; i++) pt.soft(24, () => pt.ell(pt.rnd() * PW, pt.rnd() * PH * 0.7, 120, 60, `rgba(74,100,160,${(0.1 + pt.rnd() * 0.15).toFixed(2)})`));
+    const bolt = (x, y, len, a, w) => { const pts = [[x, y]]; let px2 = x, py2 = y; for (let k = 0; k < 9; k++) { a += (pt.rnd() - 0.5) * 0.9; px2 += Math.cos(a) * len / 9; py2 += Math.sin(a) * len / 9; pts.push([px2, py2]); } pt.glow("#7a9ad8", 26, () => pt.stroke(pts, w * 2.4, "rgba(122,154,216,0.7)")); pt.stroke(pts, w, "#ffffff"); };
+    bolt(80, 0, 300, 1.2, 2.4); bolt(560, 20, 260, 1.9, 2);
+    for (let i = 0; i < 60; i++) { const x = pt.rnd() * PW, y = pt.rnd() * PH; pt.stroke([[x, y], [x - 8, y + 22]], 1, "rgba(200,216,255,0.35)"); }
+    // lightning hair escaping the coif
+    for (let i = 0; i < 12; i++) bolt(300 + (i - 6) * 10, 200, 160 + pt.rnd() * 80, -Math.PI * (0.1 + i * 0.07), 1.6);
+    // the habit and the white wimple
+    pt.fill([[70, PH], [100, 620, 180, 560, 250, 550], [350, 550], [420, 560, 500, 620, 530, PH]], pt.grad(70, 0, 530, 0, [[0, "#05060e"], [0.4, "#2a3a66"], [1, "#05060e"]]));
+    pt.fill([[180, 250], [190, 150, 250, 110, 300, 110], [350, 110, 410, 150, 420, 250], [430, 420], [400, 560], [200, 560], [170, 420]], pt.grad(170, 110, 430, 560, [[0, "#1a2440"], [1, "#07060c"]]));
+    pt.fill([[210, 500], [300, 540], [390, 500], [410, 580], [300, 620], [190, 580]], pt.grad(0, 500, 0, 620, [[0, "#f4f6ff"], [1, "#a8b0c8"]]));
+    const out = pt.head({ x: 300, y: 370, s: 0.96, w: 0.84, jaw: 0.8, turn: 0.02, skin: ["#f4f4f8", "#c8c8d8", "#7a7a90", "#2a2a3a"], eyes: "hollow", glow: "#ffffff", browCol: "#3a3a4a", brow: [6, 6], browUp: 26, socket: "rgba(30,30,60,0.6)",
+      mouth: (mx, my, mw, s) => {   // the mouth, sewn shut once, torn open in a scream
+        pt.ell(mx, my + 10 * s, mw * 0.6, mw * 0.95, "#1e0306"); pt.ell(mx, my + 18 * s, mw * 0.3, mw * 0.4, "#6a0c18");
+        for (const sx of [-1, 1]) for (let k = 0; k < 4; k++) { const y = my - 6 * s + k * 10 * s; pt.stroke([[mx + sx * mw * 0.5, y], [mx + sx * mw * 1.05, y - 3 * s]], 1.6 * s, "#40070e"); pt.stroke([[mx + sx * mw * 1.05, y - 3 * s], [mx + sx * mw * 1.2, y + 1 * s]], 1.2 * s, "#9a9ab0"); } } });
+    pt.fill([[226, 466], [300, 522], [374, 466], [404, 566], [300, 606], [196, 566]], pt.grad(0, 466, 0, 606, [[0, "#ffffff"], [1, "#b8c0d8"]]));
+    for (let i = 0; i < 4; i++) pt.stroke([[232 + i * 6, 490 + i * 16], [300, 540 + i * 14, 368 - i * 6, 490 + i * 16]], 1.2, "rgba(90,100,140,0.35)");
+    pt.fill([[200, 330], [210, 250, 250, 230, 300, 228], [350, 228, 390, 250, 400, 330], [412, 300, 404, 250, 380, 222], [340, 200, 260, 200, 220, 222], [196, 250, 188, 300, 200, 330]], pt.grad(0, 200, 0, 330, [[0, "#f4f6ff"], [1, "#c0c6d8"]]));
+    for (const x of [271, 329]) pt.glow("#ffffff", 30, () => { pt.ell(x, 368, 12, 8, "#ffffff"); pt.stroke([[x, 376], [x - 2, 430]], 2, "rgba(200,216,255,0.8)"); });
+    pt.light(1, "rgba(190,210,255,0.3)", 0.7);
+    pt.rim(out, "#c8d8ff", 3, 1); pt.rim(out, "#7a9ad8", 2, -1);
+    pt.finish("rgba(120,150,230,0.2)");
+  } };
+  // ---- painting and caching
+  const paintedCache = {};
+  function painted(id) {
+    const P = PORTRAIT[id]; if (!P) return null;
+    if (paintedCache[id]) return paintedCache[id];
+    const cv = document.createElement("canvas"); cv.width = PW; cv.height = PH; pt.c = cv.getContext("2d");
+    try { P.paint(); } catch (e) { console.error("portrait", id, e); }
+    let url = "", card = ""; try { url = cv.toDataURL("image/jpeg", 0.9); } catch { /* tainted: keep the canvas */ }
+    if (P.card) try { pt.frame(P.card, P.title, P.accent); card = cv.toDataURL("image/jpeg", 0.9); } catch { /* no card */ }
+    return (paintedCache[id] = { canvas: cv, url, card: card || url });
+  }
+  const paintedIdle = ids => { const next = () => { const id = ids.shift(); if (!id) return; painted(id); (window.requestIdleCallback || (f => setTimeout(f, 60)))(next); }; setTimeout(next, 1200); };
+  paintedIdle(Object.keys(PORTRAIT));
+  const paintedFor = who => { if (!who) return null; const k = String(who).toLowerCase().replace(/^cmp_/, ""); return PORTRAIT[k] ? k : null; };
+  // ---- fonts and styles for the painted pieces
+  const pf = document.createElement("link"); pf.rel = "stylesheet"; pf.href = "https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Cormorant+Garamond:ital,wght@1,500&display=swap"; document.head.appendChild(pf);
+  const pCss = document.createElement("style");
+  pCss.textContent = `
+  .dialog .pframe{display:none;position:relative;width:118px;height:148px;border:2px solid #c9a227;box-shadow:0 0 0 2px #0e0b1e,0 0 18px var(--pacc,rgba(62,224,232,.35)),inset 0 0 18px rgba(0,0,0,.6);background:#07060c center/cover no-repeat;margin-right:4px;align-self:flex-start}
+  .dialog .pframe::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0) 60%,rgba(4,2,10,.75));pointer-events:none}
+  .dialog.painted{grid-template-columns:118px 1fr}.dialog.painted .pframe{display:block}.dialog.painted #portrait{display:none}
+  .dialog.painted .who{font-family:"Cinzel",Georgia,serif;font-weight:700;letter-spacing:.08em;color:var(--pacc,#3ee0e8)}
+  .dialog.painted .who small{display:block;font:italic 500 14px "Cormorant Garamond",Georgia,serif;letter-spacing:.04em;color:#c9b88a;margin-top:-2px}
+  #bossCard{position:absolute;inset:0;z-index:40;pointer-events:none;display:grid;grid-template-columns:1fr 1fr;align-items:center;overflow:hidden;background:radial-gradient(ellipse at 70% 50%,rgba(0,0,0,.2),rgba(4,2,10,.94) 70%)}
+  #bossCard[hidden]{display:none}
+  #bossCard .art{grid-column:2;height:86%;align-self:center;background:center/contain no-repeat;filter:drop-shadow(0 0 28px var(--pacc));animation:bcArt 3.2s cubic-bezier(.16,1,.3,1) both}
+  #bossCard .txt{grid-column:1;grid-row:1;padding:0 6% 0 9%;animation:bcTxt 3.2s cubic-bezier(.16,1,.3,1) both}
+  #bossCard .kick{font:italic 500 clamp(14px,2.2vw,22px) "Cormorant Garamond",Georgia,serif;color:#c9b88a;letter-spacing:.06em}
+  #bossCard .nm{font:900 clamp(30px,6vw,68px)/1 "Cinzel",Georgia,serif;letter-spacing:.06em;color:#f6efe0;text-shadow:0 0 24px var(--pacc),0 2px 0 #000;margin:6px 0}
+  #bossCard .tt{font:700 clamp(12px,1.7vw,18px) "Cinzel",Georgia,serif;letter-spacing:.38em;text-transform:uppercase;color:var(--pacc)}
+  #bossCard .ln{height:2px;width:min(360px,80%);margin:14px 0;background:linear-gradient(90deg,var(--pacc),transparent)}
+  @keyframes bcArt{0%{opacity:0;transform:translateX(12%) scale(1.08)}15%{opacity:1}80%{opacity:1;transform:none}100%{opacity:0;transform:scale(1.03)}}
+  @keyframes bcTxt{0%{opacity:0;transform:translateX(-8%)}18%{opacity:1;transform:none}80%{opacity:1}100%{opacity:0}}
+  @media (prefers-reduced-motion:reduce){#bossCard .art,#bossCard .txt{animation-duration:.01s}}
+  @media (max-width:700px){.dialog .pframe{width:76px;height:96px}.dialog.painted{grid-template-columns:76px 1fr}#bossCard{grid-template-columns:1fr}#bossCard .art{grid-column:1;grid-row:1;opacity:.55}#bossCard .txt{grid-column:1;grid-row:1;padding:0 8%}}
+  #titleArt{position:absolute;left:0;top:0;bottom:0;width:38%;background:center/cover no-repeat;-webkit-mask-image:linear-gradient(90deg,#000 55%,transparent);mask-image:linear-gradient(90deg,#000 55%,transparent);opacity:0;transition:opacity 1.2s;pointer-events:none}
+  #titleArt.on{opacity:.9}@media (max-width:900px){#titleArt{display:none}}`;
+  document.head.appendChild(pCss);
+  // ---- the dialogue box shows a painted portrait for these speakers
+  const pframe = document.createElement("div"); pframe.className = "pframe"; $("portrait").before(pframe);
+  const _renderDialogP = renderDialog;
+  renderDialog = function () {
+    _renderDialogP();
+    const box = $("dialog"), k = dlg ? paintedFor(dlg.who) : null;
+    box.classList.toggle("painted", !!k);
+    if (k) { const P = PORTRAIT[k], img = painted(k); pframe.style.backgroundImage = img && img.url ? `url(${img.url})` : ""; box.style.setProperty("--pacc", P.accent);
+      const w = $("who"); if (!w.querySelector("small")) { const sm = document.createElement("small"); sm.textContent = P.title; w.appendChild(sm); } }
+    else box.style.removeProperty("--pacc");
+  };
+  // ---- the boss card: a full-screen painted introduction when a great villain's battle begins
+  const bossCard = document.createElement("div"); bossCard.id = "bossCard"; bossCard.hidden = true;
+  bossCard.innerHTML = `<div class="art"></div><div class="txt"><div class="kick"></div><div class="nm"></div><div class="ln"></div><div class="tt"></div></div>`;
+  $("toast").parentNode.appendChild(bossCard);
+  function showBossCard(id, kicker) {
+    const P = PORTRAIT[id], img = painted(id); if (!P || !img) return;
+    bossCard.style.setProperty("--pacc", P.accent);
+    bossCard.querySelector(".art").style.backgroundImage = img.card ? `url(${img.card})` : "";
+    bossCard.querySelector(".kick").textContent = kicker; bossCard.querySelector(".nm").textContent = P.name; bossCard.querySelector(".tt").textContent = P.title;
+    bossCard.hidden = true; void bossCard.offsetWidth; bossCard.hidden = false;
+    for (const el of bossCard.querySelectorAll(".art,.txt")) { el.style.animation = "none"; void el.offsetWidth; el.style.animation = ""; }
+    clearTimeout(bossCard._t); bossCard._t = setTimeout(() => { bossCard.hidden = true; }, 3200);
+  }
+  const _startBattleP = startBattle;
+  startBattle = function (group, opts = {}) {
+    const r = _startBattleP(group, opts);
+    const id = opts.boss && PORTRAIT[opts.boss] ? opts.boss : null;
+    if (id && battle) { $("splash").hidden = true; showBossCard(id, opts.echo ? `An echo, tier ${"I".repeat(opts.echo)}` : opts.weekly ? "The Weekly Trial" : opts.deep ? `The Deep Stair, floor ${opts.deep}` : "A villain of the Salt Road"); }
+    return r;
+  };
+  // ---- the title screen: Sable, painted
+  const titleArt = document.createElement("div"); titleArt.id = "titleArt"; $("title").prepend(titleArt);
+  setTimeout(() => { const img = painted("sable"); if (img && img.url) { titleArt.style.backgroundImage = `url(${img.url})`; titleArt.classList.add("on"); } }, 300);
+
   // ================================================================== THE LONG ROAD: RANK, GIFTS, THE DEEP STAIR, ECHOES, THE WEEKLY TRIAL
   // Reasons to come back, all feeding one bar that lasts across playthroughs:
   //   Courier Rank   renown from battles, the day's tasks, achievements, the Stair and the Hall; every rank pays, and
@@ -11126,7 +11516,7 @@
     const g = pk > 0.98 ? 0.98 / pk : 1; for (let i = 0; i < n; i++) v.setInt16(44 + i * 2, Math.max(-1, Math.min(1, d[i] * g)) * 32767, true);
     let bin = ""; const u8 = new Uint8Array(ab); for (let i = 0; i < u8.length; i += 8192) bin += String.fromCharCode.apply(null, u8.subarray(i, i + 8192));
     return { peak: pk, rms, wav: btoa(bin) };
-  }, trackKeys: () => Object.keys(TRACKS), forceWin: () => { if (!battle) return false; for (const f of battle.foes) { f.hp = 0; f.dead = true; } victory(); return true; }, cont: () => battle && battle.waitingContinue ? (battle.waitingContinue(), true) : false, lose: () => battle ? (endBattle("lost"), true) : false, dlgChoices: () => dlg && dlg.choices ? dlg.choices.map(c => typeof c.t === "function" ? c.t() : c.t) : null, voiceWav: async (who, text) => {   // a character's voice speaking a line, rendered offline for previews and level checks
+  }, trackKeys: () => Object.keys(TRACKS), portraitUrl: (id, card) => { const p = painted(id); return p && (card ? p.card : p.url); }, forceWin: () => { if (!battle) return false; for (const f of battle.foes) { f.hp = 0; f.dead = true; } victory(); return true; }, cont: () => battle && battle.waitingContinue ? (battle.waitingContinue(), true) : false, lose: () => battle ? (endBattle("lost"), true) : false, dlgChoices: () => dlg && dlg.choices ? dlg.choices.map(c => typeof c.t === "function" ? c.t() : c.t) : null, voiceWav: async (who, text) => {   // a character's voice speaking a line, rendered offline for previews and level checks
     const buf = await Voice.render(who, text), d = buf.getChannelData(0), sr = buf.sampleRate, n = d.length; let pk = 0, sq = 0; for (let i = 0; i < n; i++) { const a = Math.abs(d[i]); if (a > pk) pk = a; sq += d[i] * d[i]; }
     const ab = new ArrayBuffer(44 + n * 2), v = new DataView(ab), w = (o, str) => { for (let i = 0; i < str.length; i++) v.setUint8(o + i, str.charCodeAt(i)); };
     w(0, "RIFF"); v.setUint32(4, 36 + n * 2, true); w(8, "WAVE"); w(12, "fmt "); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, sr, true); v.setUint32(28, sr * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, "data"); v.setUint32(40, n * 2, true);
