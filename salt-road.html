@@ -8228,6 +8228,45 @@
     return true;
   };
 
+  // ---- foes commit to a target when they choose their move, and the hero cards show who is in danger
+  const singleTarget = mv => mv && (mv.power || mv.hits) && !mv.all && !mv.guard && !mv.charge && !mv.brood && !mv.summon && !mv.summonKind && !mv.molt && !mv.feast;
+  const _chooseIntentT = chooseIntent;
+  chooseIntent = function (f) {
+    const mv = _chooseIntentT(f);
+    if (battle && singleTarget(mv)) { const live = battle.heroes.filter(alive); if (live.length) mv.targetId = weightedTarget(live).id; }
+    return mv;
+  };
+  const _weightedTargetT = weightedTarget;
+  weightedTarget = function (ts) {
+    const f = battle && battle.current;
+    if (f && f.side === "foe" && f.intent && f.intent.targetId) { const t = ts.find(h => h.id === f.intent.targetId); if (t) return t; }
+    return _weightedTargetT(ts);
+  };
+  const _renderCardsT = renderCards;
+  renderCards = function () {
+    _renderCardsT();
+    if (!battle) return;
+    const els = $("cards").children;
+    battle.heroes.forEach((h, i) => {
+      const n = battle.foes.filter(f => !f.dead && !f.st.stun && f.intent && f.intent.targetId === h.id).length;
+      if (n && els[i] && alive(h)) els[i].querySelector(".chips").insertAdjacentHTML("afterbegin", `<span class="chip target">targeted${n > 1 ? " ×" + n : ""}</span>`);
+    });
+  };
+  const targetCss = document.createElement("style");
+  // toasts that aren't about the fight wait until it's over instead of covering the foes (battle tips still show)
+  const _toastB = toast;
+  toast = function (text) {
+    if (battle && !/^Tip:/.test(text)) { const tx = text; const later = () => { if (battle) setTimeout(later, 500); else _toastB(tx); }; setTimeout(later, 500); return; }
+    _toastB(text);
+  };
+  // the battle log sat in the top bar, right where the foes' labels are; it now floats free of it:
+  // on the open ground between the foes and the heroes (a little wider on phones)
+  $("battleUI").appendChild($("blog"));
+  targetCss.textContent = ".chip.target{background:#8a1020;color:#fff;font-weight:700}"
+    + "#battleUI>.blog{position:absolute;z-index:3;left:50%;top:57%;transform:translateX(-50%);max-width:40%;text-align:center}"
+    + "@media (pointer:coarse),(max-width:700px){#battleUI>.blog{top:55%;max-width:70%}}";
+  document.head.appendChild(targetCss);
+
   // ================================================================== BOOT
   const saved = load();          // read the save before a fresh game could overwrite it
   newGame(false);
