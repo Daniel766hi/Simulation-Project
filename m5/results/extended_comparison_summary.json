@@ -1,0 +1,20 @@
+{
+  "note": "Registered result of roadmap step 1 (extended_comparison.py, hypotheses committed before any new window was scored). Nine untouched windows, origins 1605 to 1829. Mean WRMSSE, lower is better; tests are one-sided against the winner's recipe at equal compute. Supported only if Wilcoxon and Diebold-Mariano p < 0.05 and most windows are won.",
+  "origins": [1605, 1633, 1661, 1689, 1717, 1745, 1773, 1801, 1829],
+  "rows": [
+    {"method": "M5 winner's recipe (equal compute)", "mean": 0.6145, "wins": null, "wilcoxon_p": null, "dm_p": null, "supported": null},
+    {"method": "50/50 combination (H1, primary)", "mean": 0.5679, "wins": 8, "wilcoxon_p": 0.004, "dm_p": 0.001, "supported": true},
+    {"method": "This pipeline (H2)", "mean": 0.5735, "wins": 6, "wilcoxon_p": 0.064, "dm_p": 0.036, "supported": false},
+    {"method": "This pipeline, stock-out masking (H3)", "mean": 0.5781, "wins": 6, "wilcoxon_p": 0.064, "dm_p": 0.049, "supported": false},
+    {"method": "Masked combination (exploratory, not registered)", "mean": 0.5714, "wins": 8, "wilcoxon_p": 0.004, "dm_p": 0.001, "supported": null}
+  ],
+  "stacking_holdout": {
+    "note": "Stacked blend (stacking.py), weights frozen before the holdout trained. Three windows cannot give a significant test; promising, not established.",
+    "windows": {"1605": {"winner": 0.7134, "combined": 0.6287, "stack": 0.6247}, "1633": {"winner": 0.5588, "combined": 0.5030, "stack": 0.4947}, "1661": {"winner": 0.6563, "combined": 0.5775, "stack": 0.5684}},
+    "mean": {"winner": 0.6428, "combined": 0.5697, "stack": 0.5626}
+  },
+  "confirmation": {
+    "note": "Pre-registered in stack_confirm.py with weights refitted on all nine windows (outputs/stack_weights_9.json): six new untouched windows, origins 1437 to 1577. P1: the stack beats the 50/50 combination. If P1 is not supported, the 50/50 combination stays the method.",
+    "planned": 6
+  }
+}

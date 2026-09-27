@@ -191,6 +191,13 @@ def main():
     wc = OUTPUTS / "winner_comparison.json"
     if wc.exists():
         data["winner_comparison"] = json.loads(wc.read_text())
+    # the registered nine-window test (committed summary) and, once it has run, the stacking confirmation test
+    ext = ROOT / "results" / "extended_comparison_summary.json"
+    if ext.exists():
+        data["extended"] = json.loads(ext.read_text())
+        sc_confirm = OUTPUTS / "stack_confirm.json"
+        if sc_confirm.exists():
+            data["extended"]["confirmation"]["result"] = json.loads(sc_confirm.read_text())
     bt = OUTPUTS / "backtest.json"
     if bt.exists():
         data["backtest"] = json.loads(bt.read_text())

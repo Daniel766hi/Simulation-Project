@@ -35,9 +35,15 @@ choice had been fixed on three rolling validation folds.
 
 - **Final: 0.5866**, 30.7% better than seasonal naive and 12.6% better than the best organiser
   benchmark; outside the published top 50 (50th place: 0.576).
-- **Against the winner's recipe** on three untouched windows, re-run at equal compute: this
-  pipeline 0.616 vs 0.626 mean WRMSSE (2 of 3 windows won), and a pre-registered 50/50
-  combination of the two 0.599, better than either (details below).
+- **Against the winner's recipe**, re-run at equal compute on **nine untouched windows** with
+  the tests fixed in advance (`extended_comparison.py`): the pre-registered 50/50 combination of
+  the two methods scored 0.5679 against 0.6145 (7.6% lower), better in 8 of 9 windows
+  (Wilcoxon p = 0.004, Diebold–Mariano p = 0.001). This pipeline alone was 6.7% lower on the
+  mean but won only 6 of 9 (Wilcoxon p = 0.064), so under the registered rule it is **not
+  proven** better on its own. The earlier three-window comparison is below. A stacked blend won
+  all three of its holdout windows, and a confirmation test on six more untouched windows
+  (`stack_confirm.py`, registered before training) decides whether it replaces the 50/50
+  combination. Summary: `results/extended_comparison_summary.json`; full plan: `ROADMAP.md`.
 - **An honest negative result.** The last step, walk-forward bias calibration, improved the
   folds (every earlier window under-ran the forecast) but hurt the private window, which was flat
   against the month before. The stage before it scored 0.5443, which would have placed about
@@ -101,6 +107,10 @@ choice had been fixed on three rolling validation folds.
   coarse enough to be forecast well.
 
 ### Head-to-head with the M5 winner's recipe
+
+The first comparison, on three windows, is below. It was followed by the registered nine-window
+test summarised above, where the 50/50 combination's lead held (8 of 9 windows) and the
+pipeline's own lead did not reach significance.
 
 `winner_comparison.py` re-implements the 1st-place recipe (YeonJun In; code in the organisers'
 M5-methods repository): recursive and non-recursive LightGBM per store, per store × category
