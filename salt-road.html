@@ -1437,19 +1437,33 @@
     knob.style.transform = `translate(${dx}px, ${dy}px)`;
     stick.x = Math.abs(dx) > 8 ? dx / max : 0; stick.y = Math.abs(dy) > 8 ? dy / max : 0;
   }
-  stickEl.addEventListener("pointerdown", e => { stickId = e.pointerId; stickEl.setPointerCapture(e.pointerId); stickMove(e); });
-  stickEl.addEventListener("pointermove", e => { if (e.pointerId === stickId) stickMove(e); });
+  // Fingers drive the stick through touch events, mouse and pen through pointer events. On phones a second finger
+  // (tapping DASH) can make the browser cancel the first finger's *pointer* while the finger is still down; the stick
+  // used to reset and ignore that thumb, and Sable stopped dead until it was lifted. Touches keep being tracked.
+  stickEl.addEventListener("pointerdown", e => { if (e.pointerType === "touch") return; stickId = e.pointerId; stickEl.setPointerCapture(e.pointerId); stickMove(e); });
+  stickEl.addEventListener("pointermove", e => { if (e.pointerType !== "touch" && e.pointerId === stickId) stickMove(e); });
+  let stickTouch = null;
+  stickEl.addEventListener("touchstart", e => { e.preventDefault(); if (stickTouch === null) { const t = e.changedTouches[0]; stickTouch = t.identifier; stickMove(t); } }, { passive: false });
+  stickEl.addEventListener("touchmove", e => {
+    e.preventDefault();
+    for (const t of e.changedTouches) { if (stickTouch === null) stickTouch = t.identifier; if (t.identifier === stickTouch) stickMove(t); }   // a lost thumb is picked up again
+  }, { passive: false });
+  const stickTouchEnd = e => { for (const t of e.changedTouches) if (t.identifier === stickTouch) { stickTouch = null; stickId = null; stick.x = stick.y = 0; knob.style.transform = ""; } };
+  stickEl.addEventListener("touchend", stickTouchEnd); stickEl.addEventListener("touchcancel", stickTouchEnd);
   const stickEnd = () => { stickId = null; stick.x = stick.y = 0; knob.style.transform = ""; };
-  stickEl.addEventListener("pointerup", stickEnd); stickEl.addEventListener("pointercancel", stickEnd);
+  stickEl.addEventListener("pointerup", e => { if (e.pointerType !== "touch") stickEnd(); }); stickEl.addEventListener("pointercancel", e => { if (e.pointerType !== "touch") stickEnd(); });
   $("bA").addEventListener("pointerdown", e => {   // on touch, ACT moves a scene or cinematic on by one line, where E on a keyboard skips it
      e.preventDefault(); Music.init(); if (mode === "scene" && scene) scene.t = 1e9; else if (mode === "cine" && cine) cine.t = cine.shots[cine.i].dur; else if (mode === "dialog") dialogAdvance(); else if (mode === "play") interact(); else if (mode === "title") startGame(); else if (mode === "card") $("cardBtn").click(); });
   $("dialog").addEventListener("pointerdown", e => { if (mode === "dialog" && !e.target.closest("button")) { e.preventDefault(); dialogAdvance(); } });
   // a held finger on the controls must stay a game input: no long-press menu, no text selection, no pinch zoom
   for (const el of [$("bA"), $("bB"), stickEl]) { el.addEventListener("contextmenu", e => e.preventDefault()); el.addEventListener("touchstart", e => e.preventDefault(), { passive: false }); }
   addEventListener("gesturestart", e => e.preventDefault());
-  $("bB").addEventListener("pointerdown", e => { e.preventDefault(); Music.init(); player.sprintTouch = true; if (mode === "play") dash(); $("bB").style.borderColor = "var(--gold)"; });
+  const dashPress = () => { Music.init(); player.sprintTouch = true; if (mode === "play") dash(); $("bB").style.borderColor = "var(--gold)"; };
   const runEnd = () => { player.sprintTouch = false; $("bB").style.borderColor = ""; };
-  $("bB").addEventListener("pointerup", runEnd); $("bB").addEventListener("pointercancel", runEnd); $("bB").addEventListener("pointerleave", runEnd);
+  $("bB").addEventListener("pointerdown", e => { e.preventDefault(); if (e.pointerType !== "touch") dashPress(); });
+  $("bB").addEventListener("touchstart", e => { e.preventDefault(); dashPress(); }, { passive: false });
+  $("bB").addEventListener("touchend", runEnd); $("bB").addEventListener("touchcancel", runEnd);
+  for (const ev of ["pointerup", "pointercancel", "pointerleave"]) $("bB").addEventListener(ev, e => { if (e.pointerType !== "touch") runEnd(); });
   function toggleMusic() { Music.init(); Music.toggle(); $("musicBtn").textContent = Music.on ? "♪ Music on" : "♪ Music off"; }
   $("musicBtn").addEventListener("click", toggleMusic);
   $("musicBtn").textContent = Music.on ? "♪ Music on" : "♪ Music off";
