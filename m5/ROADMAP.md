@@ -86,6 +86,12 @@ cannot give a significant test (the chance of winning 3 of 3 by luck is 1 in 8),
 promising, not established. The earlier interim 1661 figures (stack 0.559, 50/50 0.561) were
 provisional for the reason given below and are superseded.
 
+**Running now (September 2026): the stacking confirmation test.** `queue_confirm.sh` trains the
+same ten models for six new untouched windows (origins 1577 down to 1437, about six hours per
+window on four cores), then `stack_confirm.py test` scores the pre-registered hypotheses with the
+weights frozen in `outputs/stack_weights_9.json`. The queue skips finished models, so it resumes
+where it stopped. `export_dashboard.py` adds the result to the dashboard's nine-window panel.
+
 With step 1 done, step 2 is next. Masking helped neither half on its own over nine windows, so
 step 2 should be judged strictly on the same protocol rather than assumed. The stacked blend is
 the other candidate: it should now be re-fitted on all nine windows and tested on new ones

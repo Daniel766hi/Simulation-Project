@@ -108,3 +108,19 @@ def test_final_report_marks_incomplete_runs_provisional():
     comp["complete"] = stack["complete"] = 9
     stack["planned"] = 9
     assert "final" in build(comp, stack) and "stays the method" in build(comp, stack)
+
+
+def test_committed_nine_window_summary_follows_the_registered_rule():
+    """The dashboard's nine-window table comes from results/extended_comparison_summary.json; a row may
+    say 'supported' only if both tests give p < 0.05 and the method won most windows."""
+    import json
+    summary = json.loads((Path(__file__).resolve().parents[1] / "results" / "extended_comparison_summary.json").read_text())
+    n = len(summary["origins"])
+    for row in summary["rows"]:
+        if row["supported"] is None:
+            continue
+        rule = row["wilcoxon_p"] < 0.05 and row["dm_p"] < 0.05 and row["wins"] > n / 2
+        assert row["supported"] == rule, row["method"]
+    s = summary["stacking_holdout"]
+    for k, v in s["mean"].items():
+        assert abs(v - sum(w[k] for w in s["windows"].values()) / len(s["windows"])) < 5e-4, k
