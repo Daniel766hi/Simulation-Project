@@ -333,6 +333,48 @@
 <script>
 (() => {
   "use strict";
+  // ---- Saving that works for every player. Browsers can refuse storage (private windows, blocked site data, some
+  //      embedded frames). Everything in the game reads and writes through this store: the browser's local storage
+  //      when it works; when it doesn't (or fills up), a copy kept with this tab, which survives reloads, and in
+  //      IndexedDB when that is allowed. A save code (Pause > Save & load) carries a game anywhere, whatever the
+  //      browser allows.
+  const localStorage = (() => {
+    let real = null;
+    try { const ls = window.localStorage, k = "salt-road-probe"; ls.setItem(k, "1"); ls.removeItem(k); real = ls; } catch { /* blocked */ }
+    const mem = new Map();
+    try { if (window.name && window.name.startsWith("saltroad:")) for (const [k, v] of Object.entries(JSON.parse(window.name.slice(9)))) mem.set(k, v); } catch { /* nothing kept with this tab */ }
+    let tabOk = true, idb = null;
+    const mirror = (k, v) => {
+      if (tabOk) try { window.name = "saltroad:" + JSON.stringify(Object.fromEntries(mem)); } catch { tabOk = false; }
+      if (idb) try { const st = idb.transaction("kv", "readwrite").objectStore("kv"); if (v === null) st.delete(k); else st.put(v, k); } catch { /* IndexedDB refused */ }
+    };
+    const S = {
+      where: real ? "browser" : "tab",
+      getItem(k) { if (S.where === "browser") try { return real.getItem(k); } catch { /* fall through */ } return mem.has(k) ? mem.get(k) : null; },
+      setItem(k, v) {
+        v = String(v);
+        if (S.where === "browser") try { real.setItem(k, v); return; } catch {   // full or revoked: carry on with this tab's copy
+          S.where = "tab"; try { for (let i = 0; i < real.length; i++) { const key = real.key(i); if (/^salt-road/.test(key) && !mem.has(key)) mem.set(key, real.getItem(key)); } } catch { /* unreadable */ }
+          S.open();
+        }
+        mem.set(k, v); mirror(k, v);
+      },
+      removeItem(k) { if (S.where === "browser") try { real.removeItem(k); } catch { /* ignore */ } mem.delete(k); mirror(k, null); },
+      ready: Promise.resolve(false),
+      open() {   // IndexedDB: read what an earlier visit kept there, then keep writing to it
+        if (S.ready !== S._r0) return S.ready;
+        S.ready = new Promise(res => { try { const r = indexedDB.open("salt-road", 1); r.onupgradeneeded = () => r.result.createObjectStore("kv"); r.onsuccess = () => res(r.result); r.onerror = () => res(null); } catch { res(null); } })
+          .then(db => new Promise(res => { idb = db; if (!db) return res(false); let found = false;
+            try { const req = db.transaction("kv").objectStore("kv").openCursor();
+              req.onsuccess = () => { const c = req.result; if (c) { if (!mem.has(c.key)) { mem.set(c.key, c.value); found = true; } c.continue(); } else { for (const [k, v] of mem) mirror(k, v); res(found); } };
+              req.onerror = () => res(false); } catch { res(false); } }));
+        return S.ready;
+      },
+    };
+    S._r0 = S.ready;
+    if (!real) S.open();
+    return S;
+  })();
   const $ = id => document.getElementById(id);
   const REDUCED = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
   const TILE = 16, W = 170, H = 140, OW = 72, OH = 54, VIEW_W = 320, VIEW_H = 192;
@@ -6941,8 +6983,9 @@
   };
   // ================================================================== VOICES, CUTSCENE TEXT BOX AND CUTSCENE MUSIC
   // Characters "speak" while their lines type out: each has a voice (pitch, timbre, pace), like the old RPGs.
-  // Settings > Voices: blips (default), spoken (the browser reads cutscene and dialogue lines), or off.
-  SETTINGS.voice = SETTINGS.voice || "blips";
+  // Settings > Voices: voiced (default: every character babbles in a synthesised voice of their own), blips (the old
+  // one-note chirps), spoken (the browser reads cutscene and dialogue lines), or off.
+  SETTINGS.voice = SETTINGS.voice || "voiced";
   try { const sv = JSON.parse(localStorage.getItem("salt-road-settings") || "{}"); if (sv.voice) SETTINGS.voice = sv.voice; } catch { /* storage unavailable */ }
   const VOICES = {
     sable: { f: 330, w: "triangle", r: 0.12 }, lio: { f: 620, w: "square", r: 0.2 }, nadia: { f: 210, w: "sine", r: 0.08, slow: true }, ilse: { f: 250, w: "square", r: 0.1 },
@@ -6963,20 +7006,292 @@
   function speak(who, text) {
     if (SETTINGS.voice !== "spoken" || !("speechSynthesis" in window)) return;
     const said = speakable(text); if (!said) return;
-    try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(said), v = voiceFor(who) || { f: 260 };
-      u.pitch = clamp(0.4 + (v.f - 70) / 400, 0.1, 2); u.rate = v.slow ? 0.85 : 1.0; u.volume = SETTINGS.sfx; speechSynthesis.speak(u); } catch { /* speech unavailable */ }
+    try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(said), P = profileFor(who) || VOICE({ f: 180, tract: 1.05 });
+      // a browser voice that fits: a woman's or a child's for small throats, a man's for large ones; monsters pitched right down
+      const all = speechSynthesis.getVoices().filter(v => /^en/i.test(v.lang)), fem = /female|woman|zira|susan|samantha|victoria|karen|moira|tessa|fiona|serena|hazel|libby|sonia|aria|jenny/i;
+      const want = P.tract >= 1.04 ? all.filter(v => fem.test(v.name)) : all.filter(v => !fem.test(v.name));
+      if (want.length) u.voice = want[Math.floor(hash(String(who).length, String(who).charCodeAt(0)) * want.length)];
+      u.pitch = clamp(P.tract >= 1.04 ? 0.6 + (P.f - 170) / 150 : 0.25 + (P.f - 45) / 110, 0.05, 2); u.rate = clamp(0.95 * P.pace, 0.6, 1.4); u.volume = SETTINGS.sfx; speechSynthesis.speak(u); } catch { /* speech unavailable */ }
   }
-  // dialogue: blip as characters type, speak when a line opens
+  // ---- Voiced (the default): a small formant speech synthesiser. Each character babbles the line in their own voice.
+  //      The letters of the line become syllables: vowels are vowel sounds (a buzzing throat through three formant
+  //      filters), consonants are hisses, pops and hums, and the pitch falls across a sentence, rises on a question
+  //      and jumps on a shout. A voice is a throat and a texture: pitch, throat size (small = child, huge = monster),
+  //      pace, breath, rasp, growl, a lower octave, a choir of other voices, water in the throat, metal, a mask, an echo.
+  const VOICE = (o) => Object.assign({ f: 150, tract: 1, pace: 1, breath: 0.06, rasp: 0, growl: 0, growlHz: 34, sub: 0, choir: null, wet: 0,
+    echo: 0.06, ring: 0, ringHz: 70, mask: 0, bell: 0, crackle: 0, lilt: 1, vib: 0, whisper: false, nasal: 0, vol: 1 }, o);
+  const VOICE2 = {
+    // the party
+    sable: VOICE({ f: 205, tract: 1.12, pace: 1.05, breath: 0.12, lilt: 1.1 }),
+    lio: VOICE({ f: 310, tract: 1.32, pace: 1.25, breath: 0.05, lilt: 1.6 }),
+    nadia: VOICE({ f: 182, tract: 1.07, pace: 0.8, breath: 0.32, vib: 0.7, lilt: 0.8 }),
+    ilse: VOICE({ f: 168, tract: 1.04, pace: 0.95, breath: 0.1, rasp: 0.18, lilt: 0.7 }),
+    maru: VOICE({ f: 262, tract: 1.2, pace: 1.05, breath: 0.08, vib: 0.5, lilt: 1.7 }),
+    rook: VOICE({ f: 112, tract: 0.98, pace: 1.15, breath: 0.2, rasp: 0.12, lilt: 0.7 }),
+    ada: VOICE({ f: 232, tract: 1.15, pace: 0.92, breath: 0.28, echo: 0.18, vib: 0.3, lilt: 1.1 }),
+    ren: VOICE({ f: 94, tract: 0.93, pace: 0.88, breath: 0.08, rasp: 0.1, lilt: 0.6, sub: 0.12 }),
+    kest: VOICE({ f: 222, tract: 1.13, pace: 1.3, breath: 0.07, nasal: 0.4, lilt: 1.3 }),
+    nell: VOICE({ f: 172, tract: 1.06, pace: 1.12, breath: 0.22, rasp: 0.3, lilt: 1.0 }),
+    // the Warden: built under the water, speaking inside your head
+    warden: VOICE({ f: 66, tract: 0.76, pace: 0.72, breath: 0.1, ring: 0.45, ringHz: 83, echo: 0.62, lilt: 0.25, sub: 0.35, vol: 1.1 }),
+    // the villains
+    butcher: VOICE({ f: 70, tract: 0.7, pace: 0.8, breath: 0.25, rasp: 0.75, growl: 0.8, growlHz: 27, sub: 0.6, lilt: 0.6, vol: 1.1 }),
+    voss: VOICE({ f: 92, tract: 0.86, pace: 0.82, breath: 0.2, rasp: 0.45, growl: 0.35, growlHz: 41, bell: 0.6, echo: 0.42, lilt: 1.2, sub: 0.25 }),
+    choirmaster: VOICE({ f: 128, tract: 0.95, pace: 0.86, breath: 0.12, vib: 0.6, echo: 0.55, lilt: 1.5,
+      choir: [{ r: 0.5, d: -8, g: 0.45 }, { r: 1.5, d: 7, g: 0.3 }, { r: 2, d: -5, g: 0.22 }] }),
+    hollis: VOICE({ f: 76, tract: 0.72, pace: 0.9, breath: 0.15, rasp: 0.35, growl: 0.45, growlHz: 23, sub: 0.55, wet: 0.75, echo: 0.2, lilt: 1.3, vol: 1.1 }),
+    quill: VOICE({ f: 152, tract: 1.0, pace: 1.25, breath: 0.1, nasal: 0.85, wet: 0.18, lilt: 0.55, rasp: 0.1 }),
+    tollkeeper: VOICE({ f: 118, tract: 0.9, pace: 1.0, breath: 0.08, nasal: 0.5, ring: 0.3, ringHz: 211, lilt: 0.4 }),
+    maw: VOICE({ f: 84, tract: 0.8, pace: 0.85, breath: 0.2, rasp: 0.45, wet: 0.6, sub: 0.3, echo: 0.3, lilt: 1.1 }),
+    vela: VOICE({ f: 238, tract: 1.12, pace: 0.95, breath: 0.16, echo: 0.5, crackle: 0.7, vib: 0.4, lilt: 1.4,
+      choir: [{ r: 0.5, d: 10, g: 0.4 }, { r: 2, d: -10, g: 0.18 }] }),
+    king: VOICE({ f: 96, tract: 0.86, pace: 0.7, breath: 0.2, wet: 0.45, echo: 0.72, lilt: 0.7, vol: 1.05,
+      choir: [{ r: 1, d: 14, g: 0.5, tract: 1.15 }, { r: 1.5, d: -9, g: 0.3, tract: 1.3 }, { r: 0.5, d: 5, g: 0.45 }, { r: 2, d: 20, g: 0.2, tract: 1.4 }] }),
+    corvin: VOICE({ f: 100, tract: 0.9, pace: 0.78, breath: 0.45, rasp: 0.45, mask: 0.65, echo: 0.3, lilt: 0.5 }),
+    oldmouth: VOICE({ f: 48, tract: 0.58, pace: 0.62, breath: 0.2, growl: 0.7, growlHz: 19, sub: 0.9, wet: 0.85, echo: 0.4, lilt: 0.5, vol: 1.2 }),
+    gulp: VOICE({ f: 58, tract: 0.64, pace: 0.7, growl: 0.5, growlHz: 17, sub: 0.7, wet: 0.9, echo: 0.3, lilt: 0.8,
+      choir: [{ r: 1.5, d: 12, g: 0.3, tract: 1.2 }, { r: 2, d: -15, g: 0.2, tract: 1.3 }] }),
+    colossus: VOICE({ f: 60, tract: 0.6, pace: 0.6, echo: 0.6, sub: 0.6, lilt: 0.3,
+      choir: [{ r: 3, d: 8, g: 0.25, tract: 1.2 }, { r: 4, d: -6, g: 0.2, tract: 1.25 }, { r: 3.5, d: 3, g: 0.18, tract: 1.3 }] }),
+    ledgertree: VOICE({ f: 62, tract: 0.66, pace: 0.66, breath: 0.4, rasp: 0.6, growl: 0.3, growlHz: 14, echo: 0.35, lilt: 0.4, sub: 0.4 }),
+    mother: VOICE({ f: 150, tract: 0.9, pace: 0.9, wet: 0.7, breath: 0.4, echo: 0.3, lilt: 1.2,
+      choir: [{ r: 1.06, d: 0, g: 0.4 }, { r: 0.94, d: 0, g: 0.4 }] }),
+    wyrm: VOICE({ f: 52, tract: 0.6, pace: 0.6, breath: 0.6, growl: 0.6, growlHz: 22, sub: 0.7, echo: 0.4, lilt: 0.4 }),
+    dunewraith: VOICE({ f: 140, tract: 1.0, pace: 0.8, whisper: true, breath: 1, echo: 0.6, lilt: 0.8 }),
+    mirage: VOICE({ f: 220, tract: 1.12, pace: 0.9, breath: 0.3, echo: 0.7, vib: 0.8, lilt: 1.2, choir: [{ r: 1.01, d: 0, g: 0.6 }] }),
+    scorpion: VOICE({ f: 180, tract: 0.8, pace: 1.3, whisper: true, breath: 1, rasp: 0.4, lilt: 0.6 }),
+    // abstract and dream voices
+    memory: VOICE({ f: 200, tract: 1.1, pace: 0.85, breath: 0.5, echo: 0.75, vib: 0.4 }),
+  };
+  for (const k of ["truth", "hope", "justice", "duty", "true", "false", "many", "nobody"]) VOICE2[k] = VOICE2.memory;
+  VOICE2.hermit = VOICE({ f: 104, tract: 0.95, pace: 0.8, breath: 0.35, rasp: 0.3, vib: 0.4, lilt: 0.7 });
+  const voiceCache = new Map();
+  function profileFor(who) {
+    if (!who) return null;
+    const k = String(who).toLowerCase().replace(/^cmp_/, "");
+    if (voiceCache.has(k)) return voiceCache.get(k);
+    let P = VOICE2[k];
+    if (!P && /ghost$/.test(k) && VOICE2[k.replace(/ghost$/, "")]) { const b = VOICE2[k.replace(/ghost$/, "")]; P = { ...b, echo: 0.7, breath: Math.min(1, b.breath + 0.3), wet: Math.max(b.wet, 0.25) }; }
+    if (!P) for (const id of Object.keys(VOICE2)) if (k.startsWith(id)) { P = VOICE2[id]; break; }   // warden2, nadia2, hermit5...
+    if (!P) {   // anyone else: read their look and name, then vary by name so no two villagers sound alike
+      const n = typeof NPCS !== "undefined" && NPCS.find(x => x.id === k), look = (n && n.look) || {}, st = look.style || {};
+      const name = (SPEAKERS[k] || (n && n.name) || k) + "";
+      const h = hash(k.length * 31 + k.charCodeAt(0), (k.charCodeAt(k.length - 1) || 7) * 17), h2 = hash(k.charCodeAt(1) || 3, k.length);
+      const child = look.small || /^kid\d|^lost3/.test(k), female = st.dress || /bun|long|veil|tail/.test(st.hair || "") || /Mother|Sister|Widow|Mayor|Postmistress|Mistress|Hanne|Liv\b|Tamsin|Sarn|Orla|Aba|Ama|Mora|Farah|Yusra|Sela|Tam\b|Nima|Sefa|Wren/.test(name);
+      const old = /Old|Elder|Hermit|Widow|Keeper/.test(name) || /#(e8e4f0|d8d0c0|bfb8a8|c8c8c0|c8c0b0)/i.test(look.hair || ""), ghost = look.glowEyes, dead = look.dead;
+      const f = child ? 280 + h * 50 : female ? 188 + h * 45 : 98 + h * 38;
+      P = VOICE({ f: old ? f * 0.93 : f, tract: child ? 1.3 : female ? 1.1 + h2 * 0.06 : 0.94 + h2 * 0.08, pace: (old ? 0.82 : 1) * (0.92 + h2 * 0.2),
+        breath: (old ? 0.3 : 0.08) + (dead ? 0.4 : 0), rasp: old && !female ? 0.25 : h > 0.8 ? 0.15 : 0, vib: old ? 0.5 : 0, lilt: child ? 1.5 : 0.8 + h * 0.5,
+        echo: ghost || dead ? 0.6 : 0.06, wet: ghost ? 0.3 : 0, nasal: h2 > 0.75 ? 0.5 : 0, sub: st.armor && !female ? 0.15 : 0 });
+    }
+    voiceCache.set(k, P); return P;
+  }
+  // syllables: onset consonants, a vowel group, a coda, and where the syllable sits in its sentence
+  const FORM = { a: [730, 1090, 2440], e: [530, 1840, 2480], i: [300, 2200, 2950], o: [570, 840, 2410], u: [330, 900, 2240], y: [300, 2100, 2800], "@": [500, 1500, 2500] };
+  function syllables(text) {
+    const out = [], L = text.length, isV = c => /[aeiouy]/.test(c);
+    let depth = 0, i = 0;
+    while (i < L) {
+      const ch = text[i], c = ch.toLowerCase();
+      if (c === "(") { depth++; i++; continue; }
+      if (c === ")") { depth = Math.max(0, depth - 1); i++; continue; }
+      if (depth || !/[a-z]/.test(c)) {   // stage directions in brackets are not spoken; punctuation shapes the last syllable
+        const s = out[out.length - 1];
+        if (s && !depth) { if (/[,;:—-]/.test(c)) s.pause = Math.max(s.pause, 0.13); if (/[.?!…]/.test(c)) { s.pause = Math.max(s.pause, 0.3); s.end = c === "?" ? "q" : c === "!" ? "x" : s.end || "d"; } }
+        i++; continue;
+      }
+      let j = i; while (j < L && /[a-z']/i.test(text[j])) j++;
+      const raw = text.slice(i, j), w = raw.toLowerCase().replace(/'/g, ""), parts = [];
+      let k = 0;
+      while (k < w.length) {
+        let on = ""; while (k < w.length && !isV(w[k])) on += w[k++];
+        let v = ""; while (k < w.length && isV(w[k])) v += w[k++];
+        v = ({ ee: "i", ea: "i", ie: "i", ei: "ei", oo: "u", ou: "au", ow: "au", ai: "ei", ay: "ei", ey: "ei", oa: "o", ue: "u", ui: "u" })[v] || v;   // spellings to sounds
+        if (!v) { if (parts.length) parts[parts.length - 1].coda += on; else parts.push({ on: "", v: "@", coda: on }); break; }
+        parts.push({ on, v, coda: "" });
+      }
+      const last = parts[parts.length - 1];
+      if (parts.length > 1 && last.v === "e" && last.on.length === 1 && !last.coda) { parts.pop(); parts[parts.length - 1].coda += last.on; }   // silent e
+      const shout = raw.length > 1 && raw === raw.toUpperCase();
+      parts.forEach((p, n) => out.push({ at: i + Math.floor((j - i) * n / parts.length), on: p.on, v: p.v, coda: p.coda, ws: n === 0, pause: 0, end: null, shout }));
+      i = j;
+    }
+    let s0 = 0;
+    for (let n = 0; n < out.length; n++) if (out[n].end || n === out.length - 1) { for (let m = s0; m <= n; m++) out[m].pos = (m - s0) / Math.max(1, n - s0); s0 = n + 1; }
+    return out;
+  }
+  const Voice = {
+    buses: new WeakMap(), irs: new WeakMap(),
+    ir(ctx) {   // a stone-room echo, made once per audio context
+      let b = this.irs.get(ctx); if (b) return b;
+      const n = Math.floor(ctx.sampleRate * 2.4); b = ctx.createBuffer(2, n, ctx.sampleRate);
+      for (let ch = 0; ch < 2; ch++) { const d = b.getChannelData(ch); for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 3.2) * (i < 400 ? i / 400 : 1); }
+      this.irs.set(ctx, b); return b;
+    },
+    bus(ctx, P, dest) {   // one output chain per voice: mask resonance, metal (ring modulation), echo
+      let m = this.buses.get(ctx); if (!m) { m = new Map(); this.buses.set(ctx, m); }
+      let b = m.get(P); if (b) return b;
+      const input = ctx.createGain(), out = ctx.createGain(); out.gain.value = 0.9 * P.vol; out.connect(dest);
+      let head = input;
+      if (P.mask) {   // a gold mask over the mouth: a short comb resonance
+        const dl = ctx.createDelay(0.05), fb = ctx.createGain(), mix = ctx.createGain();
+        dl.delayTime.value = 0.0065; fb.gain.value = 0.55 * P.mask; head.connect(dl); dl.connect(fb); fb.connect(dl);
+        const dry = ctx.createGain(); dry.gain.value = 1 - 0.4 * P.mask; head.connect(dry); dry.connect(mix); dl.connect(mix); head = mix;
+      }
+      if (P.ring) {
+        const rg = ctx.createGain(), osc = ctx.createOscillator(), dry = ctx.createGain(), wet = ctx.createGain(), mix = ctx.createGain();
+        rg.gain.value = 0; osc.frequency.value = P.ringHz; osc.connect(rg.gain); osc.start();
+        dry.gain.value = 1 - P.ring; wet.gain.value = P.ring * 1.4; head.connect(dry); head.connect(rg); rg.connect(wet); dry.connect(mix); wet.connect(mix); head = mix;
+      }
+      head.connect(out);
+      const send = ctx.createGain(); send.gain.value = P.echo * 1.3; head.connect(send);
+      const cv = ctx.createConvolver(); cv.buffer = this.ir(ctx); send.connect(cv); cv.connect(out);
+      b = { input, out }; m.set(P, b); return b;
+    },
+    noise(ctx) { return (Music.ctx === ctx && Music.noiseBuf) || this._nb && this._nb.ctx === ctx && this._nb.buf || (this._nb = { ctx, buf: (() => { const nb = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate), d = nb.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; return nb; })() }).buf; },
+    hiss(ctx, dest, t, dur, freq, type, q, vol) {
+      const s = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+      s.buffer = this.noise(ctx); f.type = type; f.frequency.value = freq; f.Q.value = q;
+      g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(vol, t + Math.min(0.012, dur * 0.3)); g.gain.linearRampToValueAtTime(0.0001, t + dur);
+      s.connect(f); f.connect(g); g.connect(dest); s.start(t, Math.random() * 0.8); s.stop(t + dur + 0.02);
+    },
+    bellRing(ctx, dest, t, vol) {   // the Rain Bell in Voss's chest, answering him
+      [[1, 1], [2.02, 0.55], [2.41, 0.4], [3.0, 0.3], [4.2, 0.22], [5.43, 0.16]].forEach(([r, a]) => {
+        const o = ctx.createOscillator(), g = ctx.createGain(); o.type = "sine"; o.frequency.value = 146.8 * r;
+        g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(vol * a * 0.16, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + 2.6 / Math.sqrt(r));
+        o.connect(g); g.connect(dest); o.start(t); o.stop(t + 2.8);
+      });
+    },
+    // one syllable: t start, dur length, s the syllable, P the voice
+    syl(ctx, dest, P, s, t, dur) {
+      const tr = P.tract, on = s.on, last = on.slice(-1), first = on[0] || "";
+      const v1 = FORM[s.v[0]] || FORM["@"], v2 = FORM[s.v[s.v.length - 1]] || v1;
+      // pitch: sentence declination, word stress, question rise, exclamation lift, a little jitter
+      const pos = s.pos || 0, L = P.lilt;
+      let f = P.f * (1 + L * (0.09 * (1 - pos) - 0.03)) * (s.ws ? 1 + 0.05 * L : 1) * (1 + (Math.random() - 0.5) * 0.05 * L);
+      let fEnd = f * (1 - 0.03 * L);
+      if (s.end === "q") fEnd = f * (1 + 0.28 * L); else if (s.end === "d") fEnd = f * (1 - 0.14 * L); else if (s.end === "x") { f *= 1 + 0.12 * L; fEnd = f * (1 - 0.1 * L); }
+      if (s.shout) { f *= 1.12; fEnd *= 1.12; }
+      const loud = (s.ws ? 1 : 0.82) * (s.end === "x" || s.shout ? 1.25 : 1);
+      // the consonant in front
+      let tv = t;
+      const fric = /s|z|c|x|f|v|j|h/.test(first) || /sh|ch|th/.test(on), stop = /[pbtdkgq]/.test(last) && !fric, nas = /[mn]/.test(last), liq = /[lrwy]/.test(last);
+      if (fric) {
+        const cd = Math.min(0.06, dur * 0.32);
+        if (/sh|ch|j/.test(on)) this.hiss(ctx, dest, t, cd, 2600 * tr, "bandpass", 1.6, 0.18);
+        else if (/^[sczx]/.test(on)) this.hiss(ctx, dest, t, cd, 5200 * tr, "highpass", 0.7, 0.12);
+        else if (first === "h") this.hiss(ctx, dest, t, cd * 0.8, v1[1] * tr, "bandpass", 1.2, 0.1);
+        else this.hiss(ctx, dest, t, cd, 6500, "bandpass", 0.6, 0.06);
+        tv = t + cd * (/[zvj]/.test(on) ? 0.4 : 0.85);
+      } else if (stop) {
+        const bf = /[pb]/.test(last) ? 900 : /[td]/.test(last) ? 3900 : 1900;
+        this.hiss(ctx, dest, t + 0.012, 0.016, bf * tr, "bandpass", 1.4, /[ptk]/.test(last) ? 0.26 : 0.14);
+        tv = t + 0.022;
+      }
+      const vEnd = t + dur, vd = vEnd - tv; if (vd < 0.03) return;
+      // the throat: a buzzing source, maybe a lower octave and a choir, then rasp and growl, then three formants
+      const src = ctx.createGain(); src.gain.value = 1;
+      const oscs = [];
+      const voices = [{ r: 1, d: 0, g: 1 }].concat(P.choir || []);
+      for (const cv of voices) {
+        const o = ctx.createOscillator(), og = ctx.createGain(); o.type = "sawtooth"; o.detune.value = cv.d || 0;
+        o.frequency.setValueAtTime(f * cv.r, tv); o.frequency.linearRampToValueAtTime(fEnd * cv.r, vEnd);
+        og.gain.value = (cv.g || 1) * (P.whisper ? 0 : 1); o.connect(og); og.connect(src); oscs.push(o);
+      }
+      if (P.sub) { const o = ctx.createOscillator(), og = ctx.createGain(); o.type = "triangle"; o.frequency.setValueAtTime(f / 2, tv); o.frequency.linearRampToValueAtTime(fEnd / 2, vEnd); og.gain.value = P.sub * 1.4 * (P.whisper ? 0 : 1); o.connect(og); og.connect(src); oscs.push(o); }
+      // modulators: vibrato, water in the throat
+      const mods = [];
+      if (P.vib || P.wet) {
+        const lfo = ctx.createOscillator(), lg = ctx.createGain(); lfo.frequency.value = P.wet ? 7 + Math.random() * 5 : 5.4;
+        lg.gain.value = f * (0.025 * P.vib + 0.1 * P.wet); lfo.connect(lg); oscs.forEach(o => lg.connect(o.frequency)); mods.push(lfo);
+      }
+      let head = src;
+      if (P.rasp) {
+        const sh = ctx.createWaveShaper(), k = 1 + P.rasp * 14, n = 256, curve = new Float32Array(n);
+        for (let i = 0; i < n; i++) { const x = i / (n - 1) * 2 - 1; curve[i] = Math.tanh(k * x) / Math.tanh(k); }
+        sh.curve = curve; const pre = ctx.createGain(); pre.gain.value = 0.6; head.connect(pre); pre.connect(sh); head = sh;
+      }
+      if (P.growl) {   // a growl: the voice chopped at a low rate, like vocal fry in a big chest
+        const gg = ctx.createGain(), lfo = ctx.createOscillator(), dep = ctx.createGain();
+        gg.gain.value = 1 - P.growl * 0.5; lfo.type = "square"; lfo.frequency.value = P.growlHz * (0.9 + Math.random() * 0.2); dep.gain.value = P.growl * 0.5;
+        lfo.connect(dep); dep.connect(gg.gain); head.connect(gg); head = gg; mods.push(lfo);
+      }
+      // breath: noise through the same throat
+      let br = null;
+      if (P.breath > 0.02) { br = ctx.createBufferSource(); br.buffer = this.noise(ctx); const bg = ctx.createGain(); bg.gain.value = P.whisper ? 1.6 : P.breath * 0.9; br.connect(bg); bg.connect(head === src ? src : head); }
+      const env = ctx.createGain(), tone = ctx.createBiquadFilter();
+      tone.type = "lowpass"; tone.frequency.value = Math.min(9000, 3600 * tr * (1 + P.nasal * 0.3)); tone.connect(env);
+      const fm = liq ? ({ l: [360, 1300, 2700], r: [420, 1250, 1650], w: [300, 700, 2200], y: [280, 2250, 2900] })[last] : null;
+      [[0, 1, 11], [1, 0.62, 13], [2, 0.3, 16]].forEach(([n, g, q]) => {
+        const bp = ctx.createBiquadFilter(), bg = ctx.createGain(); bp.type = "bandpass"; bp.Q.value = q * (1 + P.nasal * 0.8);
+        const a = (fm || v1)[n] * tr, b = v1[n] * tr, c2 = v2[n] * tr * (nas && n === 1 ? 0.8 : 1);
+        bp.frequency.setValueAtTime(nas && n === 0 ? 260 * tr : a, tv);
+        bp.frequency.linearRampToValueAtTime(b, tv + Math.min(0.05, vd * 0.35));
+        bp.frequency.linearRampToValueAtTime(c2, vEnd);
+        bg.gain.value = g * (n === 2 && P.nasal ? 1 + P.nasal : 1) * (q / 6); head.connect(bp); bp.connect(bg); bg.connect(tone);
+      });
+      const peak = 0.34 * loud * (P.whisper ? 0.9 : 1);
+      env.gain.setValueAtTime(0.0001, tv); env.gain.linearRampToValueAtTime(peak, tv + 0.014);
+      env.gain.setValueAtTime(peak * 0.92, Math.max(tv + 0.015, vEnd - 0.035)); env.gain.linearRampToValueAtTime(0.0001, vEnd);
+      env.connect(dest);
+      for (const o of oscs.concat(mods)) { o.start(tv); o.stop(vEnd + 0.03); }
+      if (br) { br.start(tv, Math.random() * 0.8); br.stop(vEnd + 0.03); }
+      // after the vowel
+      if (/[sz]$/.test(s.coda)) this.hiss(ctx, dest, vEnd - 0.01, 0.045, 5200 * tr, "highpass", 0.7, 0.1);
+      else if (/[ptk]$/.test(s.coda)) this.hiss(ctx, dest, vEnd + 0.01, 0.014, 2600 * tr, "bandpass", 1.2, 0.12);
+      if (P.wet && Math.random() < P.wet * 0.45) {   // a bubble rises in the throat
+        const o = ctx.createOscillator(), g = ctx.createGain(), bt = tv + Math.random() * vd * 0.7;
+        o.type = "sine"; o.frequency.setValueAtTime(260 + Math.random() * 200, bt); o.frequency.exponentialRampToValueAtTime(900 + Math.random() * 600, bt + 0.05);
+        g.gain.setValueAtTime(0.0001, bt); g.gain.linearRampToValueAtTime(0.09 * P.wet, bt + 0.005); g.gain.exponentialRampToValueAtTime(0.0001, bt + 0.06);
+        o.connect(g); g.connect(dest); o.start(bt); o.stop(bt + 0.08);
+      }
+      if (P.crackle && Math.random() < P.crackle) for (let i = 0; i < 3; i++) this.hiss(ctx, dest, tv + Math.random() * vd, 0.008, 3500 + Math.random() * 4000, "highpass", 0.5, 0.2 * P.crackle);
+    },
+    // live speech: follows the typewriter, one syllable at a time, and skips ahead rather than fall behind
+    cur: null,
+    start(who, text) {
+      let P = profileFor(who);
+      if (P && P === VOICE2.ada && G.flags && G.flags.adaVoice) P = VOICE2.adaHush || (VOICE2.adaHush = { ...P, whisper: true, breath: 1, vol: 0.8 });   // she gave her voice to the dead in the salt
+      this.cur = P && text ? { P, syl: syllables(text), n: 0, next: 0, t0: Music.ctx ? Music.ctx.currentTime : 0, rang: false } : null;
+    },
+    stop() { this.cur = null; },
+    type(typedTo, total) {
+      const c = this.cur, ctx = Music.ctx; if (!c || !ctx || !Music.on || SETTINGS.voice !== "voiced") return;
+      const now = ctx.currentTime, P = c.P;
+      if (P.bell && !c.rang) { c.rang = true; this.bellRing(ctx, this.bus(ctx, P, Music.sfx).input, now + 0.02, P.bell); }
+      // where the voice may be: never past the typed text; with instant text, a reading pace
+      const reach = SETTINGS.text === "instant" ? Math.min(total, (now - c.t0) * 40) : typedTo;
+      let avail = 0; while (avail < c.syl.length && c.syl[avail].at < reach) avail++;
+      if (avail - c.n > 3) c.n = avail - 2;   // fell behind: skip ahead, keep the sentence ending
+      if (c.n >= avail || now < c.next - 0.03) return;
+      const s = c.syl[c.n++], base = 0.105 / P.pace, len = s.v.length > 1 ? 1.25 : 1, dur = base * len * (s.end ? 1.35 : 1) * (0.9 + Math.random() * 0.2);
+      const t = Math.max(now + 0.01, c.next);
+      this.syl(ctx, this.bus(ctx, P, Music.sfx).input, P, s, t, dur);
+      c.next = t + dur + s.pause / P.pace * (typedTo >= total ? 0.5 : 1);
+    },
+    // offline rendering, for previews: a whole line spoken at its own pace
+    async render(who, text, sr = 22050) {
+      const P = profileFor(who) || VOICE({}), syl = syllables(text);
+      let secs = 0.4; for (const s of syl) secs += 0.105 / P.pace * 1.4 + s.pause / P.pace;
+      const oc = new OfflineAudioContext(1, Math.ceil(sr * (secs + 2.6)), sr), dest = this.bus(oc, P, oc.destination).input;
+      let t = 0.15; if (P.bell) this.bellRing(oc, dest, 0.05, P.bell);
+      for (const s of syl) { const dur = 0.105 / P.pace * (s.v.length > 1 ? 1.25 : 1) * (s.end ? 1.35 : 1) * (0.9 + Math.random() * 0.2); this.syl(oc, dest, P, s, t, dur); t += dur + s.pause / P.pace; }
+      return oc.startRendering();
+    },
+  };
+  // Voiced is the new default; anyone still on the old default (blips) moves to it once
+  try { const sv = JSON.parse(localStorage.getItem("salt-road-settings") || "{}"); if (!sv.voiceV2) { if (!sv.voice || sv.voice === "blips") SETTINGS.voice = "voiced"; SETTINGS.voiceV2 = true; localStorage.setItem("salt-road-settings", JSON.stringify({ ...sv, voice: SETTINGS.voice, voiceV2: true })); } } catch { if (SETTINGS.voice === "blips") SETTINGS.voice = "voiced"; }
+  // dialogue: voice or blip as characters type, speak when a line opens
   let lastDlg = null, lastTyped = 0;
   const _updateV = update;
   update = function (dt) {
     _updateV(dt);
     if (mode === "dialog" && dlg) {
-      if (dlg !== lastDlg) { lastDlg = dlg; lastTyped = 0; speak(dlg.who, dlg.text); }
+      if (dlg !== lastDlg) { lastDlg = dlg; lastTyped = 0; speak(dlg.who, dlg.text); Voice.start(dlg.who, dlg.text); }
       const n = Math.min(dlg.text.length, Math.floor(typed));
       for (let i = lastTyped; i < n; i++) blip(dlg.who, dlg.text[i]);
-      lastTyped = n;
-    } else if (lastDlg) { lastDlg = null; if (SETTINGS.voice === "spoken" && "speechSynthesis" in window && mode !== "cine") try { speechSynthesis.cancel(); } catch { /* ignore */ } }
+      lastTyped = n; Voice.type(n, dlg.text.length);
+    } else if (lastDlg) { lastDlg = null; if (mode !== "cine") Voice.stop(); if (SETTINGS.voice === "spoken" && "speechSynthesis" in window && mode !== "cine") try { speechSynthesis.cancel(); } catch { /* ignore */ } }
   };
   // the settings panel gains a Voices row
   const _showSettingsV = showSettings;
@@ -6987,7 +7302,7 @@
     const row2 = document.createElement("div"); row2.className = "setrow";
     row2.innerHTML = `<span>Screen</span><div class="seg">${[["fill", "Fill"], ["exact", "Pixel-perfect"]].map(([v, l]) => `<button type="button" data-set="screen" data-v="${v}" class="${(SETTINGS.screen || "fill") === v ? "on" : ""}">${l}</button>`).join("")}</div><span></span>`;
     game.after(row2);
-    row.innerHTML = `<span>Voices</span><div class="seg">${[["blips", "Blips"], ["spoken", "Spoken"], ["off", "Off"]].map(([v, l]) => `<button type="button" data-set="voice" data-v="${v}" class="${SETTINGS.voice === v ? "on" : ""}">${l}</button>`).join("")}</div><span></span>`;
+    row.innerHTML = `<span>Voices</span><div class="seg">${[["voiced", "Voiced"], ["blips", "Blips"], ["spoken", "Spoken"], ["off", "Off"]].map(([v, l]) => `<button type="button" data-set="voice" data-v="${v}" class="${SETTINGS.voice === v ? "on" : ""}">${l}</button>`).join("")}</div><span></span>`;
     game.after(row);
     if (focusKey === "voice") { const f = row.querySelector(".on"); if (f) f.focus({ preventScroll: true }); }
   };
@@ -7007,19 +7322,20 @@
     cbText = text || ""; cbWho = who; cbTyped = SETTINGS.text === "instant" ? cbText.length : 0;
     cineBox.hidden = !cbText; cineBox.querySelector(".nm").hidden = !who; cineBox.querySelector(".nm").textContent = who || "";
     cineBox.querySelector(".tx").classList.toggle("narr", !who); cineBox.querySelector(".tx").textContent = "";
-    speak(who, text);
+    speak(who, text); Voice.start(who, text);
   }
   // route cinematic lines into the box instead of the plain caption
   const _enterShotV = enterShot;
   enterShot = function () { _enterShotV(); banterEl.hidden = true; const s = cine.shots[cine.i]; if (s.line) cineSay(s.line[0], s.line[1]); else if (!s.keepLine) cineSay(null, ""); };
   const _endCineV = endCine;
-  endCine = function () { cineBox.hidden = true; cbText = ""; if (SETTINGS.voice === "spoken" && "speechSynthesis" in window) try { speechSynthesis.cancel(); } catch { /* ignore */ } _endCineV(); };
+  endCine = function () { cineBox.hidden = true; cbText = ""; Voice.stop(); if (SETTINGS.voice === "spoken" && "speechSynthesis" in window) try { speechSynthesis.cancel(); } catch { /* ignore */ } _endCineV(); };
   const _updateCB = update;
   update = function (dt) {
     _updateCB(dt);
     if (!cine || mode !== "cine" || !cbText) return;
     const before = Math.floor(cbTyped); cbTyped = Math.min(cbText.length, cbTyped + dt * (SETTINGS.text === "slow" ? 26 : 48));
     const now = Math.floor(cbTyped); for (let i = before; i < now; i++) blip(cbWho, cbText[i]);
+    Voice.type(now, cbText.length);
     if (now !== before) cineBox.querySelector(".tx").textContent = cbText.slice(0, now);
   };
   // cutscene music: each cinematic can bring its own theme and hand the old one back afterwards
@@ -9311,6 +9627,423 @@
   // a variant's palette: its own ramps shifted the same way, so the dither lands on colours of that creature
   const variantRamps = (ramps, v) => { const key = "v" + JSON.stringify(v) + ramps.join(); if (!RAMP[key]) { const shifted = ramps.flatMap(r => RAMP[r]).map(hx => { let [hh, s, l] = toHSL(...hexRGB(hx)); hh = v.set ? v.hue + hh * 0.08 : hh + v.hue; const [r, g2, b2] = toRGB(hh, Math.min(1, s * v.sat), Math.min(1, l * v.lum)); return "#" + [r, g2, b2].map(n => Math.round(n).toString(16).padStart(2, "0")).join(""); }); RAMP[key] = [...new Set([...shifted, ...RAMP.ink])]; } return [key]; };
 
+  // ---- boss paintings, third pass: the story's villains repainted with real anatomy, costume and a readable silhouette
+  const H3 = {
+    // a tapered, lit limb: highlight on the up-left edge, a joint at the far end
+    limb(K, x0, y0, x1, y1, w0, w1, r, joint = true) {
+      const a = Math.atan2(y1 - y0, x1 - x0), nx = -Math.sin(a), ny = Math.cos(a), s = nx + ny < 0 ? 1 : -1;
+      const A = [x0 + nx * w0 * s, y0 + ny * w0 * s], B = [x0 - nx * w0 * s, y0 - ny * w0 * s];
+      K.P([A, [x1 + nx * w1 * s, y1 + ny * w1 * s], [x1 - nx * w1 * s, y1 - ny * w1 * s], B], K.LG(A[0], A[1], B[0], B[1], [[0, r[0]], [0.35, r[1]], [1, r[2]]]));
+      if (joint) K.E(x1, y1, w1 * 1.02, w1 * 1.02, K.RG(x1 - w1 * 0.3, y1 - w1 * 0.3, 0.5, w1 * 1.3, [[0, r[0]], [0.5, r[1]], [1, r[2]]]));
+    },
+    // sinew lines along a limb
+    sinew(K, x0, y0, x1, y1, w, n, col) {
+      const a = Math.atan2(y1 - y0, x1 - x0), nx = -Math.sin(a), ny = Math.cos(a);
+      for (let i = 0; i < n; i++) { const o = (i / (n - 1) - 0.5) * w * 1.4; K.Q([[x0 + nx * o, y0 + ny * o], [(x0 + x1) / 2 + nx * o * 1.15, (y0 + y1) / 2 + ny * o * 1.15], [x1 + nx * o * 0.8, y1 + ny * o * 0.8]], 0.9, col); }
+    },
+    // a salt crystal: three lit faces
+    shard(K, x, y, h, a, glow) {
+      const w = h * 0.3, tip = [x + Math.cos(a) * h, y + Math.sin(a) * h], l = [x + Math.cos(a - 1.57) * w, y + Math.sin(a - 1.57) * w], r = [x + Math.cos(a + 1.57) * w, y + Math.sin(a + 1.57) * w];
+      K.P([l, tip, r], "#a6aac2"); K.P([l, tip, [x, y]], "#f0f4ff"); K.P([r, tip, [x + Math.cos(a) * h * 0.2, y + Math.sin(a) * h * 0.2]], "#7e829c");
+      if (glow) K.S([[x + Math.cos(a) * h * 0.15, y + Math.sin(a) * h * 0.15], [tip[0] - Math.cos(a) * 2, tip[1] - Math.sin(a) * 2]], 1, "#9ef0f5");
+    },
+    // light rays from a point, soft and translucent
+    rays(K, x, y, n, r0, r1, col, a0 = 0, spread = Math.PI * 2) {
+      for (let i = 0; i < n; i++) { const a = a0 + (i + 0.5) / n * spread, d = 0.05 + K.rng() * 0.05; K.P([[x + Math.cos(a - d) * r0, y + Math.sin(a - d) * r0], [x + Math.cos(a) * r1 * (0.7 + K.rng() * 0.3), y + Math.sin(a) * r1 * (0.7 + K.rng() * 0.3)], [x + Math.cos(a + d) * r0, y + Math.sin(a + d) * r0]], col); }
+    },
+    coin(K, x, y, r, tilt = 0.55) {
+      K.E(x, y + r * 0.18, r, r * tilt, "#5a3c0e"); K.E(x, y, r, r * tilt, K.RG(x - r * 0.4, y - r * 0.3, 0.3, r * 1.2, [[0, "#f6e07a"], [0.5, "#d8b440"], [1, "#86621a"]]));
+      K.E(x, y, r * 0.62, r * 0.62 * tilt, "rgba(90,60,14,0.45)"); K.E(x - r * 0.35, y - r * tilt * 0.35, r * 0.25, r * 0.12, "rgba(255,250,210,0.8)");
+    },
+    // cloth folds: soft dark curves from a top edge to a bottom edge
+    folds(K, top, bot, n, col, sway = 0) {
+      for (let i = 0; i < n; i++) { const t = (i + 0.5) / n, x0 = top[0] + (top[1] - top[0]) * t, x1 = bot[0] + (bot[1] - bot[0]) * t, y0 = top[2], y1 = bot[2];
+        K.Q([[x0, y0], [(x0 + x1) / 2 + Math.sin(i * 2.1) * 6 + sway, (y0 + y1) / 2], [x1, y1]], 2 + (i % 3), col); }
+    },
+    bubble(K, x, y, r) { K.E(x, y, r, r, "rgba(166,226,220,0.35)"); K.S([[x - r * 0.5, y - r * 0.2], [x - r * 0.2, y - r * 0.6]], 1, "rgba(255,255,255,0.8)"); },
+  };
+  Object.assign(BOSS_ART, {
+    // Magister Voss, the Salt-Flayed: a magister's robe hanging open on a flayed body, the Rain Bell grown into his chest
+    voss: { w: 84, h: 116, ramps: ["ink", "blood", "flesh", "salt", "glowc", "gold", "bone", "cloth", "night"], paint(K, ph) {
+      const b = Math.sin(ph * Math.PI * 2) * 2, W = 252, cx = W / 2, pulse = 0.75 + 0.25 * Math.sin(ph * Math.PI * 2);
+      const RAW = ["#ee3a46", "#9a1224", "#40070e"], ROBE = ["#141222", "#332c52", "#07060c"];
+      // the high collar, fanned behind the head like a judge's
+      K.P([[cx - 46, 126], [cx - 58, 60], [cx - 30, 34], [cx, 26], [cx + 30, 34], [cx + 58, 60], [cx + 46, 126]], K.LG(cx - 58, 0, cx + 58, 0, [[0, "#07060c"], [0.5, "#332c52"], [1, "#07060c"]]));
+      K.S([[cx - 46, 126], [cx - 58, 60], [cx - 30, 34], [cx, 26], [cx + 30, 34], [cx + 58, 60], [cx + 46, 126]], 2.4, "#b08a28");
+      for (let i = 0; i < 7; i++) K.S([[cx, 110], [cx - 48 + i * 16, 40 + Math.abs(i - 3) * 6]], 1, "rgba(106,95,154,0.5)");
+      // salt erupting from the shoulders like epaulettes
+      for (const [x, y, h, a] of [[cx - 50, 122, 42, -2.5], [cx - 44, 116, 30, -2.0], [cx - 56, 132, 26, -2.9], [cx + 50, 120, 46, -0.6], [cx + 44, 114, 30, -1.1], [cx + 58, 132, 28, -0.2]]) H3.shard(K, x, y, h + b, a, h > 35);
+      // the robe's back and sides, hem torn
+      K.P([[cx - 48, 118], [cx + 48, 118], [cx + 88, 250], [cx + 104, 334], [cx + 88, 344], [cx + 76, 330], [cx + 60, 346], [cx + 40, 336], [cx - 40, 336], [cx - 56, 346], [cx - 74, 332], [cx - 90, 344], [cx - 104, 330], [cx - 88, 250]],
+        K.LG(cx - 104, 0, cx + 104, 0, [[0, ROBE[2]], [0.3, ROBE[1]], [0.6, ROBE[0]], [1, ROBE[2]]]));
+      H3.folds(K, [cx - 44, cx - 20, 130], [cx - 100, cx - 44, 332], 4, "rgba(7,6,12,0.6)", b); H3.folds(K, [cx + 20, cx + 44, 130], [cx + 44, cx + 100, 332], 4, "rgba(7,6,12,0.6)", -b);
+      // crimson lining down the open front
+      for (const s of [-1, 1]) K.P([[cx + s * 30, 122], [cx + s * 44, 124], [cx + s * 58, 336], [cx + s * 36, 336]], K.LG(0, 120, 0, 336, [[0, "#9a1224"], [1, "#40070e"]]));
+      for (const s of [-1, 1]) K.S([[cx + s * 44, 124], [cx + s * 58, 336]], 2, "#d8b440");
+      // legs: raw muscle, knees of salt, taloned feet
+      for (const s of [-1, 1]) {
+        H3.limb(K, cx + s * 14, 222, cx + s * 20, 276, 15, 11, RAW); H3.limb(K, cx + s * 20, 276, cx + s * 18, 326, 11, 8, RAW, false);
+        H3.sinew(K, cx + s * 14, 226, cx + s * 20, 272, 12, 5, "rgba(30,3,6,0.5)"); H3.sinew(K, cx + s * 20, 280, cx + s * 18, 322, 9, 4, "rgba(30,3,6,0.5)");
+        H3.shard(K, cx + s * 20, 278, 12, s < 0 ? -2.4 : -0.7, false);
+        K.E(cx + s * 20, 330, 12, 6, "#40070e"); for (let f = 0; f < 3; f++) H3.shard(K, cx + s * (12 + f * 7), 332, 9, 1.3 + s * 0.4 - f * 0.25 * s, false);
+      }
+      K.P([[cx - 30, 214], [cx + 30, 214], [cx + 24, 248], [cx, 262], [cx - 24, 248]], "#221e38"); K.R(cx - 30, 212, 60, 5, "#b08a28"); H3.coin(K, cx, 214, 7, 0.9);
+      // the flayed torso: pectorals, abdominals, striations
+      K.P([[cx - 42, 122], [cx + 42, 122], [cx + 34, 170], [cx + 26, 216], [cx - 26, 216], [cx - 34, 170]], K.RG(cx - 12, 140, 6, 90, [[0, "#ee3a46"], [0.5, "#9a1224"], [1, "#40070e"]]));
+      for (const s of [-1, 1]) { K.E(cx + s * 20, 140, 20, 14, "rgba(238,58,70,0.45)", s * 0.25); for (let i = 0; i < 7; i++) K.Q([[cx + s * 4, 128 + i * 4], [cx + s * 22, 134 + i * 3], [cx + s * 40, 128 + i * 5]], 0.8, "rgba(30,3,6,0.45)"); }
+      for (let r = 0; r < 3; r++) for (const s of [-1, 1]) { K.E(cx + s * 9, 180 + r * 12, 8, 5.5, "rgba(238,58,70,0.35)"); K.S([[cx + s * 1, 175 + r * 12], [cx + s * 16, 175 + r * 12]], 0.9, "rgba(30,3,6,0.55)"); }
+      // the chest opened like two doors of rib, and the Bell inside, alive
+      K.E(cx, 150, 24, 30, "#1e0306");
+      K.E(cx, 150, 44 * pulse, 48 * pulse, K.RG(cx, 150, 2, 50, [[0, "rgba(158,240,245,0.7)"], [0.5, "rgba(62,224,232,0.2)"], [1, "rgba(62,224,232,0)"]]));
+      H3.rays(K, cx, 150, 9, 16, 70 * pulse, "rgba(158,240,245,0.16)", -Math.PI * 0.95, Math.PI * 0.9);
+      K.P([[cx - 9, 130], [cx + 9, 130], [cx + 13, 156], [cx + 21, 170], [cx - 21, 170], [cx - 13, 156]], K.LG(cx - 21, 0, cx + 21, 0, [[0, "#5a3c0e"], [0.35, "#f6e07a"], [0.65, "#b08a28"], [1, "#2e1e06"]]));
+      K.E(cx, 130, 9, 3, "#d8b440"); K.E(cx, 170, 21, 4, "#86621a"); K.E(cx, 174, 4, 4, "#86621a"); K.crack(cx - 3, 136, 26, 1.4, "#2e1e06", 1.2);
+      for (const s of [-1, 1]) for (let i = 0; i < 5; i++) { const y = 128 + i * 10; K.Q([[cx + s * 3, y], [cx + s * (24 + i), y - 6], [cx + s * (34 + i * 1.5), y + 2]], 3, "#e8e0cc"); K.Q([[cx + s * 3, y + 1], [cx + s * (24 + i), y - 5], [cx + s * (34 + i * 1.5), y + 3]], 1, "#a2957c"); }
+      K.S([[cx, 124], [cx, 128]], 4, "#e8e0cc");
+      // arms: the left a salt claw, the right holding the magister's staff with a little bell in its cage
+      H3.limb(K, cx - 46, 128, cx - 66, 178, 13, 10, RAW); H3.limb(K, cx - 66, 178, cx - 76, 222, 10, 8, RAW, false); H3.sinew(K, cx - 48, 132, cx - 76, 220, 9, 5, "rgba(30,3,6,0.5)");
+      for (let f = 0; f < 5; f++) H3.shard(K, cx - 78 + f * 3, 222, 20 + (f === 2 ? 8 : 0), 1.35 + (f - 2) * 0.22, f === 2);
+      K.drip(cx - 76, 244, 10 + b * 2, 1.4, "#9a1224");
+      K.S([[cx + 82, 20], [cx + 86, 338]], 5, "#36241a"); K.S([[cx + 81, 20], [cx + 84, 338]], 1.4, "#6e4e38");
+      K.E(cx + 82, 22, 12, 14, "rgba(62,224,232,0.25)"); K.S([[cx + 72, 26], [cx + 82, 8], [cx + 92, 26], [cx + 90, 36], [cx + 74, 36], [cx + 72, 26]], 2, "#b08a28");
+      K.P([[cx + 78, 18], [cx + 86, 18], [cx + 88, 32], [cx + 76, 32]], "#d8b440"); H3.shard(K, cx + 82, 8, 16, -1.57, true);
+      H3.limb(K, cx + 46, 128, cx + 66, 170, 13, 10, RAW); H3.limb(K, cx + 66, 170, cx + 82, 190, 10, 8, RAW, false);
+      K.vol(cx + 84, 192, 8, 8, ["#ee3a46", "#9a1224", "#40070e"]); for (let f = 0; f < 3; f++) K.S([[cx + 78, 188 + f * 4], [cx + 90, 188 + f * 4]], 2.4, "#6a0c18");
+      // the head: half a gaunt face, half skinned to the skull; a crown of salt grows out of it
+      const hy = 84 + b;
+      K.vol(cx, hy, 22, 28, ["#e2b394", "#ad7058", "#4a2226"]);
+      K.P([[cx + 1, hy - 28], [cx + 22, hy - 16], [cx + 24, hy + 8], [cx + 16, hy + 26], [cx + 1, hy + 30]], K.LG(cx, 0, cx + 24, 0, [[0, "#c8182e"], [1, "#40070e"]]));
+      for (let i = 0; i < 5; i++) K.S([[cx + 3 + i * 4, hy - 24], [cx + 4 + i * 4, hy + 26]], 0.8, "rgba(30,3,6,0.55)");
+      K.P([[cx + 4, hy - 4], [cx + 20, hy - 8], [cx + 18, hy + 6], [cx + 6, hy + 4]], "#e8e0cc"); K.E(cx + 12, hy - 1, 6, 5, ink); K.eye(cx + 12, hy - 1, 3.4, "#9ef0f5", null);
+      K.E(cx - 9, hy - 2, 6, 4, "#4a2226"); K.eye(cx - 9, hy - 1, 2.6, "#e8e0cc", ink); K.S([[cx - 16, hy - 8], [cx - 3, hy - 6]], 1.6, "#4a2226");
+      K.S([[cx - 2, hy + 4], [cx - 5, hy + 12], [cx, hy + 13]], 1, "#6e3a34");
+      K.P([[cx - 10, hy + 17], [cx, hy + 18], [cx + 18, hy + 14], [cx + 16, hy + 22], [cx - 8, hy + 22]], "#1e0306"); K.teeth(cx + 1, hy + 14, 6, 2.6, 5, "#e8e0cc"); K.teeth(cx + 1, hy + 23, 6, 2.6, -4, "#c8bca2");
+      K.S([[cx - 10, hy + 17], [cx - 2, hy + 16]], 1.4, "#6e3a34");
+      for (const [x, h, a] of [[cx - 14, 20, -2.1], [cx - 6, 30, -1.8], [cx + 4, 38, -1.5], [cx + 12, 26, -1.2], [cx + 20, 18, -0.8]]) H3.shard(K, x, hy - 24, h + b, a, h > 25);
+      // salt dust falling
+      for (let i = 0; i < 18; i++) { const x = K.rng() * W, y = (K.rng() * 340 + ph * 60) % 340; K.R(x, y, 1.6, 1.6, "rgba(232,236,248,0.7)"); }
+    } },
+    // Guild Master Hollis, the Tide-Eater: a merchant prince gone to drowned fat, rising out of the flood
+    hollis: { w: 100, h: 116, ramps: ["ink", "gold", "corpse", "brine", "bone", "blood", "rot", "glowy", "leech"], paint(K, ph) {
+      const b = Math.sin(ph * Math.PI * 2) * 3, W = 300, cx = W / 2, FLESH = ["#a4b8a6", "#5e7466", "#1e2a26"];
+      // arms first: huge sleeves, bloated hands
+      // the body: a coat of gold brocade that no longer closes over a drowned belly
+      K.P([[cx - 40, 92], [cx + 40, 92], [cx + 92, 118], [cx + 118, 170], [cx + 126, 240], [cx + 114, 310], [cx - 114, 310], [cx - 126, 240], [cx - 118, 170], [cx - 92, 118]], "#2e1e06");
+      K.vol(cx, 214, 124, 118, ["#f6e07a", "#d8b440", "#5a3c0e"]); K.vol(cx, 128, 94, 42, ["#f6e07a", "#d8b440", "#86621a"]);
+      for (let y = 104; y < 310; y += 11) for (let x = cx - 120; x < cx + 120; x += 11) { const ox = Math.round(y / 11) % 2 ? 5.5 : 0, dx = (x + ox - cx) / 124, dy = (y - 214) / 118; if (dx * dx + dy * dy < 0.92 || (y < 150 && Math.abs(x + ox - cx) < 88)) K.P([[x + ox, y - 2.6], [x + ox + 2.6, y], [x + ox, y + 2.6], [x + ox - 2.6, y]], "rgba(90,60,14,0.32)"); }
+      K.E(cx + 70, 250, 50, 60, "rgba(46,30,6,0.35)");
+      // the belly, grey-green and stretched, bursting the coat open
+      K.P([[cx - 30, 108], [cx + 30, 108], [cx + 58, 180], [cx + 62, 250], [cx + 44, 312], [cx - 44, 312], [cx - 62, 250], [cx - 58, 180]], K.RG(cx - 16, 190, 8, 120, [[0, "#cad8c8"], [0.45, "#7e9484"], [1, "#2e403a"]]));
+      for (const [x, y, a] of [[cx - 34, 170, 0.5], [cx + 30, 268, -0.4], [cx - 24, 286, 0.3]]) K.E(x, y, 12, 2, "rgba(30,42,38,0.35)", a);
+      K.E(cx - 20, 150, 20, 26, "rgba(236,240,236,0.18)");
+      for (let i = 0; i < 4; i++) K.Q([[cx - 40 + i * 26, 206], [cx - 36 + i * 26, 218], [cx - 42 + i * 26, 232]], 0.8, "rgba(40,98,110,0.5)");
+      for (const s of [-1, 1]) { K.P([[cx + s * 28, 100], [cx + s * 62, 104], [cx + s * 78, 180], [cx + s * 62, 312], [cx + s * 46, 312], [cx + s * 60, 180]], K.LG(cx + s * 28, 0, cx + s * 78, 0, [[0, "#1a4252"], [1, "#08141e"]])); K.S([[cx + s * 30, 102], [cx + s * 60, 180], [cx + s * 46, 312]], 2, "#d8b440"); }
+      for (let i = 0; i < 6; i++) { const y = 132 + i * 28; for (const s of [-1, 1]) K.S([[cx + s * (54 - i), y], [cx + s * (68 - i), y + 3]], 1.2, "#2e1e06"); if (i !== 3) H3.coin(K, cx - 62 + i * 0.5, y + 1, 5, 1); }
+      K.S([[cx + 62, 216], [cx + 72, 238]], 0.8, "#2e1e06"); H3.coin(K, cx + 72, 242, 5, 1);
+      // the sleeves hang over the coat's sides
+      for (const s of [-1, 1]) { H3.limb(K, cx + s * 96, 124, cx + s * 124, 196, 26, 22, ["#f6e07a", "#b08a28", "#2e1e06"]); H3.limb(K, cx + s * 124, 196, cx + s * 114, 244, 22, 21, ["#d8b440", "#86621a", "#2e1e06"], false); K.E(cx + s * 114, 246, 23, 9, "#1a4252"); K.S([[cx + s * 92, 246], [cx + s * 136, 246]], 2, "#d8b440");
+        K.vol(cx + s * 108, 150, 32, 40, ["#f6e07a", "#d8b440", "#5a3c0e"], s * 0.3); K.vol(cx + s * 120, 212, 26, 30, ["#f6e07a", "#b08a28", "#2e1e06"], s * 0.1); K.Q([[cx + s * 92, 176], [cx + s * 118, 186], [cx + s * 136, 176]], 1.6, "rgba(46,30,6,0.6)"); }
+      // the left hand grips a sack of coins that leaks; eels spill out of the sleeve
+      K.vol(cx - 116, 262, 17, 15, FLESH); for (let f = 0; f < 4; f++) K.vol(cx - 128 + f * 7, 272, 4.5, 6, FLESH); K.E(cx - 122, 273, 2.6, 2, "#d8b440");
+      K.vol(cx - 118, 298, 22, 20, ["#8e6a4c", "#523828", "#1e140e"]); K.S([[cx - 128, 280], [cx - 108, 280]], 3, "#36241a");
+      for (let i = 0; i < 4; i++) H3.coin(K, cx - 126 + i * 6, 318 + (i % 2) * 5 + ((ph * 30 + i * 9) % 12), 3.4);
+      for (let e = 0; e < 3; e++) { const w2 = Math.sin(ph * 6.28 + e * 2) * 8; K.Q([[cx - 104, 250], [cx - 92 + w2, 276 + e * 6], [cx - 80 - e * 10, 300 + e * 10]], 6 - e * 1.4, e % 2 ? "#28626e" : "#1a4252"); K.E(cx - 80 - e * 10, 300 + e * 10, 3.4, 2.6, "#3f8a90"); K.E(cx - 79 - e * 10, 299 + e * 10, 0.9, 0.9, "#ffcf4a"); }
+      // the right hand plants a barbed gaff in the water
+      K.S([[cx + 134, 40], [cx + 124, 336]], 5, "#3a2616"); K.S([[cx + 133, 40], [cx + 123, 336]], 1.4, "#78502a");
+      K.Q([[cx + 134, 42], [cx + 156, 30], [cx + 150, 8]], 5, "#848498"); K.Q([[cx + 134, 42], [cx + 155, 30], [cx + 149, 9]], 1.4, "#ececf2"); K.P([[cx + 150, 8], [cx + 158, 20], [cx + 152, 18]], "#a8a8ba");
+      K.vol(cx + 122, 258, 17, 15, FLESH); for (let f = 0; f < 4; f++) K.S([[cx + 112 + f * 2, 250 + f * 5], [cx + 134, 250 + f * 5]], 5, "#7e9484"); for (let f = 0; f < 3; f++) K.E(cx + 128, 254 + f * 5, 2.6, 2, "#d8b440");
+      // the navel has become a second mouth
+      K.E(cx, 236, 16, 22, "#1e0306"); for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2; K.P([[cx + Math.cos(a) * 16, 236 + Math.sin(a) * 22], [cx + Math.cos(a + 0.19) * 16, 236 + Math.sin(a + 0.19) * 22], [cx + Math.cos(a + 0.1) * 9, 236 + Math.sin(a + 0.1) * 13]], "#e8e0cc"); } K.E(cx, 238, 6, 9, "#9a1224");
+      // the chain of office and its seal
+      K.Q([[cx - 62, 104], [cx, 184], [cx + 62, 104]], 5, "#86621a"); for (let i = 0; i <= 12; i++) { const t = i / 12, x = (1 - t) * (1 - t) * (cx - 62) + 2 * t * (1 - t) * cx + t * t * (cx + 62), y = (1 - t) * (1 - t) * 104 + 2 * t * (1 - t) * 184 + t * t * 104; K.E(x, y, 3.6, 2.6, "#d8b440"); }
+      K.vol(cx, 150, 13, 13, ["#f6e07a", "#d8b440", "#5a3c0e"]); K.E(cx, 148, 3, 3, ink); K.P([[cx - 2, 150], [cx + 2, 150], [cx + 3, 157], [cx - 3, 157]], ink);
+      // barnacles and weed where the coat meets the water
+      for (let i = 0; i < 30; i++) { const x = cx - 110 + K.rng() * 220, y = 266 + K.rng() * 40; K.vol(x, y, 3.4, 3, ["#e8e0cc", "#a2957c", "#4a4238"]); K.E(x, y - 0.6, 1, 1, ink); }
+      for (let i = 0; i < 10; i++) { const x = cx - 100 + i * 22; K.Q([[x, 250 + (i % 3) * 14], [x + 6 + b, 286], [x - 3, 316]], 2.4, i % 2 ? "#465228" : "#62703a"); }
+      // the head, sunk between the shoulders: coins pressed into the eyes, a lamprey's round mouth for a face, laughing
+      const hy = 70 + b * 0.4;
+      K.vol(cx, hy, 44, 40, ["#cad8c8", "#7e9484", "#2e403a"]);
+      K.E(cx, hy + 36, 52, 14, "#5e7466"); K.E(cx, hy + 40, 46, 9, "#44584e");
+      for (let i = 0; i < 6; i++) K.Q([[cx - 34 + i * 13, hy - 36], [cx - 40 + i * 14, hy - 18], [cx - 44 + i * 16, hy + 4]], 1.8, "#465228");
+      for (const s of [-1, 1]) { K.E(cx + s * 17, hy - 14, 11, 9, "#2e403a"); H3.coin(K, cx + s * 17, hy - 14, 8.5, 0.95); K.S([[cx + s * 22, hy - 24], [cx + s * 10, hy - 22]], 2, "#2e403a"); }
+      K.E(cx, hy + 14, 25, 20, "#44584e");
+      K.E(cx, hy + 14, 21, 17, "#1e0306");
+      for (const [rr, col] of [[21, "#e8e0cc"], [14, "#c8bca2"], [8, "#a2957c"]]) for (let k = 0; k < 18; k++) { const a = k / 18 * Math.PI * 2 + rr; K.P([[cx + Math.cos(a) * rr, hy + 14 + Math.sin(a) * rr * 0.8], [cx + Math.cos(a + 0.17) * rr, hy + 14 + Math.sin(a + 0.17) * rr * 0.8], [cx + Math.cos(a + 0.09) * (rr - 5), hy + 14 + Math.sin(a + 0.09) * (rr - 5) * 0.8]], col); }
+      K.E(cx, hy + 15, 4, 3.5, "#9a1224");
+      for (let i = 0; i < 5; i++) K.drip(cx - 16 + i * 8, hy + 30, 6 + K.rng() * 10 + b, 1.6, "#3f8a90");
+      // the flood he stands in
+      K.P([[0, 300], [W, 300], [W, 348], [0, 348]], "rgba(16,40,58,0.82)");
+      for (let i = 0; i < 6; i++) { const y = 302 + i * 7, o = Math.sin(ph * 6.28 + i) * 10; K.Q([[10 + o, y], [cx, y + 4 - (i % 2) * 6], [W - 10 - o, y]], 1.4, i < 2 ? "rgba(166,226,220,0.7)" : "rgba(63,138,144,0.5)"); }
+      K.E(cx, 302, 130, 6, "rgba(166,226,220,0.35)");
+      for (let i = 0; i < 6; i++) H3.bubble(K, cx - 90 + i * 36, 296 - ((ph * 40 + i * 13) % 40), 2.4 + (i % 3));
+    } },
+    // Aurel, the Drowned King: a tired young king on a throne woven of his drowned subjects, under an arch of them
+    king: { w: 112, h: 118, ramps: ["ink", "corpse", "brine", "pale", "bone", "glowc", "gold", "night", "rot"], paint(K, ph) {
+      const b = Math.sin(ph * Math.PI * 2) * 2, W = 336, H = 354, cx = W / 2;
+      // the deep behind him, and light falling from far above
+      K.P([[cx - 128, 354], [cx - 128, 150], [cx - 100, 70], [cx, 22], [cx + 100, 70], [cx + 128, 150], [cx + 128, 354]], K.LG(0, 22, 0, 354, [[0, "#1a4252"], [0.5, "#10283a"], [1, "#08141e"]]));
+      for (let i = 0; i < 4; i++) { const x = cx - 50 + i * 34 + Math.sin(ph * 6.28 + i) * 4; K.P([[x - 6, 30], [x + 6, 30], [x + 26, 320], [x - 20, 320]], "rgba(108,184,184,0.1)"); }
+      // the arch: the drowned, laid body over body along its curve, arms reaching in
+      const arch = t => { const a = Math.PI * (1 - t); return [cx + Math.cos(a) * 142, 170 - Math.sin(a) * 150 * (t > 0 && t < 1 ? 1 : 1)]; };
+      const drownedBody = (x, y, a, s, reach) => {
+        const dx = Math.cos(a) * 26 * s, dy = Math.sin(a) * 26 * s;
+        K.S([[x - dx, y - dy], [x + dx, y + dy]], 14 * s, "#1e2a26"); K.S([[x - dx, y - dy], [x + dx, y + dy]], 11 * s, "#5e7466"); K.S([[x - dx * 0.8, y - dy * 0.8 - 2 * s], [x + dx * 0.8, y + dy * 0.8 - 2 * s]], 3.5 * s, "#a4b8a6");
+        const hx = x + dx * 1.2, hy = y + dy * 1.2; K.vol(hx, hy, 7 * s, 8 * s, ["#cad8c8", "#7e9484", "#2e403a"]); K.E(hx - 2.4 * s, hy - 1, 1.5 * s, 1.8 * s, ink); K.E(hx + 2.4 * s, hy - 1, 1.5 * s, 1.8 * s, ink); K.E(hx, hy + 3.4 * s, 1.6 * s, 2 * s, ink);
+        if (reach) { const ra = a + reach, ex = x + Math.cos(ra) * 24 * s, ey = y + Math.sin(ra) * 24 * s; K.S([[x, y], [ex, ey]], 4 * s, "#7e9484"); for (let f = 0; f < 4; f++) K.S([[ex, ey], [ex + Math.cos(ra + (f - 1.5) * 0.35) * 7 * s, ey + Math.sin(ra + (f - 1.5) * 0.35) * 7 * s]], 1.4 * s, "#a4b8a6"); }
+      };
+      for (const side of [-1, 1]) for (let i = 0; i < 6; i++) drownedBody(cx + side * (128 + (i % 2) * 8), 340 - i * 34, -Math.PI / 2 + side * 0.15 + (i % 2 ? 0.25 : -0.2), 1.15, side * (i % 2 ? 1.6 : -1.6));
+      for (let i = 0; i <= 12; i++) { const t = i / 12; const [x, y] = arch(t); const a = Math.atan2(y - arch(Math.min(1, t + 0.01))[1], x - arch(Math.min(1, t + 0.01))[0]) + Math.PI; drownedBody(x, y, a + (i % 2 ? 0.2 : -0.2), 1.1, i % 3 === 1 ? Math.PI / 2 : 0); }
+      K.vol(cx, 22, 16, 18, ["#cad8c8", "#7e9484", "#2e403a"]); K.E(cx - 5, 20, 3, 4, ink); K.E(cx + 5, 20, 3, 4, ink); K.E(cx, 30, 4, 5, ink);
+      // the dais and the throne's seat, of bone
+      K.E(cx, 336, 118, 18, "#1e2a26"); K.E(cx, 332, 112, 14, "#2e403a"); K.E(cx, 310, 90, 14, "#44584e"); K.E(cx, 306, 86, 10, "#5e7466");
+      for (let i = 0; i < 9; i++) { const x = cx - 80 + i * 20; K.vol(x, 322 + (i % 2) * 6, 7, 6, ["#e8e0cc", "#a2957c", "#4a4238"]); K.E(x - 2, 322 + (i % 2) * 6, 1.4, 1.8, ink); K.E(x + 2, 322 + (i % 2) * 6, 1.4, 1.8, ink); }
+      // armrests: great skulls, his hands on them
+      for (const s of [-1, 1]) { K.vol(cx + s * 76, 232, 20, 18, ["#e8e0cc", "#a2957c", "#4a4238"]); K.E(cx + s * 70, 230, 5, 6, ink); K.E(cx + s * 82, 230, 5, 6, ink); K.E(cx + s * 76, 240, 3, 3, ink); K.teeth(cx + s * 76 - 9, 244, 6, 3, 4, "#c8bca2"); }
+      // the robe of weed, spilling down the dais
+      K.P([[cx - 38, 150], [cx + 38, 150], [cx + 58, 230], [cx + 96, 312], [cx - 96, 312], [cx - 58, 230]], K.LG(cx - 96, 0, cx + 96, 0, [[0, "#08141e"], [0.35, "#1a4252"], [0.55, "#28626e"], [1, "#08141e"]]));
+      for (let i = 0; i < 14; i++) { const x0 = cx - 34 + i * 5, x1 = cx - 92 + i * 14; K.Q([[x0, 156], [(x0 + x1) / 2 + Math.sin(ph * 6.28 + i) * 5, 240], [x1, 312 + (i % 3) * 5]], 2, i % 3 ? "rgba(108,184,184,0.35)" : "rgba(98,112,58,0.6)"); }
+      for (const s of [-1, 1]) K.E(cx + s * 24, 256, 20, 10, "rgba(108,184,184,0.18)");
+      // his chest: a boy's thin chest, a necklace of tiny bells
+      K.P([[cx - 22, 150], [cx + 22, 150], [cx + 14, 196], [cx - 14, 196]], K.LG(cx - 22, 0, cx + 22, 0, [[0, "#a8a8ba"], [1, "#5e5e70"]]));
+      K.Q([[cx - 22, 152], [cx, 176], [cx + 22, 152]], 1.4, "#b08a28"); for (let i = 0; i < 5; i++) { const x = cx - 14 + i * 7, y = 160 + Math.sin(i / 4 * Math.PI) * 12; K.P([[x - 2, y], [x + 2, y], [x + 3, y + 5], [x - 3, y + 5]], "#d8b440"); }
+      // arms along the armrests, long pale fingers over the skulls
+      for (const s of [-1, 1]) { H3.limb(K, cx + s * 32, 160, cx + s * 52, 210, 9, 7, ["#ccccd8", "#848498", "#3a3a4a"]); H3.limb(K, cx + s * 52, 210, cx + s * 74, 216, 7, 6, ["#ccccd8", "#848498", "#3a3a4a"], false);
+        for (let f = 0; f < 4; f++) K.S([[cx + s * 74, 214 + f * 1.4], [cx + s * (80 + f), 222 + f * 3]], 1.6, "#a8a8ba"); K.vol(cx + s * 38, 158, 12, 10, ["#28626e", "#1a4252", "#08141e"]); }
+      // the head: young, tired, pale; hair drifting upward in the water; a crown of the hands of the drowned
+      const hy = 116 + b;
+      for (let i = 0; i < 12; i++) { const x0 = cx - 18 + i * 3.3, sw = Math.sin(ph * 6.28 + i * 0.7) * 6; K.Q([[x0, hy - 10], [x0 + sw - (i - 6) * 1.5, hy - 34], [x0 + sw * 1.6 - (i - 6) * 3, hy - 56 - (i % 3) * 6]], 2.2, i % 2 ? "#1a4252" : "#28626e"); }
+      for (let i = 0; i < 9; i++) { const a = -Math.PI * (0.14 + i * 0.09), x = cx + Math.cos(a) * 20, y = hy - 12 + Math.sin(a) * 14, x2 = cx + Math.cos(a) * 42, y2 = hy - 12 + Math.sin(a) * 38;
+        K.S([[x, y], [x2, y2]], 5, "#7e9484"); K.S([[x, y], [x2, y2]], 2, "#a4b8a6"); K.E(x2, y2, 3.4, 3, "#a4b8a6"); for (let f = 0; f < 4; f++) K.S([[x2, y2], [x2 + Math.cos(a + (f - 1.5) * 0.28) * 10, y2 + Math.sin(a + (f - 1.5) * 0.28) * 10]], 1.6, "#cad8c8"); }
+      K.vol(cx, hy, 21, 27, ["#ececf2", "#a8a8ba", "#5e5e70"]);
+      K.P([[cx - 21, hy - 6], [cx - 18, hy - 22], [cx, hy - 28], [cx + 18, hy - 22], [cx + 21, hy - 6], [cx + 12, hy - 14], [cx, hy - 16], [cx - 12, hy - 14]], "#1a4252");
+      for (const s of [-1, 1]) { K.E(cx + s * 8, hy + 1, 6, 4, "#3a3a4a"); K.E(cx + s * 8, hy + 1.4, 2.4, 1.8, "#9ef0f5"); K.S([[cx + s * 14, hy - 5], [cx + s * 3, hy - 4]], 1.2, "#3a3a4a"); K.Q([[cx + s * 13, hy + 6], [cx + s * 8, hy + 8], [cx + s * 3, hy + 6]], 1, "rgba(58,58,74,0.6)"); }
+      K.S([[cx - 1, hy + 4], [cx - 2, hy + 12], [cx + 1, hy + 13]], 1, "#848498"); K.S([[cx - 6, hy + 19], [cx + 6, hy + 19]], 1.6, "#5e5e70");
+      K.S([[cx - 9, hy + 4], [cx - 10, hy + 16]], 1, "rgba(62,224,232,0.7)");
+      // bubbles and pale lights rising
+      for (let i = 0; i < 12; i++) { const x = cx - 120 + i * 22, y = 340 - ((ph * 220 + i * 41) % 320); if (i % 2) H3.bubble(K, x, y, 2 + (i % 3)); else K.E(x, y, 3, 3, K.RG(x, y, 0, 4, [[0, "rgba(158,240,245,0.9)"], [1, "rgba(62,224,232,0)"]])); }
+    } },
+    // Corvin, the First Guildmaster: a gilded mummy enthroned on the Guild's first hoard, still writing
+    corvin: { w: 104, h: 118, ramps: ["ink", "gold", "bone", "cloth", "blood", "pale", "paper", "glowy", "leather"], paint(K, ph) {
+      const b = Math.sin(ph * Math.PI * 2) * 1.5, W = 312, cx = W / 2, WRAP = ["#e8e0cc", "#a2957c", "#4a4238"];
+      // a halo of coins behind him, a gilded saint's
+      for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2 + ph * 0.6, x = cx + Math.cos(a) * 62, y = 86 + Math.sin(a) * 50; H3.coin(K, x, y, 5, 0.9); }
+      K.E(cx, 86, 58, 46, K.RG(cx, 86, 10, 64, [[0, "rgba(255,207,74,0.3)"], [1, "rgba(255,207,74,0)"]]));
+      // the hoard: a hill of coins, ledgers and an open chest
+      K.P([[0, 354], [0, 316], [60, 276], [cx - 30, 250], [cx + 30, 250], [W - 60, 276], [W, 316], [W, 354]], K.LG(0, 250, 0, 354, [[0, "#b08a28"], [1, "#2e1e06"]]));
+      for (let i = 0; i < 110; i++) { const x = K.rng() * W, top = 256 + Math.abs(x - cx) * 0.36; H3.coin(K, x, top + K.rng() * (354 - top), 4 + K.rng() * 3); }
+      for (const [x, y, a] of [[30, 318, -0.2], [82, 296, 0.1], [W - 96, 300, -0.12], [W - 40, 322, 0.2]]) { K.P([[x - 20, y], [x + 20, y - 4 * a * 10], [x + 22, y + 12], [x - 18, y + 16]], "#523828"); K.P([[x - 18, y + 2], [x + 18, y - 2], [x + 19, y + 9], [x - 16, y + 12]], "#ddd4b0"); K.S([[x - 20, y], [x - 18, y + 16]], 3, "#6a0c18"); }
+      K.P([[W - 70, 266], [W - 22, 262], [W - 18, 290], [W - 68, 294]], "#36241a"); K.P([[W - 72, 266], [W - 22, 262], [W - 30, 240], [W - 66, 244]], "#523828"); K.S([[W - 72, 266], [W - 18, 262]], 2, "#d8b440");
+      for (let i = 0; i < 5; i++) H3.coin(K, W - 62 + i * 9, 262 - (i % 2) * 3, 4.4);
+      // the robe of office pooled over the hoard, heavy with chains and padlocks
+      K.P([[cx - 44, 118], [cx + 44, 118], [cx + 74, 200], [cx + 98, 290], [cx + 60, 300], [cx, 292], [cx - 60, 300], [cx - 98, 290], [cx - 74, 200]], K.LG(cx - 98, 0, cx + 98, 0, [[0, "#141222"], [0.4, "#463e6e"], [0.6, "#332c52"], [1, "#07060c"]]));
+      H3.folds(K, [cx - 40, cx + 40, 130], [cx - 94, cx + 94, 292], 8, "rgba(7,6,12,0.45)");
+      for (const s of [-1, 1]) K.S([[cx + s * 44, 118], [cx + s * 74, 200], [cx + s * 98, 290]], 3, "#d8b440");
+      for (let i = 0; i < 14; i++) { const x = cx - 90 + i * 13.5, y = 290 + (i % 2) * 5; K.P([[x - 4, y], [x + 4, y], [x + 2, y + 6], [x - 2, y + 6]], "#b08a28"); }
+      // the ermine mantle, gone yellow, and the chains
+      K.P([[cx - 58, 116], [cx + 58, 116], [cx + 50, 150], [cx, 162], [cx - 50, 150]], K.LG(0, 116, 0, 162, [[0, "#e8e0cc"], [1, "#a2957c"]]));
+      for (let i = 0; i < 12; i++) K.P([[cx - 48 + i * 8.5, 124 + (i % 2) * 12], [cx - 46 + i * 8.5, 130 + (i % 2) * 12], [cx - 50 + i * 8.5, 130 + (i % 2) * 12]], ink);
+      for (const [y0, sag] of [[150, 40], [160, 64], [170, 88]]) { for (let i = 0; i <= 14; i++) { const t = i / 14, x = cx - 60 + 120 * t, y = y0 + Math.sin(t * Math.PI) * sag * 0.6; K.E(x, y, 3.2, 2.2, i % 2 ? "#86621a" : "#d8b440"); } }
+      for (const [x, y] of [[cx - 30, 196], [cx + 34, 184], [cx + 2, 212]]) { K.S([[x - 5, y - 4], [x - 5, y - 10], [x + 5, y - 10], [x + 5, y - 4]], 2, "#86621a"); K.P([[x - 7, y - 4], [x + 7, y - 4], [x + 7, y + 8], [x - 7, y + 8]], K.LG(x - 7, 0, x + 7, 0, [[0, "#f6e07a"], [1, "#5a3c0e"]])); K.E(x, y + 2, 1.6, 2.2, ink); }
+      // the ledger open on his lap, and the quill still writing in it
+      K.P([[cx - 56, 232], [cx, 238], [cx + 56, 232], [cx + 60, 262], [cx, 268], [cx - 60, 262]], "#523828");
+      K.P([[cx - 52, 230], [cx - 2, 236], [cx - 2, 262], [cx - 54, 258]], "#f4eed6"); K.P([[cx + 2, 236], [cx + 52, 230], [cx + 54, 258], [cx + 2, 262]], "#ddd4b0");
+      for (let l = 0; l < 7; l++) { K.S([[cx - 48, 236 + l * 3.4], [cx - 6, 240 + l * 3.2]], 0.7, "#6a6250"); K.S([[cx + 6, 240 + l * 3.2], [cx + 48 - (l === 6 ? 20 : 0), 236 + l * 3.4]], 0.7, l === 6 ? "#9a1224" : "#6a6250"); }
+      // gaunt arms bound in yellowed wrappings; scales in the left hand
+      const wrap = (x0, y0, x1, y1, w0, w1) => { H3.limb(K, x0, y0, x1, y1, w0, w1, WRAP); const n = 7; for (let i = 1; i < n; i++) { const t = i / n, x = x0 + (x1 - x0) * t, y = y0 + (y1 - y0) * t, a = Math.atan2(y1 - y0, x1 - x0) + Math.PI / 2 + 0.4, w = w0 + (w1 - w0) * t; K.S([[x - Math.cos(a) * w, y - Math.sin(a) * w], [x + Math.cos(a) * w, y + Math.sin(a) * w]], 0.9, "rgba(74,66,56,0.7)"); } };
+      K.vol(cx - 50, 130, 16, 14, ["#463e6e", "#221e38", "#07060c"]); wrap(cx - 54, 136, cx - 86, 186, 9, 7); wrap(cx - 86, 186, cx - 96, 146, 7, 6);
+      for (let f = 0; f < 4; f++) K.S([[cx - 96, 146], [cx - 100 + f * 3, 134 - (f % 2) * 3]], 1.8, "#a2957c");
+      K.S([[cx - 98, 136], [cx - 98, 104]], 2, "#b08a28"); K.S([[cx - 128, 108], [cx - 68, 100]], 2.4, "#d8b440");
+      for (const [x, y, d] of [[cx - 128, 108, 14], [cx - 68, 100, 4]]) { K.S([[x, y], [x - 9, y + d + 10], [x + 9, y + d + 10], [x, y]], 1, "#86621a"); K.E(x, y + d + 10, 11, 3.4, "#b08a28"); }
+      H3.coin(K, cx - 131, 130, 4); H3.coin(K, cx - 125, 129, 4);
+      K.vol(cx + 50, 130, 16, 14, ["#463e6e", "#221e38", "#07060c"]); wrap(cx + 54, 136, cx + 70, 190, 9, 7); wrap(cx + 70, 190, cx + 34, 234, 7, 6);
+      for (let f = 0; f < 4; f++) K.S([[cx + 34, 234], [cx + 26 - f * 2, 238 + f]], 1.8, "#a2957c");
+      K.S([[cx + 30, 240], [cx + 58, 196]], 1.6, "#e8e0cc"); for (let i = 0; i < 8; i++) K.S([[cx + 34 + i * 3.2, 234 - i * 5], [cx + 40 + i * 3.2, 232 - i * 5]], 1.4, "#f4eed6"); K.drip(cx + 29, 241, 6, 1.2, "#9a1224");
+      // the head: a gold mask, cracked, over a dried face; one eye still lit; the tall mitre of office
+      const hy = 90 + b;
+      K.vol(cx, hy, 25, 30, ["#c8bca2", "#766a58", "#2e1e06"]);
+      K.P([[cx - 22, hy - 20], [cx + 22, hy - 20], [cx + 21, hy + 10], [cx + 8, hy + 26], [cx - 8, hy + 26], [cx - 21, hy + 10]], K.LG(cx - 22, 0, cx + 22, 0, [[0, "#86621a"], [0.35, "#f6e07a"], [0.7, "#b08a28"], [1, "#5a3c0e"]]));
+      K.S([[cx - 20, hy - 6], [cx - 6, hy - 9]], 1, "#5a3c0e"); K.S([[cx + 20, hy - 6], [cx + 6, hy - 9]], 1, "#5a3c0e"); K.S([[cx, hy - 4], [cx, hy + 10]], 1, "#86621a");
+      K.P([[cx + 4, hy - 2], [cx + 22, hy - 10], [cx + 21, hy + 10], [cx + 10, hy + 22], [cx + 8, hy + 6]], "#766a58"); K.crack(cx + 4, hy - 18, 40, 1.6, "#2e1e06", 1.6);
+      for (let i = 0; i < 4; i++) K.S([[cx + 10 + i * 3, hy + 4], [cx + 11 + i * 3, hy + 16]], 1.8, "#e8e0cc");
+      K.E(cx - 9, hy - 2, 5, 3, ink); K.E(cx + 13, hy - 1, 5, 4, "#2e1e06"); K.E(cx + 13, hy - 1, 2.2, 2.2, "#ffcf4a"); K.E(cx + 13, hy - 1, 6, 6, "rgba(255,207,74,0.3)");
+      K.R(cx - 10, hy + 13, 12, 2.4, ink);
+      K.P([[cx - 25, hy - 18], [cx + 25, hy - 18], [cx + 18, hy - 70], [cx, hy - 90], [cx - 18, hy - 70]], K.LG(cx - 25, 0, cx + 25, 0, [[0, "#86621a"], [0.4, "#f6e07a"], [1, "#5a3c0e"]]));
+      K.S([[cx, hy - 86], [cx, hy - 20]], 2.2, "#6a0c18"); K.S([[cx - 22, hy - 44], [cx + 22, hy - 44]], 2.2, "#6a0c18");
+      K.vol(cx, hy - 44, 8, 8, ["#f6e07a", "#d8b440", "#5a3c0e"]); K.E(cx, hy - 44, 3.4, 2, ink); K.E(cx, hy - 44, 1.2, 1.2, "#ffcf4a");
+      K.R(cx - 26, hy - 20, 52, 5, "#6a0c18"); for (let i = 0; i < 5; i++) K.E(cx - 20 + i * 10, hy - 17.5, 2, 2, "#d8b440");
+      for (const s of [-1, 1]) { K.P([[cx + s * 16, hy - 16], [cx + s * 24, hy - 16], [cx + s * 26, hy + 30], [cx + s * 16, hy + 34]], "#6a0c18"); K.P([[cx + s * 16, hy + 34], [cx + s * 26, hy + 30], [cx + s * 21, hy + 40]], "#d8b440"); }
+      // moths
+      for (let i = 0; i < 6; i++) { const a = ph * 6.28 * (1 + i % 2) + i * 1.1, x = cx + Math.cos(a) * (70 + i * 6), y = 60 + i * 14 + Math.sin(a * 2) * 10; K.E(x - 2, y, 2.4, 1.4, "#c8bca2", -0.5); K.E(x + 2, y, 2.4, 1.4, "#a2957c", 0.5); }
+    } },
+    // Treasurer Quill (and the Tollkeeper): a stooped clerk, all neck and fingers, quills growing from his back
+    quill: { w: 64, h: 116, ramps: ["ink", "cloth", "pale", "paper", "gold", "blood", "bone", "night", "rust"], paint(K, ph, v) {
+      const b = Math.sin(ph * Math.PI * 2) * 2, W = 192, cx = W / 2 + 4, toll = v === "tollkeeper";
+      const COAT = toll ? ["#d8b440", "#86621a", "#2e1e06"] : ["#463e6e", "#221e38", "#07060c"], SKIN = toll ? ["#d8b440", "#86621a", "#2e1e06"] : ["#ececf2", "#a8a8ba", "#3a3a4a"];
+      // the fan of quills, each a real feather
+      for (let i = 0; i < 15; i++) { const a = -Math.PI * (0.18 + i * 0.047), x0 = cx - 4 + (i - 7) * 2.4, y0 = 132, L = 54 + ((i * 37) % 11) * 4 + (i === 7 ? 18 : 0), x1 = x0 + Math.cos(a) * L, y1 = y0 + Math.sin(a) * L;
+        const mx = x0 + (x1 - x0) * 0.62, my = y0 + (y1 - y0) * 0.62; K.E(mx, my, L * 0.33, 4.4, toll ? "#bab08e" : "#ddd4b0", a); K.E(mx, my, L * 0.33, 1.6, toll ? "#948a70" : "#f4eed6", a);
+        K.S([[x0, y0], [x1, y1]], 1.4, "#6a6250"); K.S([[x1 - Math.cos(a) * 6, y1 - Math.sin(a) * 6], [x1, y1]], 2, i % 3 ? "#07060c" : "#9a1224"); }
+      // stilt legs in stockings, buckled shoes
+      for (const s of [-1, 1]) { H3.limb(K, cx + s * 10, 262, cx + s * 14, 330, 5, 3.4, ["#5e5e70", "#3a3a4a", "#07060c"]); K.P([[cx + s * 14 - 7, 330], [cx + s * 14 + 9 * s, 330], [cx + s * 14 + 11 * s, 340], [cx + s * 14 - 7, 340]], "#07060c"); K.R(cx + s * 14 - 3, 331, 6, 3, "#d8b440"); }
+      // the long coat, tails split behind, stooped forward
+      K.P([[cx - 22, 126], [cx + 26, 120], [cx + 36, 200], [cx + 30, 272], [cx + 10, 300], [cx + 2, 272], [cx - 8, 304], [cx - 32, 280], [cx - 34, 200]], K.LG(cx - 34, 0, cx + 36, 0, [[0, COAT[2]], [0.4, COAT[0]], [0.7, COAT[1]], [1, COAT[2]]]));
+      H3.folds(K, [cx - 18, cx + 22, 134], [cx - 30, cx + 30, 280], 5, "rgba(7,6,12,0.5)");
+      K.P([[cx - 6, 128], [cx + 12, 126], [cx + 6, 210], [cx - 2, 212]], toll ? "#5a3c0e" : "#07060c"); for (let i = 0; i < 6; i++) K.E(cx + 4 - i * 0.5, 138 + i * 12, 2, 2, "#d8b440");
+      // the ledger chained across his chest
+      K.P([[cx - 28, 162], [cx + 22, 156], [cx + 26, 220], [cx - 24, 226]], "#523828"); K.P([[cx - 24, 164], [cx + 18, 159], [cx + 22, 216], [cx - 20, 221]], "#ddd4b0");
+      for (let l = 0; l < 10; l++) K.S([[cx - 18, 170 + l * 5], [cx + 16, 165 + l * 5]], 0.8, l === 6 ? "#9a1224" : "#6a6250");
+      for (const [x0, y0, x1, y1] of [[cx - 30, 150, cx + 30, 236], [cx + 30, 150, cx - 30, 236]]) for (let i = 0; i <= 10; i++) { const t = i / 10; K.E(x0 + (x1 - x0) * t, y0 + (y1 - y0) * t, 2.8, 2, i % 2 ? "#76381a" : "#9a5226"); }
+      if (toll) for (let i = 0; i < 16; i++) H3.coin(K, cx - 30 + K.rng() * 60, 236 + K.rng() * 50, 3.6);
+      else { K.P([[cx - 30, 240], [cx - 18, 240], [cx - 17, 256], [cx - 31, 256]], "#1d1830"); K.E(cx - 24, 240, 6, 2, "#07060c"); K.drip(cx - 26, 256, 8 + b, 1.2, "#07060c"); }
+      // arms that reach the knees; the right holds a quill as long as a sword, dripping red
+      H3.limb(K, cx - 26, 134, cx - 40, 196, 6, 5, COAT); H3.limb(K, cx - 40, 196, cx - 46, 250, 5, 4, COAT, false); K.E(cx - 46, 252, 5, 3, "#07060c");
+      for (let f = 0; f < 4; f++) K.Q([[cx - 46, 254], [cx - 50 + f * 3, 270], [cx - 54 + f * 4, 290 + (f % 2) * 4]], 1.6, SKIN[1]);
+      H3.limb(K, cx + 26, 128, cx + 44, 180, 6, 5, COAT); H3.limb(K, cx + 44, 180, cx + 50, 226, 5, 4, COAT, false);
+      for (let f = 0; f < 4; f++) K.S([[cx + 46, 228 + f * 3], [cx + 58, 226 + f * 4]], 1.6, SKIN[1]);
+      K.S([[cx + 40, 290], [cx + 70, 110]], 2, "#6a6250"); K.E(cx + 62, 150, 30, 6, "#f4eed6", -1.4); K.E(cx + 62, 150, 30, 2, "#ddd4b0", -1.4); K.S([[cx + 40, 290], [cx + 44, 270]], 2.4, "#07060c"); K.drip(cx + 40, 292, 10 + b * 2, 1.6, "#9a1224");
+      // the head craned forward on a long neck: spectacles, an ink-black mouth; the Tollkeeper has a coin slot
+      const hx = cx + 6, hy = 96 + b;
+      K.Q([[cx - 2, 128], [cx + 4, 116], [hx, hy + 18]], 8, SKIN[1]);
+      K.vol(hx, hy, 17, 23, SKIN);
+      K.E(hx - 10, hy + 6, 4, 8, "rgba(58,58,74,0.45)"); K.E(hx + 10, hy + 6, 4, 8, "rgba(58,58,74,0.45)");
+      for (const x of [-7, 7]) { K.E(hx + x, hy - 2, 6.4, 6, "rgba(158,240,245,0.3)"); K.S([[hx + x - 6.4, hy - 2], [hx + x - 4.4, hy - 6.4], [hx + x, hy - 8], [hx + x + 4.4, hy - 6.4], [hx + x + 6.4, hy - 2], [hx + x + 4.4, hy + 2.4], [hx + x, hy + 4], [hx + x - 4.4, hy + 2.4], [hx + x - 6.4, hy - 2]], 1.2, "#b08a28"); K.E(hx + x + 1, hy - 1, 1.6, 1.6, "#9a1224"); }
+      K.S([[hx - 3, hy - 3], [hx + 7, hy + 3]], 0.8, "#ececf2"); K.S([[hx - 1, hy - 2], [hx + 1, hy - 2]], 1.4, "#b08a28");
+      if (toll) { K.R(hx - 10, hy + 13, 20, 3.4, "#07060c"); H3.coin(K, hx, hy + 11, 4, 1); }
+      else { K.E(hx, hy + 14, 7, 3.4, "#07060c"); K.drip(hx - 2, hy + 16, 16 + b * 2, 2, "#07060c"); K.drip(hx + 4, hy + 16, 9, 1.4, "#07060c"); }
+      K.P([[hx - 19, hy - 16], [hx + 19, hy - 16], [hx + 14, hy - 40], [hx - 14, hy - 40]], toll ? "#5a3c0e" : "#141222"); K.R(hx - 22, hy - 18, 44, 4, toll ? "#86621a" : "#221e38");
+      if (toll) { K.R(hx - 12, hy - 34, 24, 10, "#ddd4b0"); K.S([[hx - 8, hy - 29], [hx + 8, hy - 29]], 1.4, "#9a1224"); }
+      // loose pages drifting
+      for (let i = 0; i < 4; i++) { const x = 20 + i * 44, y = (40 + i * 70 + ph * 80) % 330; K.P([[x, y], [x + 9, y - 2], [x + 10, y + 8], [x + 1, y + 10]], "#ddd4b0"); }
+    } },
+    // Sister Vela, the Storm Tyrant: a nun become the storm, veil streaming, lightning pouring from her hands
+    vela: { w: 96, h: 118, ramps: ["ink", "storm", "cloth", "pale", "glowc", "blood", "night", "salt"], paint(K, ph) {
+      const b = Math.sin(ph * Math.PI * 2) * 4, W = 288, H = 354, cx = W / 2, flick = Math.floor(ph * 6) % 3;
+      // a halo of broken light behind her
+      for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2, r0 = 44, r1 = 58 + ((i + flick) % 3) * 8; K.S([[cx + Math.cos(a) * r0, 86 + b + Math.sin(a) * r0], [cx + Math.cos(a + 0.1) * r1, 86 + b + Math.sin(a + 0.1) * r1]], 2, "rgba(200,216,255,0.55)"); }
+      K.E(cx, 86 + b, 48, 48, K.RG(cx, 86 + b, 10, 60, [[0, "rgba(200,216,255,0.35)"], [1, "rgba(122,154,216,0)"]]));
+      // the veil, torn into streamers by the wind
+      for (let i = 0; i < 5; i++) { const y0 = 74 + i * 10 + b, sw = Math.sin(ph * 6.28 + i) * 10; K.Q([[cx + 14, y0], [cx + 70 + sw, y0 + 10 + i * 6], [cx + 128 + sw * 1.4, y0 + 30 + i * 16]], 10 - i, i % 2 ? "#221e38" : "#141222"); K.Q([[cx + 14, y0 - 2], [cx + 70 + sw, y0 + 8 + i * 6], [cx + 124 + sw * 1.4, y0 + 28 + i * 16]], 1.4, "rgba(122,154,216,0.6)"); }
+      // lightning hair escaping the coif
+      for (let i = 0; i < 9; i++) { const a = -Math.PI * (0.15 + i * 0.09); let x = cx, y = 66 + b; const pts = [[x, y]]; for (let k = 0; k < 5; k++) { x += Math.cos(a + (K.rng() - 0.5) * 1) * 13; y += Math.sin(a + (K.rng() - 0.5) * 1) * 13; pts.push([x, y]); } K.S(pts, 3.4, "#4a64a0"); K.S(pts, 1.2, (i + flick) % 3 === 0 ? "#ffffff" : "#c8d8ff"); }
+      // the storm she rides instead of feet
+      for (let i = 0; i < 9; i++) { const x = cx - 100 + i * 25, y = 318 + Math.sin(i * 1.7 + ph * 6.28) * 6; K.vol(x, y, 32, 20, ["#4a64a0", "#2a3a66", "#141222"]); }
+      for (let i = 0; i < 3; i++) { let x = cx - 70 + i * 60, y = 300; const pts = [[x, y]]; for (let k = 0; k < 4; k++) { x += (K.rng() - 0.5) * 30; y += 12; pts.push([x, y]); } if ((i + flick) % 2) { K.S(pts, 2.4, "#7a9ad8"); K.S(pts, 1, "#ffffff"); } }
+      // the habit, blown sideways, hem shredded into the cloud
+      K.P([[cx - 26, 118 + b], [cx + 26, 118 + b], [cx + 50, 180 + b], [cx + 84, 250 + b], [cx + 112, 300], [cx + 80, 296], [cx + 70, 318], [cx + 44, 300], [cx + 20, 324], [cx, 300], [cx - 22, 320], [cx - 40, 298], [cx - 62, 312], [cx - 56, 250 + b], [cx - 44, 180 + b]],
+        K.LG(cx - 60, 0, cx + 110, 0, [[0, "#07060c"], [0.3, "#2a3a66"], [0.55, "#1a2440"], [1, "#07060c"]]));
+      for (let i = 0; i < 7; i++) K.Q([[cx - 18 + i * 6, 132 + b], [cx - 20 + i * 14 + b, 220], [cx - 44 + i * 22, 304]], 1.6, "rgba(122,154,216,0.4)");
+      K.P([[cx - 30, 118 + b], [cx + 30, 118 + b], [cx + 22, 156 + b], [cx, 164 + b], [cx - 22, 156 + b]], "#ececf2"); K.S([[cx - 22, 156 + b], [cx, 164 + b], [cx + 22, 156 + b]], 1.4, "#a8a8ba");
+      K.S([[cx, 164 + b], [cx, 200 + b]], 2, "#c8d8ff"); K.S([[cx - 8, 176 + b], [cx + 8, 176 + b]], 2, "#c8d8ff");
+      // arms flung up, sleeves falling back, lightning pouring out of the palms
+      for (const s of [-1, 1]) {
+        K.P([[cx + s * 24, 124 + b], [cx + s * 44, 118 + b], [cx + s * 72, 70 + b], [cx + s * 56, 64 + b]], s < 0 ? "#221e38" : "#141222");
+        H3.limb(K, cx + s * 62, 68 + b, cx + s * 84, 30 + b, 5, 4, ["#ececf2", "#a8a8ba", "#3a3a4a"]);
+        for (let f = 0; f < 4; f++) K.S([[cx + s * 84, 30 + b], [cx + s * (86 + f * 3), 16 + b + f * 2]], 1.6, "#ccccd8");
+        K.E(cx + s * 86, 22 + b, 14, 14, K.RG(cx + s * 86, 22 + b, 1, 16, [[0, "rgba(255,255,255,0.95)"], [1, "rgba(122,154,216,0)"]]));
+        for (let k = 0; k < 2; k++) { let x = cx + s * 86, y = 22 + b; const pts = [[x, y]]; for (let j = 0; j < 5; j++) { x += s * (6 + K.rng() * 10); y -= 4 + K.rng() * 6 - k * 8; pts.push([x, y]); } K.S(pts, 3, "#7a9ad8"); K.S(pts, 1.2, "#ffffff"); }
+      }
+      // the face in the coif: white eyes, the mouth's stitches torn open in a scream
+      const hy = 84 + b;
+      K.P([[cx - 24, hy + 26], [cx - 22, hy - 18], [cx - 10, hy - 28], [cx + 10, hy - 28], [cx + 22, hy - 18], [cx + 24, hy + 26]], "#141222");
+      K.E(cx, hy, 19, 25, "#ececf2");
+      K.vol(cx, hy + 1, 15, 21, ["#ececf2", "#a8a8ba", "#5e5e70"]);
+      for (const s of [-1, 1]) { K.E(cx + s * 6.4, hy - 4, 4.4, 3.4, "#3a3a4a"); K.E(cx + s * 6.4, hy - 4, 3.2, 2.4, "#ffffff"); K.E(cx + s * 6.4, hy - 4, 6, 5, "rgba(200,216,255,0.4)"); K.drip(cx + s * 6.4, hy - 1, 16, 1.2, "#c8d8ff"); K.S([[cx + s * 12, hy - 10], [cx + s * 3, hy - 7]], 1.4, "#3a3a4a"); }
+      K.E(cx, hy + 11, 6, 8.5, "#1e0306"); K.E(cx, hy + 14, 3, 3.4, "#6a0c18");
+      for (const s of [-1, 1]) for (let k = 0; k < 3; k++) { K.S([[cx + s * 5, hy + 6 + k * 4], [cx + s * 11, hy + 4 + k * 4]], 1, "#40070e"); K.S([[cx + s * 11, hy + 4 + k * 4], [cx + s * 13, hy + 6 + k * 4]], 0.8, "#848498"); }
+      // rain, slanting with the wind
+      for (let i = 0; i < 30; i++) { const x = K.rng() * W, y = (K.rng() * H + ph * H) % H; K.S([[x, y], [x - 5, y + 11]], 1, "rgba(200,216,255,0.5)"); }
+    } },
+  });
+  // faceted salt: each face lit by how much it turns toward the light (up and to the left)
+  H3.SALT = ["#565a74", "#7e829c", "#a6aac2", "#cacee0", "#e8ecf8", "#ffffff"];
+  H3.facet = (K, pts, ramp = H3.SALT, bias = 0) => {
+    const cx0 = pts.reduce((s, p) => s + p[0], 0) / pts.length, cy0 = pts.reduce((s, p) => s + p[1], 0) / pts.length;
+    for (let i = 0; i < pts.length; i++) {
+      const a = pts[i], b2 = pts[(i + 1) % pts.length], mx = (a[0] + b2[0]) / 2 - cx0, my = (a[1] + b2[1]) / 2 - cy0, L = Math.hypot(mx, my) || 1;
+      const lit = (-mx / L * 0.7 - my / L * 0.7) * 0.5 + 0.5 + bias, k = Math.max(0, Math.min(ramp.length - 1, Math.round(lit * (ramp.length - 1))));
+      K.P([[cx0, cy0], a, b2], ramp[k]);
+    }
+    K.P(pts.map(([x, y]) => [cx0 + (x - cx0) * 0.45, cy0 + (y - cy0) * 0.45]), ramp[Math.min(ramp.length - 1, Math.round((0.62 + bias) * (ramp.length - 1)))]);
+  };
+  H3.rock = (K, x, y, rx, ry, n = 7, rot = 0) => { const pts = []; for (let i = 0; i < n; i++) { const a = rot + i / n * Math.PI * 2, r = 0.8 + K.rng() * 0.3; pts.push([x + Math.cos(a) * rx * r, y + Math.sin(a) * ry * r]); } return pts; };
+  Object.assign(BOSS_ART, {
+    // the Salt Wyrm: a serpent of salt plates rearing out of its own coil, a crystal skull for a head
+    wyrm: { w: 112, h: 96, ramps: ["ink", "salt", "pale", "bone", "blood", "glowc", "night"], paint(K, ph) {
+      const b = Math.sin(ph * Math.PI * 2), W = 336, cx = W / 2;
+      // the spine: a coil on the ground, then a rearing S up to the head
+      const pts = []; for (let i = 0; i <= 34; i++) { const t = i / 34; let x, y;
+        if (t < 0.45) { const a = t / 0.45 * Math.PI * 1.6 + 0.4; x = cx + 70 + Math.cos(a) * 70; y = 236 + Math.sin(a) * 30; }
+        else { const u = (t - 0.45) / 0.55; x = cx + 70 + Math.cos(0.4 + Math.PI * 1.6) * 70 - u * 170 + Math.sin(u * Math.PI * 2 + ph * 6.28) * 14; y = 236 + Math.sin(0.4 + Math.PI * 1.6) * 30 - u * 150 + Math.sin(u * Math.PI) * 30; }
+        pts.push([x, y]); }
+      K.E(cx + 50, 262, 130, 16, "rgba(7,6,12,0.35)");
+      for (let i = 0; i < pts.length - 1; i++) {
+        const [x, y] = pts[i], [x2, y2] = pts[i + 1], a = Math.atan2(y2 - y, x2 - x), r = 24 - i * 0.28, nx = -Math.sin(a), ny = Math.cos(a), top = ny > 0 ? -1 : 1;
+        // a plate: a six-sided slab across the body
+        const P6 = [[x + nx * r, y + ny * r], [x + Math.cos(a) * r * 0.5 + nx * r * 0.8, y + Math.sin(a) * r * 0.5 + ny * r * 0.8], [x + Math.cos(a) * r * 0.6, y + Math.sin(a) * r * 0.6],
+          [x + Math.cos(a) * r * 0.5 - nx * r * 0.8, y + Math.sin(a) * r * 0.5 - ny * r * 0.8], [x - nx * r, y - ny * r], [x - Math.cos(a) * r * 0.4, y - Math.sin(a) * r * 0.4]];
+        H3.facet(K, P6, H3.SALT, i % 2 ? -0.05 : 0.05);
+        // belly scutes, darker, on the underside
+        K.S([[x - nx * top * r * 0.9, y - ny * top * r * 0.9], [x2 - nx * top * r * 0.9, y2 - ny * top * r * 0.9]], 3, "#565a74");
+        // spines along the back
+        if (i % 2 === 0) H3.shard(K, x + nx * top * r * 0.8, y + ny * top * r * 0.8, 14 + (i > 12 ? 10 : 4) + (i % 4) * 3, Math.atan2(ny * top, nx * top) - 0.4 * Math.sign(Math.cos(a) || 1), i % 6 === 0);
+        if (i % 5 === 2) K.crack(x, y, r * 0.8, a + 1, "#565a74", 1);
+      }
+      // the head: an angular skull of salt, jaw hanging open, the throat lit from inside
+      const [hx, hy0] = pts[pts.length - 1], hy = hy0 - 6 + b * 3;
+      H3.facet(K, [[hx - 50, hy - 4], [hx - 30, hy - 26], [hx + 8, hy - 34], [hx + 36, hy - 22], [hx + 40, hy + 2], [hx + 10, hy + 8], [hx - 40, hy + 8]], H3.SALT, 0.08);
+      H3.facet(K, [[hx - 56, hy + 14 + b * 4], [hx - 6, hy + 10], [hx + 34, hy + 10], [hx + 24, hy + 34 + b * 6], [hx - 30, hy + 36 + b * 6]], H3.SALT, -0.1);
+      K.P([[hx - 46, hy + 7], [hx + 30, hy + 8], [hx + 22, hy + 22 + b * 6], [hx - 40, hy + 22 + b * 6]], "#1e0306");
+      K.E(hx - 6, hy + 16 + b * 3, 26, 8, K.RG(hx - 6, hy + 16, 1, 28, [[0, "rgba(158,240,245,0.9)"], [0.5, "rgba(62,224,232,0.35)"], [1, "rgba(62,224,232,0)"]]));
+      for (let i = 0; i < 10; i++) { const x = hx - 44 + i * 7.4; K.P([[x, hy + 7], [x + 5, hy + 7], [x + 2.5, hy + 16 + (i % 3) * 3]], "#f0f4ff"); K.P([[x + 1, hy + 22 + b * 6], [x + 5, hy + 22 + b * 6], [x + 3, hy + 14 + b * 6 - (i % 2) * 3]], "#cacee0"); }
+      for (const s of [0, 1]) { const ex = hx - 16 + s * 26, ey = hy - 12; K.P([[ex - 9, ey - 2], [ex + 7, ey - 6], [ex + 8, ey + 3], [ex - 6, ey + 4]], "#07060c"); K.E(ex, ey - 1, 4, 2.6, "#3ee0e8"); K.E(ex, ey - 1, 8, 5, "rgba(62,224,232,0.35)"); }
+      H3.shard(K, hx + 18, hy - 28, 46, -1.0, true); H3.shard(K, hx - 4, hy - 30, 38, -1.5, true); H3.shard(K, hx + 34, hy - 16, 26, -0.4, false); H3.shard(K, hx - 26, hy - 22, 22, -2.0, false);
+      K.S([[hx - 50, hy - 4], [hx - 58, hy - 2]], 2, "#a6aac2");
+      // a breath of salt dust
+      for (let i = 0; i < 16; i++) { const t = (ph + i / 16) % 1, x = hx - 60 - t * 90 + Math.sin(i) * 8, y = hy + 18 + t * 30 + Math.cos(i * 2) * 10 * t; K.E(x, y, 1.6 + t * 3, 1.6 + t * 3, `rgba(232,236,248,${(0.7 * (1 - t)).toFixed(2)})`); }
+    } },
+    // the Salt Colossus: dead choir-sisters packed into a giant of salt, their faces still singing in its body
+    colossus: { w: 112, h: 118, ramps: ["ink", "salt", "pale", "blood", "glowc", "night", "bone"], paint(K, ph) {
+      const b = Math.sin(ph * Math.PI * 2) * 2, W = 336, cx = W / 2;
+      K.E(cx, 344, 140, 10, "rgba(7,6,12,0.4)");
+      // legs: stacked boulders
+      for (const s of [-1, 1]) { H3.facet(K, H3.rock(K, cx + s * 44, 270, 34, 30, 7, 0.3)); H3.facet(K, H3.rock(K, cx + s * 50, 320, 38, 24, 8, 0.1)); for (let t = 0; t < 3; t++) H3.shard(K, cx + s * (32 + t * 14), 338, 12, Math.PI / 2 + s * 0.3, false); }
+      // the arms, hanging almost to the ground, fists of crystal
+      for (const s of [-1, 1]) {
+        H3.facet(K, H3.rock(K, cx + s * 118, 136, 40, 34, 7, 0.5));
+        H3.facet(K, H3.rock(K, cx + s * 130, 200, 30, 36, 6, 0.2));
+        H3.facet(K, H3.rock(K, cx + s * 132, 268, 36, 32, 7, 0.9));
+        for (let t = 0; t < 4; t++) H3.shard(K, cx + s * (112 + t * 12), 290, 16, Math.PI / 2 + s * (0.5 - t * 0.25), t === 1);
+      }
+      // the body: one great mass of salt, cracked, with the choir inside
+      H3.facet(K, [[cx - 96, 110], [cx - 40, 86], [cx + 40, 84], [cx + 98, 108], [cx + 104, 190], [cx + 80, 256], [cx + 20, 272], [cx - 40, 270], [cx - 88, 250], [cx - 106, 180]], H3.SALT, 0.02);
+      for (let i = 0; i < 7; i++) K.crack(cx - 80 + i * 26, 100 + (i % 3) * 20, 60, 1.3 + (i % 2) * 0.5, "#565a74", 1.2);
+      // a hollow in the chest where the tone lives
+      K.E(cx, 176, 24, 30, "#07060c"); K.E(cx, 176, 40, 44, K.RG(cx, 176, 2, 46, [[0, "rgba(158,240,245,0.8)"], [0.5, "rgba(62,224,232,0.25)"], [1, "rgba(62,224,232,0)"]]));
+      for (let i = 0; i < 5; i++) H3.shard(K, cx - 20 + i * 10, 150 - (i % 2) * 4, 12, Math.PI / 2 + (i - 2) * 0.3, true);
+      // faces: sunk into the salt, eyes closed or hollow, mouths open on the note
+      const faces = [[cx - 64, 128, 1], [cx - 30, 118, 0.9], [cx + 32, 120, 1], [cx + 66, 134, 0.95], [cx - 72, 184, 1.05], [cx + 70, 190, 1], [cx - 48, 230, 0.95], [cx - 6, 238, 0.9], [cx + 42, 232, 1]];
+      faces.forEach(([x, y, s], i) => {
+        K.E(x, y + 2, 13 * s, 16 * s, "#565a74");
+        K.E(x, y, 11 * s, 14 * s, K.RG(x - 3, y - 4, 1, 16 * s, [[0, "#ececf2"], [0.6, "#a8a8ba"], [1, "#5e5e70"]]));
+        if (i % 3 === 0) { K.S([[x - 6 * s, y - 3 * s], [x - 2 * s, y - 2 * s]], 1.2, "#3a3a4a"); K.S([[x + 2 * s, y - 2 * s], [x + 6 * s, y - 3 * s]], 1.2, "#3a3a4a"); }
+        else { K.E(x - 4 * s, y - 3 * s, 2.4 * s, 3 * s, "#07060c"); K.E(x + 4 * s, y - 3 * s, 2.4 * s, 3 * s, "#07060c"); }
+        K.E(x, y + 6 * s, 3 * s, (4 + Math.sin(ph * 6.28 + i) * 1.4) * s, "#07060c");
+        K.S([[x - 12 * s, y - 12 * s], [x - 2 * s, y - 15 * s], [x + 10 * s, y - 12 * s]], 2, "#221e38");
+        if (i % 4 === 1) K.drip(x + 3 * s, y + 10 * s, 12 + b, 1.4, "#9a1224");
+      });
+      // shoulders bristling with crystal
+      for (const [x, y, h, a] of [[cx - 96, 104, 40, -2.4], [cx - 80, 92, 30, -2.0], [cx + 96, 102, 44, -0.7], [cx + 82, 90, 28, -1.1], [cx - 110, 130, 26, -2.9], [cx + 112, 128, 26, -0.2]]) H3.shard(K, x, y, h, a, h > 35);
+      // the head: a small cluster of salt with one face in it, and a crown of shards
+      H3.facet(K, H3.rock(K, cx, 64 + b, 34, 30, 8, 0.2), H3.SALT, 0.06);
+      K.E(cx, 68 + b, 14, 17, K.RG(cx - 3, 62 + b, 1, 18, [[0, "#ececf2"], [0.6, "#a8a8ba"], [1, "#5e5e70"]]));
+      for (const s of [-1, 1]) { K.E(cx + s * 6, 64 + b, 3.4, 3, "#07060c"); K.E(cx + s * 6, 64 + b, 1.6, 1.4, "#3ee0e8"); }
+      K.E(cx, 76 + b, 4, 5.4, "#07060c");
+      for (let i = 0; i < 7; i++) H3.shard(K, cx - 24 + i * 8, 40 + b + Math.abs(i - 3) * 3, 16 + (3 - Math.abs(i - 3)) * 7, -Math.PI / 2 + (i - 3) * 0.16, i === 3);
+      // salt sifting off it
+      for (let i = 0; i < 14; i++) { const x = cx - 110 + K.rng() * 220, y = (K.rng() * 300 + ph * 90) % 330; K.R(x, y, 1.6, 1.6, "rgba(232,236,248,0.6)"); }
+    } },
+  });
+  BOSS_ART.tollkeeper = { ...BOSS_ART.quill, variant: "tollkeeper" };
   for (const [id, M] of Object.entries(MONSTERS)) if (M.boss && (BOSS_ART[M.sprite] || BOSS_ART[id])) M.tall = true;
   const ART_FRAMES = 6, artCache = new Map();
   const artMemo = new Map();
@@ -9961,114 +10694,366 @@
   let styleWas = SETTINGS.musicStyle;
   saveSettings = function () { _saveSettingsM(); if (SETTINGS.musicStyle !== styleWas) { styleWas = SETTINGS.musicStyle; if (Music.wanted) { Music.track = null; Music.play(Music.wanted); } } };
 
-  // ================================================================== ACCOUNT: SIGN-IN AND CLOUD SAVES
-  // On claude.ai the player is already signed in: the page asks who is playing (`user`) and keeps their saves in
-  // their own private corner of the page's store (`db`, data/users/<id>/), so a game started on a laptop goes on
-  // on a phone. Nobody else, the page's owner included, can read another player's saves. Offline (or where the
-  // platform offers neither), everything still saves in this browser as before, and a save file can be exported
-  // and imported by hand.
-  const ACCT = { user: null, db: null, uid: null, name: "", avatar: "", ready: false, cloudOk: false, lastPush: 0, pushing: false, dirty: false, cloudAuto: null };
-  const acctEl = document.createElement("div");
-  acctEl.id = "acct";
-  acctEl.innerHTML = `<img alt="" hidden><span class="acct-t">Checking your account…</span>`;
-  const acctCss = document.createElement("style");
-  acctCss.textContent = "#acct{display:flex;align-items:center;gap:8px;justify-content:center;margin:10px auto 0;font-size:13px;color:var(--muted);max-width:92%}#acct img{width:22px;height:22px;border-radius:50%;border:1px solid var(--edge)}#acct b{color:var(--text)}"
-    + ".slot.cloud{border-color:var(--scarf)}.savebar{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.savebar .pbtn{flex:1 1 140px}";
-  document.head.appendChild(acctCss);
-  $("newBtn").insertAdjacentElement("afterend", acctEl);
-  const setAcct = html => { acctEl.querySelector(".acct-t").innerHTML = html; };
-  const localWhen = () => { try { return +localStorage.getItem("salt-road-save-when") || 0; } catch { return 0; } };
-  const snapshotOf = () => { const t = goal(); return { when: Date.now(), label: t.ch || "Prologue", party: G.members.map(id => G.party[id].name + " " + G.party[id].level).join(", "), time: (G.stats && G.stats.time) || 0, state: JSON.stringify(G) }; };
-  const userDoc = name => ACCT.db.doc(`data/users/${ACCT.uid}/${name}`);
-  async function cloudPut(name) {
-    if (!ACCT.cloudOk) return false;
-    try { await userDoc(name).set(snapshotOf()); return true; }
-    catch (e) { if (e && e.code === "invalid_argument") { ACCT.cloudOk = false; setAcct(`Signed in as <b></b>, but this page can't store your saves (ask the owner for Contributor access). Saving in this browser.`); fillName(); } return false; }
+  // ================================================================== THE LONG ROAD: RANK, GIFTS, THE DEEP STAIR, ECHOES, THE WEEKLY TRIAL
+  // Reasons to come back, all feeding one bar that lasts across playthroughs:
+  //   Courier Rank   renown from battles, the day's tasks, achievements, the Stair and the Hall; every rank pays, and
+  //                  ranks 3/6/9/12/15 unlock perks for good.
+  //   Welcome back   a gift for each new real day you play, bigger with a visiting streak, a rare one every seventh day.
+  //   The Deep Stair an endless descent: floor after floor of harder fights, a boss's echo every fifth floor, and a boon
+  //                  to choose between floors. Leave with your spoils whenever you like; a defeat ends the run, gently.
+  //   Hall of Echoes any boss you have beaten, again, at three tiers, with relics for clearing enough of them.
+  //   Weekly Trial   one boss and one twist each week, scored by how few rounds you need.
+  const META_KEY = "salt-road-meta";
+  const meta = (() => { try { return Object.assign({ renown: 0, rank: 1, visit: "", streak: 0, bestStreak: 0, deepBest: 0, deepRuns: 0, echoes: {}, beaten: [], weekly: {}, ach: -1 }, JSON.parse(localStorage.getItem(META_KEY) || "{}")); } catch { return { renown: 0, rank: 1, visit: "", streak: 0, bestStreak: 0, deepBest: 0, deepRuns: 0, echoes: {}, beaten: [], weekly: {}, ach: -1 }; } })();
+  const saveMeta = () => { try { localStorage.setItem(META_KEY, JSON.stringify(meta)); } catch { /* storage unavailable */ } };
+  const rankNeed = r => 60 + 40 * r;
+  const PERKS = [
+    [3, "Light Pack", "+10% coin from every battle."],
+    [6, "Provisioned", "Every Deep Stair run starts with a free Keen Edge boon."],
+    [9, "Heavy Purse", "+20% coin from every battle (replaces Light Pack)."],
+    [12, "Echo Collector", "Hall of Echoes rewards pay double coin."],
+    [15, "Master Courier", "Choose from four boons on the Deep Stair instead of three."],
+  ];
+  const perk = r => meta.rank >= r;
+  const inGame = () => G && mode !== "title" && G.party && G.members;
+  function rankReward(r) {   // what a new rank pays into the current game
+    const items = r % 5 === 0 ? ["phoenix", "ether", "gsalve"] : r % 2 ? ["salve", "tonic"] : ["gsalve", "salts"];
+    const item = items.find(k => ITEMS[k]) || "salve", coins = 25 * r;
+    if (inGame()) { G.coins += coins; G.items[item] = (G.items[item] || 0) + 1; save(); updateHud(); }
+    return `+${coins} coin, ${ITEMS[item] ? ITEMS[item].name : item}`;
   }
-  async function cloudGet(name) { if (!ACCT.cloudOk) return null; try { const s = await userDoc(name).get(); return s.exists ? s.data() : null; } catch { return null; } }
-  function fillName() { const b = acctEl.querySelector("b"); if (b) b.textContent = ACCT.name || "you"; }
-  // the local save also records when it was made, so the newer of the two copies wins
-  const _saveAcct = save;
-  save = function () {
-    _saveAcct(); try { localStorage.setItem("salt-road-save-when", String(Date.now())); } catch { /* storage unavailable */ }
-    if (!ACCT.cloudOk || mode === "title") return;
-    ACCT.dirty = true; const now = Date.now(), stageUp = G.stage !== ACCT.pushedStage;
-    if (!ACCT.pushing && (stageUp || now - ACCT.lastPush > 45000)) pushAuto();
+  function renown(n, why) {
+    if (!n) return;
+    meta.renown += n; let ups = [];
+    while (meta.renown >= rankNeed(meta.rank)) { meta.renown -= rankNeed(meta.rank); meta.rank++; const p = PERKS.find(x => x[0] === meta.rank); ups.push(`Courier Rank ${meta.rank}! ${rankReward(meta.rank)}${p ? `. Perk unlocked: ${p[1]}` : ""}.`); }
+    saveMeta(); roadNote();
+    if (ups.length) { Music.sound("victory"); ups.forEach((u, i) => setTimeout(() => toast(u), 400 + i * 2600)); }
+    else if (why && n >= 10) toast(`+${n} renown · ${why}`);
+  }
+  // ---- welcome back: one gift per real day
+  const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+  const dayBefore = s => { const d = new Date(s + "T12:00:00"); d.setDate(d.getDate() - 1); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+  function welcomeGift() {
+    const t = today(); if (meta.visit === t || !inGame() || G.stage < 1) return;
+    meta.streak = meta.visit === dayBefore(t) ? meta.streak + 1 : 1; meta.bestStreak = Math.max(meta.bestStreak, meta.streak); meta.visit = t;
+    const s = meta.streak, coins = 20 + 10 * Math.min(s, 7), seventh = s % 7 === 0, item = seventh ? (ITEMS.phoenix ? "phoenix" : "gsalve") : s % 2 ? "salve" : "tonic";
+    G.coins += coins; G.items[item] = (G.items[item] || 0) + 1; save(); updateHud(); saveMeta();
+    card("Welcome back", s > 1 ? `${s} days on the road` : "A new day on the road",
+      `Postmistress Ama kept something for you: ${coins} coin and ${ITEMS[item] ? ITEMS[item].name : item}.${seventh ? " A seventh day: she adds something rare." : ""} Come back tomorrow and it grows (up to 90 coin, and a rare gift every seventh day in a row). Visiting streak: ${s} day${s > 1 ? "s" : ""}.`);
+    renown(seventh ? 50 : 10, "welcome back");
+  }
+  const _startGameR = startGame;
+  startGame = function () { _startGameR(); setTimeout(welcomeGift, 900); };
+  // ---- renown from battles, tasks and achievements; perks on coin
+  const _victoryR = victory;
+  victory = function () {
+    const before = G.coins, o = battle && battle.opts;
+    _victoryR();
+    const got = G.coins - before, pct = perk(9) ? 0.2 : perk(3) ? 0.1 : 0;
+    if (got > 0 && pct) G.coins += Math.round(got * pct);
+    if (o && !o.deep && !o.echo && !o.weekly) renown(o.boss ? 25 : 2, o.boss ? "boss defeated" : "");
+    if (o && o.boss && !o.echo && !o.weekly && !meta.beaten.includes(o.boss)) { meta.beaten.push(o.boss); saveMeta(); setTimeout(() => toast(`${MONSTERS[o.boss].name.split(",")[0]} now waits in the Hall of Echoes (Pause > The Long Road).`), 5200); }
   };
-  async function pushAuto() {
-    if (ACCT.pushing || !ACCT.cloudOk) return;
-    ACCT.pushing = true; ACCT.dirty = false; ACCT.lastPush = Date.now(); ACCT.pushedStage = G.stage;
-    const ok = await cloudPut("auto"); ACCT.pushing = false;
-    if (ok && acctEl.isConnected) setAcct(`Signed in as <b></b> · saved to your account ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`), fillName();
+  let renownTick = 0;
+  const _updateR = update;
+  update = function (dt) {
+    _updateR(dt);
+    if (!inGame() || (renownTick -= dt) > 0) return; renownTick = 1.5;
+    const d = G.flags.daily;
+    if (d && d.chores) { const n = d.chores.filter(c => c.done).length, key = `${G.day}:${n}`, prev = G.flags.renownDay || "";
+      if (key !== prev) { const [pd, pn] = prev.split(":").map(Number); if (pd === G.day && n > pn) renown((n - pn) * 6 + (n === d.chores.length ? 15 : 0), n === d.chores.length ? "a good day's work" : ""); G.flags.renownDay = key; } }
+    const a = achGot().length; if (meta.ach < 0) { meta.ach = a; saveMeta(); } else if (a > meta.ach) { const k = a - meta.ach; meta.ach = a; renown(30 * k, "achievement"); }
+  };
+  // ---- bosses known to the Hall: beaten in this game or any earlier one
+  const bossDead = { butcher: "butcherDead", mother: "motherDead", choirmaster: "choirDead", voss: "vossDead", hollis: "hollisDead", wyrm: "wyrmDead", quill: "quillDead", gulp: "gulpDead", maw: "mawDead", colossus: "colossusDead", vela: "velaDead", king: "kingDead", corvin: "corvinDead", ledgertree: "ledgerTreeDead", tollkeeper: "tollDead", oldmouth: "oldmouthDead" };
+  const HALL = Object.keys(MONSTERS).filter(id => MONSTERS[id].boss && id !== "houndg" && id !== "king" && (BOSS_ART[id] || BOSS_ART[MONSTERS[id].sprite]))
+    .sort((a, b) => MONSTERS[a].xp - MONSTERS[b].xp);
+  const bossKnown = id => meta.beaten.includes(id) || (G && G.flags && ((G.flags.kills || {})[id] > 0 || G.flags[bossDead[id]]));
+  const partyLevel = () => { const ids = (G.active && G.active.length ? G.active : G.members).slice(0, 4); return ids.reduce((s, id) => s + G.party[id].level, 0) / Math.max(1, ids.length); };
+  const bossLevel = id => MONSTERS[id].xp / 25 + 3;
+  function scaleFoes(hpK, atkK, defAdd = 0) { if (!battle) return; for (const f of battle.foes) { f.maxHp = f.hp = Math.max(1, Math.round(f.maxHp * hpK)); f.atk = Math.max(1, Math.round(f.atk * atkK)); f.def += defAdd; } }
+  const catchUp = id => { const gap = Math.max(0, partyLevel() - bossLevel(id)); return [1 + gap * 0.09, 1 + gap * 0.05]; };   // an early boss fought late still bites
+  // ---- the Deep Stair
+  const DEEP_POOL = ["jackal", "ghoul", "leech", "choir", "wraith", "crawler", "drowned", "clerk", "thug", "bogghoul", "toad", "dvillager", "crab", "sailor", "eel", "harpy", "spark", "singer", "priest", "angler", "saltworm", "minerghoul", "sluicer", "rootbound", "ledgercrow", "scorpion", "dunewraith", "mirage"].filter(id => MONSTERS[id]);
+  const BOONS = {
+    keen: { name: "Keen Edge", desc: "Monsters on the Stair have 12% less health (stacks)." },
+    ward: { name: "Salt Ward", desc: "Monsters on the Stair hit 10% softer (stacks)." },
+    breath: { name: "Second Breath", desc: "The party recovers half its health and SP now." },
+    gild: { name: "Gilded Road", desc: "+50% coin at the end of every floor (stacks)." },
+    scholar: { name: "Scholar's Lamp", desc: "+40% bonus experience after every floor (stacks)." },
+    slow: { name: "Heavy Air", desc: "Monsters on the Stair lose 1 speed (stacks)." },
+  };
+  const deepRun = () => G.flags.deep && G.flags.deep.active ? G.flags.deep : null;
+  function deepGroup(floor) {
+    if (floor % 5 === 0) {   // an echo of a boss, the strongest one the party should be able to face
+      const known = HALL.filter(bossKnown), band = known.filter(id => bossLevel(id) <= partyLevel() + floor / 5);
+      const pickB = (band.length ? band : known.length ? known : HALL.slice(0, 2)); return { group: [pickB[Math.min(pickB.length - 1, Math.floor(floor / 5) - 1 + Math.floor(Math.random() * 2))] || pickB[0]], boss: true };
+    }
+    const target = Math.max(10, partyLevel() * 5) + floor * 4, n = floor < 3 ? 2 : floor < 9 ? 3 : 3 + (Math.random() < 0.5 ? 1 : 0);
+    const near = DEEP_POOL.map(id => [id, Math.abs(MONSTERS[id].xp - target)]).sort((a, b) => a[1] - b[1]).slice(0, 6).map(x => x[0]);
+    return { group: Array.from({ length: n }, () => pick(near)), boss: false };
   }
-  addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden" && ACCT.dirty && mode !== "title") pushAuto(); });
-  // on the title screen, a newer copy in the account replaces the one in this browser before you press Continue
-  function applyState(state) {
+  function deepStart() {
+    G.flags.deep = { active: true, floor: 0, boons: perk(6) ? { keen: 1 } : {}, coins: 0, xp: 0 };
+    meta.deepRuns++; saveMeta(); save(); deepNext();
+  }
+  function deepNext() {
+    const run = deepRun(); if (!run) return;
+    run.floor++; save();
+    const { group, boss } = deepGroup(run.floor), b = run.boons;
+    startBattle(group, { deep: run.floor, area: "deep", boss: boss ? group[0] : undefined });
+    if (!battle) return;
+    const extra = Math.max(0, run.floor - 8) * 0.07, [ch, ca] = boss ? catchUp(group[0]) : [1, 1];
+    scaleFoes((1 + extra) * ch * Math.pow(0.88, b.keen || 0), (1 + extra * 0.6) * ca * Math.pow(0.9, b.ward || 0), Math.floor(run.floor / 6));
+    if (b.slow) for (const f of battle.foes) f.spd = Math.max(1, f.spd - b.slow);
+    blog(`The Deep Stair, floor ${run.floor}${boss ? ": an echo waits on the landing" : ""}.`);
+  }
+  function deepEnd(fell) {
+    const run = deepRun(); if (!run) return;
+    const cleared = fell ? run.floor - 1 : run.floor;
+    run.active = false; const best = cleared > meta.deepBest; meta.deepBest = Math.max(meta.deepBest, cleared); saveMeta();
+    if (fell) for (const id of G.members) { const h = G.party[id]; h.hp = Math.max(h.hp, Math.ceil(h.maxHp * 0.5)); h.sp = Math.max(h.sp, Math.ceil(h.maxSp * 0.5)); }
+    save(); updateHud();
+    card("The Deep Stair", fell ? `Carried back up from floor ${run.floor}` : `You climb out from floor ${run.floor}`,
+      `${cleared} floor${cleared === 1 ? "" : "s"} cleared this run${best ? ", a new best" : ""} (best: ${meta.deepBest}). Spoils kept: ${run.coins} coin and ${run.xp} bonus experience from boons, plus everything the fights paid.${fell ? " Someone always comes down for you." : ""}`);
+  }
+  function deepBoon() {
+    const run = deepRun(); if (!run) return;
+    const bonusC = Math.round((10 + run.floor * 6) * (1 + 0.5 * (run.boons.gild || 0))), bonusX = Math.round((6 + run.floor * 5) * 0.4 * (run.boons.scholar || 0));
+    G.coins += bonusC; run.coins += bonusC;
+    if (bonusX) { run.xp += bonusX; for (const id of G.members) { const h = G.party[id]; h.xp += bonusX; while (h.xp >= xpNeed(h.level)) { h.xp -= xpNeed(h.level); levelUp(h); toast(`${h.name} reaches level ${h.level}`); } } }
+    renown(3 * run.floor, run.floor % 5 === 0 ? "an echo on the Stair" : "");
+    if (run.floor > meta.deepBest) { meta.deepBest = run.floor; saveMeta(); }
+    save(); updateHud();
+    const keys = Object.keys(BOONS).sort(() => Math.random() - 0.5).slice(0, perk(15) ? 4 : 3);
+    const hpNow = G.members.map(id => `${G.party[id].name} ${G.party[id].hp}/${G.party[id].maxHp}`).join(" · ");
+    D.__deepBoon = { who: null, text: `Floor ${run.floor} cleared: +${bonusC} coin${bonusX ? `, +${bonusX} experience` : ""}. The stair winds on down. Choose a boon for the way (best: floor ${meta.deepBest}). ${hpNow}`,
+      choices: [...keys.map(k => ({ t: `${BOONS[k].name}: ${BOONS[k].desc}${run.boons[k] ? ` (have ${run.boons[k]})` : ""}`, go: null, act: () => { if (k === "breath") for (const id of G.members) { const h = G.party[id]; if (h.hp > 0) { h.hp = Math.min(h.maxHp, h.hp + Math.ceil(h.maxHp / 2)); h.sp = Math.min(h.maxSp, h.sp + Math.ceil(h.maxSp / 2)); } } else run.boons[k] = (run.boons[k] || 0) + 1; save(); setTimeout(deepNext, 250); } })),
+        { t: `Climb out with your spoils (${run.coins} coin so far).`, go: null, act: () => setTimeout(() => deepEnd(false), 150) }] };
+    const open = () => { if (!deepRun()) return; if (mode !== "play" || dlg) return setTimeout(open, 400); openDialog("__deepBoon"); };   // after any card or scene that got there first
+    open();
+  }
+  // ---- Hall of Echoes
+  const TIERS = [[1.0, 1.0, 0], [1.4, 1.15, 2], [1.9, 1.3, 4]];
+  const echoTotal = () => Object.values(meta.echoes).reduce((s, t) => s + t, 0);
+  Object.assign(RELICS, {
+    echofork: { name: "Echo Fork", from: "_echo3", desc: "Three echoes cleared. +2 SP each turn, +1 speed.", spRegen: 2, spd: 1 },
+    echoshard: { name: "Bell-Shard of Echoes", from: "_echo8", desc: "Eight echoes cleared. +3 attack, +3 defence.", atk: 3, def: 3 },
+    echocrown: { name: "Crown of Echoes", from: "_echo15", desc: "Fifteen echoes cleared. +3 speed, +10% critical chance, +2 SP each turn.", spd: 3, crit: 0.1, spRegen: 2 },
+  });
+  function echoStart(id, tier) {
+    startBattle([id], { echo: tier, boss: id, area: "hall" });
+    if (!battle) return;
+    const [h, a, d] = TIERS[tier - 1], [ch, ca] = catchUp(id); scaleFoes(h * ch, a * ca, d);
+    blog(`An echo of ${MONSTERS[id].name.split(",")[0]}, tier ${"I".repeat(tier)}.`);
+  }
+  function echoWon(id, tier) {
+    const had = meta.echoes[id] || 0, first = tier > had;
+    if (first) meta.echoes[id] = tier;
+    const coins = (first ? 40 : 10) * tier * (perk(12) ? 2 : 1); G.coins += coins; saveMeta(); save(); updateHud();
+    renown(first ? 30 * tier : 4, first ? `echo tier ${"I".repeat(tier)}` : "");
+    const tot = echoTotal();
+    for (const [n, r] of [[3, "echofork"], [8, "echoshard"], [15, "echocrown"]]) if (tot >= n && !(G.relics || []).includes(r)) setTimeout(() => giveRelic(r), 2200);
+    setTimeout(() => toast(`${first ? "Echo cleared" : "Echo repeated"}: ${MONSTERS[id].name.split(",")[0]} ${"I".repeat(tier)}. +${coins} coin. Echoes: ${tot}.`), 600);
+  }
+  // ---- the Weekly Trial: the same boss and twist for everyone this week
+  const weekNo = () => Math.floor((Date.now() / 86400000 + 3) / 7);   // weeks since a Monday
+  const TWISTS = [
+    { id: "glass", name: "Glass", desc: "It has 30% less health but hits half again as hard.", apply: () => scaleFoes(0.7, 1.5) },
+    { id: "iron", name: "Iron", desc: "It has twice the health.", apply: () => scaleFoes(2, 1) },
+    { id: "swarm", name: "Swarm", desc: "Two of its creatures fight beside it.", add: 2 },
+    { id: "haste", name: "Haste", desc: "It moves first and fast: +4 speed.", apply: () => { for (const f of battle.foes) f.spd += 4; } },
+  ];
+  function weeklyPlan() {
+    const w = weekNo(), known = HALL.filter(bossKnown); if (!known.length) return null;
+    const h = hash(w, 77), h2 = hash(w, 131);
+    return { w, boss: known[Math.floor(h * known.length)], twist: TWISTS[Math.floor(h2 * TWISTS.length)] };
+  }
+  function weeklyStart() {
+    const P = weeklyPlan(); if (!P) return;
+    const grp = [P.boss]; if (P.twist.add) for (let i = 0; i < P.twist.add; i++) grp.push(pick(DEEP_POOL.slice(0, 10)));
+    startBattle(grp, { weekly: P.w, boss: P.boss, area: "spire" });
+    if (!battle) return;
+    const [ch, ca] = catchUp(P.boss); scaleFoes(TIERS[1][0] * ch, TIERS[1][1] * ca, TIERS[1][2]); if (P.twist.apply) P.twist.apply();
+    blog(`Weekly Trial: ${MONSTERS[P.boss].name.split(",")[0]}, ${P.twist.name}. Fewer rounds, better score.`);
+  }
+  function weeklyWon(rounds) {
+    const P = weeklyPlan(); if (!P) return;
+    const rec = meta.weekly.w === P.w ? meta.weekly : { w: P.w, best: 0, cleared: false }, better = !rec.best || rounds < rec.best, firstClear = !rec.cleared;
+    rec.cleared = true; if (better) rec.best = rounds; meta.weekly = rec; saveMeta();
+    if (firstClear) { const item = ITEMS.phoenix ? "phoenix" : "gsalve"; G.coins += 100; G.items[item] = (G.items[item] || 0) + 1; save(); updateHud(); renown(60, "weekly trial"); }
+    else if (better) renown(15, "a better weekly score");
+    setTimeout(() => toast(`Weekly Trial won in ${rounds} rounds${better ? " (your best this week)" : ` (best: ${rec.best})`}.${firstClear ? " +100 coin and a rare item." : ""}`), 700);
+  }
+  // ---- how the three challenge kinds finish: none of them touches the story, and none sends you back to a checkpoint
+  const _endBattleR = endBattle;
+  endBattle = function (result, boss) {
+    const o = battle && battle.opts, rounds = battle ? battle.round : 0;
+    if (!o || !(o.deep || o.echo || o.weekly)) return _endBattleR(result, boss);
+    if (result === "lost") for (const id of G.members) { const h = G.party[id]; h.hp = Math.max(1, Math.ceil(h.maxHp * 0.5)); h.sp = Math.ceil(h.maxSp * 0.5); }
+    _endBattleR(result === "lost" ? "fled" : result, null);
+    if (o.deep) { if (result === "won") setTimeout(deepBoon, 300); else setTimeout(() => deepEnd(true), 300); }
+    else if (o.echo && result === "won") echoWon(o.boss, o.echo);
+    else if (o.weekly && result === "won") weeklyWon(rounds);
+    else if (result === "lost") toast("The echo fades, and so do you. The party wakes in the Hall, half rested.");
+  };
+  // ---- the menu: Pause > The Long Road
+  const roadBtn = document.createElement("button"); roadBtn.type = "button"; roadBtn.dataset.a = "road"; roadBtn.innerHTML = `The Long Road <small>★</small>`;
+  const todayBtn = $("pauseMain").querySelector('[data-a="today"]'); if (todayBtn) todayBtn.after(roadBtn); else $("pauseMain").prepend(roadBtn);
+  const roadCss = document.createElement("style");
+  roadCss.textContent = `.road h3{margin:14px 0 4px}.road .bar{height:8px;background:#0e0b1e;border:1px solid #5e5680;margin:4px 0 2px}.road .bar i{display:block;height:100%;background:linear-gradient(90deg,#c86a1a,#ffcf4a)}
+  .road ul{list-style:none;padding:0;margin:4px 0;display:grid;gap:4px}.road li{font-size:13px}.road li.off{opacity:.55}.road .echoes{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px}
+  .road .echo{display:flex;align-items:center;gap:6px;justify-content:space-between;border:1px solid #3b2f7a;padding:4px 6px;font-size:12px}.road .echo b{font-weight:600}.road .echo .t{display:flex;gap:3px}
+  .road .echo button{min-width:30px;padding:2px 6px}.road .echo button.clr{color:var(--gold)}.road .row2{display:flex;gap:8px;flex-wrap:wrap}.road .row2 .pbtn{flex:1 1 160px}#roadNote{margin:4px auto 0;font-size:12px;color:var(--muted);text-align:center;max-width:92%}`;
+  document.head.appendChild(roadCss);
+  function roadHtml() {
+    const canFight = pausedFrom === "play", need = rankNeed(meta.rank), run = deepRun(), P = weeklyPlan(), wk = P && meta.weekly.w === P.w ? meta.weekly : null;
+    const lock = canFight ? "" : "disabled title='Only from the open road, not during a scene or battle'";
+    const known = HALL.filter(bossKnown);
+    return `<div class="road"><p class="dim" style="font-size:13px;margin:0">Courier Rank <b>${meta.rank}</b> · ${meta.renown}/${need} renown to the next rank. Everything you do earns renown, in every playthrough.</p>
+      <div class="bar"><i style="width:${Math.round(meta.renown / need * 100)}%"></i></div>
+      <ul>${PERKS.map(([r, n, d]) => `<li class="${perk(r) ? "" : "off"}">${perk(r) ? "✓" : "🔒"} <b>Rank ${r} · ${n}</b>: ${d}</li>`).join("")}</ul>
+      <p class="dim" style="font-size:12px;margin:2px 0 0">Visiting streak: ${meta.streak} day${meta.streak === 1 ? "" : "s"} (best ${meta.bestStreak}). Come back tomorrow for a bigger gift.</p>
+      <h3>The Deep Stair</h3><p class="dim" style="font-size:12px;margin:0 0 6px">An endless descent under the salt. Harder every floor, an echo of a boss every fifth, a boon between floors. Your health carries from floor to floor. Best: floor ${meta.deepBest} · runs: ${meta.deepRuns}.${G.stage < 1 ? " Opens after the prologue." : ""}</p>
+      <div class="row2">${run ? `<button type="button" class="pbtn" data-road="deepgo" ${lock}>Go down to floor ${run.floor + 1}</button><button type="button" class="pbtn" data-road="deepout" ${lock}>Climb out (floor ${run.floor})</button>`
+        : `<button type="button" class="pbtn" data-road="deep" ${G.stage < 1 ? "disabled" : lock}>Descend the Deep Stair</button>`}</div>
+      <h3>Weekly Trial</h3>${P ? `<p class="dim" style="font-size:12px;margin:0 0 6px">This week: <b>${MONSTERS[P.boss].name.split(",")[0]}</b> at tier II, twist <b>${P.twist.name}</b>: ${P.twist.desc} ${wk && wk.cleared ? `Your best: ${wk.best} rounds.` : "First clear: 100 coin, a rare item and 60 renown."} A new trial every Monday.</p>
+        <div class="row2"><button type="button" class="pbtn" data-road="weekly" ${lock}>Take the trial</button></div>` : `<p class="dim" style="font-size:12px;margin:0">Beat your first boss to open the Weekly Trial.</p>`}
+      <h3>Hall of Echoes</h3><p class="dim" style="font-size:12px;margin:0 0 6px">Fight any boss you have beaten again, at three tiers. Echoes cleared: ${echoTotal()} of ${HALL.length * 3}. Relics at 3, 8 and 15.</p>
+      ${known.length ? `<div class="echoes">${known.map(id => `<div class="echo"><b>${MONSTERS[id].name.split(",")[0]}</b><span class="t">${[1, 2, 3].map(t => `<button type="button" class="pbtn${(meta.echoes[id] || 0) >= t ? " clr" : ""}" data-road="echo" data-id="${id}" data-tier="${t}" ${lock} aria-label="Tier ${t}">${"I".repeat(t)}${(meta.echoes[id] || 0) >= t ? "★" : ""}</button>`).join("")}</span></div>`).join("")}</div>` : `<p class="dim" style="font-size:12px;margin:0">No echoes yet. Beat a boss in the story and it waits here.</p>`}
+    </div>`;
+  }
+  $("pauseUI").addEventListener("click", e => { const b = e.target.closest("button"); if (b && b.dataset.a === "road") showPanel("The Long Road", roadHtml()); });
+  $("pausePanel").addEventListener("click", e => {
+    const b = e.target.closest("button[data-road]"); if (!b || b.disabled) return;
+    e.stopPropagation();
+    const act = b.dataset.road, go = f => { resumeGame(); setTimeout(f, 80); };
+    if (act === "deep") go(deepStart);
+    if (act === "deepgo") go(deepNext);
+    if (act === "deepout") go(() => deepEnd(false));
+    if (act === "weekly") go(weeklyStart);
+    if (act === "echo") { const id = b.dataset.id, t = +b.dataset.tier; go(() => echoStart(id, t)); }
+  }, true);
+  // ---- the title screen shows the road so far
+  const roadEl = document.createElement("div"); roadEl.id = "roadNote";
+  $("newBtn").insertAdjacentElement("afterend", roadEl);
+  function roadNote() {
+    const bits = [`Courier Rank ${meta.rank} (${meta.renown}/${rankNeed(meta.rank)})`];
+    if (meta.deepBest) bits.push(`Deep Stair best: floor ${meta.deepBest}`);
+    if (echoTotal()) bits.push(`Echoes ${echoTotal()}`);
+    if (meta.streak) bits.push(meta.visit === today() ? `Visiting streak ${meta.streak}` : `Gift waiting (streak ${meta.visit === dayBefore(today()) ? meta.streak + 1 : 1})`);
+    roadEl.textContent = bits.join(" · ");
+  }
+  roadNote();
+  const _extraJournalR = extraJournalHtml;
+  extraJournalHtml = function () { return _extraJournalR() + `<h3>The Long Road</h3><ul><li>Courier Rank ${meta.rank}: ${meta.renown}/${rankNeed(meta.rank)} renown. Deep Stair best: floor ${meta.deepBest}. Echoes cleared: ${echoTotal()}. (Pause > The Long Road)</li></ul>`; };
+  ACHIEVEMENTS.push(
+    ["deep10", "Ten Floors Down", "Clear ten floors of the Deep Stair in one run.", () => meta.deepBest >= 10],
+    ["echo3", "It Remembers You", "Clear an echo at tier III.", () => Object.values(meta.echoes).some(t => t >= 3)],
+    ["rank10", "A Name on Every Road", "Reach Courier Rank 10.", () => meta.rank >= 10],
+    ["weekly", "Seven Days' Work", "Win a Weekly Trial.", () => !!(meta.weekly && meta.weekly.cleared)]);
+
+  // ================================================================== SAVES: FOR EVERY PLAYER
+  // The game saves itself as you play, into this browser (see the store at the top). Where the browser refuses to
+  // keep anything, progress is held with this tab and the title screen says so. Either way a save file or a save
+  // code (a line of text) carries a game to another browser or device.
+  const saveCss = document.createElement("style");
+  saveCss.textContent = "#saveNote{display:flex;align-items:center;gap:8px;justify-content:center;margin:10px auto 0;font-size:13px;color:var(--muted);max-width:92%;text-align:center}#saveNote b{color:var(--text)}#saveNote.warn{color:#ffcf4a}"
+    + ".savebar{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.savebar .pbtn{flex:1 1 140px}.savecode{width:100%;min-height:74px;margin-top:8px;font:11px/1.35 ui-monospace,monospace;background:#0e0b1e;color:#f3efe6;border:2px solid #5e5680;padding:6px;word-break:break-all;resize:vertical}";
+  document.head.appendChild(saveCss);
+  const noteEl = document.createElement("div"); noteEl.id = "saveNote";
+  $("newBtn").insertAdjacentElement("afterend", noteEl);
+  function saveNote() {
+    const tab = localStorage.where !== "browser";
+    noteEl.classList.toggle("warn", tab);
+    noteEl.textContent = tab ? "This browser won't let the game store data, so your progress is kept only while this tab stays open. Pause > Save & load > Save code keeps it for good."
+      : "Your progress saves automatically in this browser.";
+  }
+  saveNote();
+  const snapshotOf = () => { const t = goal(); return { when: Date.now(), label: t.ch || "Prologue", party: G.members.map(id => G.party[id].name + " " + G.party[id].level).join(", "), time: (G.stats && G.stats.time) || 0, state: JSON.stringify(G) }; };
+  function applyState(state) {   // put a saved game behind the title screen's Continue button
     newGame(false); Object.assign(G, state);
     if (!G.active || !G.active.length) G.active = G.members.slice(0, 4);
     applyWorldState(); miniDirty = true; spawnField(); camX = G.px - VIEW_W / 2; camY = G.py - VIEW_H / 2;
     $("startBtn").textContent = "Continue"; $("newBtn").hidden = false; updateHud();
   }
-  async function initAccount() {
-    const use = window.claude && typeof window.claude.use === "function" ? n => window.claude.use(n).catch(() => null) : async () => null;
-    const [user, db] = await Promise.all([use("user"), use("db")]);
-    ACCT.user = user; ACCT.db = db;
-    const me = user ? await user.me() : null;
-    ACCT.uid = me && me.id; ACCT.name = (me && me.name) || ""; ACCT.avatar = (me && me.avatarUrl) || "";
-    ACCT.ready = true; ACCT.cloudOk = !!(db && ACCT.uid);
-    const img = acctEl.querySelector("img");
-    if (ACCT.uid && ACCT.avatar) { img.src = ACCT.avatar; img.hidden = false; }
-    if (!ACCT.cloudOk) { setAcct(ACCT.uid ? `Signed in as <b></b> · saves stay in this browser` : `Playing offline · saves stay in this browser (open the game on claude.ai to sync them to your account)`); fillName(); return; }
-    setAcct(`Signed in as <b></b> · your saves sync to your account`); fillName();
-    const auto = await cloudGet("auto"); ACCT.cloudAuto = auto;
-    if (auto && auto.state && mode === "title" && auto.when > localWhen() + 3000) {
-      try { applyState(JSON.parse(auto.state)); _saveAcct(); try { localStorage.setItem("salt-road-save-when", String(auto.when)); } catch { /* storage unavailable */ } setAcct(`Signed in as <b></b> · loaded your latest save from your account (${auto.label})`); fillName(); } catch { /* a damaged copy: keep the local one */ }
-    } else if (!auto && G.stage > 0) { ACCT.pushedStage = -1; pushAuto(); }   // first visit with an account: upload this browser's game
+  // a game kept in IndexedDB by an earlier visit (when local storage is blocked) arrives a moment after start-up
+  localStorage.ready.then(found => { if (found && mode === "title" && G.stage === 0) { const st = load(); if (st && st.stage > 0) try { applyState(st); toast("Found your saved game."); } catch { /* damaged */ } } saveNote(); });
+  // in a browser that keeps nothing, a reminder at each new chapter
+  let lastStage = null;
+  const _saveS = save;
+  save = function () {
+    _saveS();
+    if (localStorage.where !== "browser" && mode !== "title" && lastStage !== null && G.stage > lastStage) toast("Progress is only kept in this tab. Pause > Save & load > Save code to keep it.");
+    lastStage = G.stage; saveNote();
+  };
+  // save codes: the whole game as one line of text, compressed where the browser can
+  const b64 = u8 => { let s = ""; for (let i = 0; i < u8.length; i += 8192) s += String.fromCharCode.apply(null, u8.subarray(i, i + 8192)); return btoa(s); };
+  const unb64 = s => Uint8Array.from(atob(s), ch => ch.charCodeAt(0));
+  async function pipe(u8, T) { return new Uint8Array(await new Response(new Blob([u8]).stream().pipeThrough(new T("gzip"))).arrayBuffer()); }
+  async function makeCode() {
+    const u8 = new TextEncoder().encode(JSON.stringify({ game: "The Salt Road", ...snapshotOf() }));
+    if (typeof CompressionStream === "function") try { return "SR2:" + b64(await pipe(u8, CompressionStream)); } catch { /* fall back */ }
+    return "SR1:" + b64(u8);
   }
-  setTimeout(initAccount, 0);
-  // Save and load: account slots next to the browser slots, and a save file to keep
-  const cloudSlots = {};
-  const _showSlotsAcct = showSlots;
+  async function readCode(code) {
+    code = String(code).replace(/\s+/g, "");
+    const kind = code.slice(0, 4); let u8 = unb64(code.slice(4));
+    if (kind === "SR2:") u8 = await pipe(u8, DecompressionStream); else if (kind !== "SR1:") throw new Error("not a save code");
+    return JSON.parse(new TextDecoder().decode(u8));
+  }
+  const stateFrom = d => { const st = d && d.state ? JSON.parse(d.state) : d && (d.G || d); if (!st || !st.party || !st.members) throw new Error("not a save"); return st; };
+  const _showSlotsS = showSlots;
   showSlots = function () {
-    _showSlotsAcct();
+    _showSlotsS();
     const panel = $("pausePanel"); if (!panel) return;
     const body = panel.querySelector(".slot") ? panel.querySelector(".slot").parentNode : panel;
     const box = document.createElement("div");
-    const cloudRows = ACCT.cloudOk ? [1, 2, 3].map(n => { const d = cloudSlots[n];
-      return `<div class="slot cloud"><div><b>Account slot ${n}</b> ${d ? `<small>${d.label} · ${fmtTime(d.time)} played · ${new Date(d.when).toLocaleString()}</small><small>${d.party}</small>` : `<small>${d === null ? "Empty" : "Loading…"}</small>`}</div>
-        <button type="button" class="pbtn" data-a="csave" data-slot="${n}">Save</button><button type="button" class="pbtn" data-a="cload" data-slot="${n}" ${d ? "" : "disabled"}>Load</button></div>`; }).join("") : "";
-    box.innerHTML = `<h3 style="margin:12px 0 4px">${ACCT.cloudOk ? "Your account" : "Account"}</h3>`
-      + (ACCT.cloudOk ? `<p class="dim" style="font-size:12px;margin:0 0 6px">Saved to your claude.ai account: open the game on another device and carry on. The game also saves here automatically as you play.</p>${cloudRows}`
-        : `<p class="dim" style="font-size:12px;margin:0 0 6px">${ACCT.uid ? "Signed in, but this page can't store saves for you. The slots above keep them in this browser." : "Open the game on claude.ai while signed in to keep your saves in your account. Until then they stay in this browser."}</p>`)
-      + `<div class="savebar"><button type="button" class="pbtn" data-a="export">Export a save file</button><button type="button" class="pbtn" data-a="import">Import a save file</button></div>`;
+    box.innerHTML = `<h3 style="margin:12px 0 4px">Keep your game</h3><p class="dim" style="font-size:12px;margin:0 0 6px">${localStorage.where === "browser"
+      ? "The game saves in this browser as you play. To carry on somewhere else, take a save code or a save file with you."
+      : "This browser won't store data: your progress lasts only while this tab is open. Copy a save code and keep it somewhere safe."}</p>`
+      + `<div class="savebar"><button type="button" class="pbtn" data-a="code">Copy a save code</button><button type="button" class="pbtn" data-a="entercode">Enter a save code</button></div>`
+      + `<div class="savebar"><button type="button" class="pbtn" data-a="export">Export a save file</button><button type="button" class="pbtn" data-a="import">Import a save file</button></div><div class="codebox"></div>`;
     const backBtn = [...panel.querySelectorAll("button")].find(x => /^Back/.test(x.textContent.trim()));
     if (backBtn) backBtn.before(box); else body.appendChild(box);
-    if (ACCT.cloudOk) Promise.all([1, 2, 3].map(n => cloudGet("slot" + n).then(d => { const changed = cloudSlots[n] !== d; cloudSlots[n] = d; return changed; }))).then(ch => { if (ch.some(Boolean) && panel.querySelector('[data-a="csave"]')) showSlots(); });
   };
-  const fileIn = document.createElement("input"); fileIn.type = "file"; fileIn.accept = ".json,application/json"; fileIn.hidden = true; document.body.appendChild(fileIn);
+  const fileIn = document.createElement("input"); fileIn.type = "file"; fileIn.accept = ".json,.txt,application/json,text/plain"; fileIn.hidden = true; document.body.appendChild(fileIn);
   fileIn.addEventListener("change", async () => {
     const f = fileIn.files && fileIn.files[0]; fileIn.value = ""; if (!f) return;
-    try { const d = JSON.parse(await f.text()); const st = d.state ? JSON.parse(d.state) : d.G || d; if (!st || !st.party || !st.members) throw new Error("not a save");
-      loadState(st); toast(`Imported ${d.label || "your save"}.`); resumeGame(); }
+    try { const txt = (await f.text()).trim(), d = /^SR\d:/.test(txt) ? await readCode(txt) : JSON.parse(txt);
+      loadState(stateFrom(d)); save(); toast(`Imported ${d.label || "your save"}.`); resumeGame(); }
     catch { toast("That file isn't a Salt Road save."); }
   });
   $("pausePanel").addEventListener("click", async ev => {
     const b = ev.target.closest("button[data-a]"); if (!b) return;
-    const a = b.dataset.a, n = +b.dataset.slot;
-    if (!["csave", "cload", "export", "import"].includes(a)) return;
+    const a = b.dataset.a;
+    if (!["code", "entercode", "loadcode", "export", "import"].includes(a)) return;
     ev.stopPropagation();
-    if (a === "csave") { b.disabled = true; const ok = await cloudPut("slot" + n); toast(ok ? `Saved to account slot ${n}.` : "Couldn't save to your account. The browser slots still work."); cloudSlots[n] = undefined; showSlots(); }
-    if (a === "cload") { const d = cloudSlots[n] || await cloudGet("slot" + n); if (d && d.state && !battle) { loadState(JSON.parse(d.state)); toast(`Loaded account slot ${n}: ${d.label}.`); resumeGame(); } }
+    const cb = $("pausePanel").querySelector(".codebox");
+    if (a === "code") {
+      const code = await makeCode();
+      cb.innerHTML = `<textarea class="savecode" readonly aria-label="Your save code"></textarea><p class="dim" style="font-size:12px;margin:4px 0 0">Keep this text somewhere safe (a note, a message to yourself). Enter it on any device to carry on.</p>`;
+      const ta = cb.querySelector("textarea"); ta.value = code; ta.focus(); ta.select();
+      let copied = false; try { await navigator.clipboard.writeText(code); copied = true; } catch { try { copied = document.execCommand("copy"); } catch { /* select it by hand */ } }
+      toast(copied ? "Save code copied." : "Select the code and copy it.");
+    }
+    if (a === "entercode") {
+      cb.innerHTML = `<textarea class="savecode" aria-label="Paste a save code" placeholder="Paste a save code (it starts with SR)"></textarea><div class="savebar"><button type="button" class="pbtn" data-a="loadcode">Load this code</button></div>`;
+      cb.querySelector("textarea").focus();
+    }
+    if (a === "loadcode") {
+      const txt = cb.querySelector("textarea").value.trim(); if (!txt) return;
+      if (battle) { toast("Finish the battle first."); return; }
+      try { const d = await readCode(txt); loadState(stateFrom(d)); save(); toast(`Loaded ${d.label || "your save"}.`); resumeGame(); }
+      catch { toast("That isn't a Salt Road save code."); }
+    }
     if (a === "export") {
       const data = JSON.stringify({ game: "The Salt Road", ...snapshotOf() }), filename = `salt-road-${(goal().ch || "save").replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.json`;
-      const dl = window.claude && typeof window.claude.use === "function" ? await window.claude.use("downloads").catch(() => null) : null;
-      if (dl) { try { await dl.save({ filename, data }); toast("Save file ready."); } catch (e) { if (!e || e.code !== "declined") toast("Couldn't offer the file here."); } }
-      else { const u = URL.createObjectURL(new Blob([data], { type: "application/json" })), l = document.createElement("a"); l.href = u; l.download = filename; document.body.appendChild(l); l.click(); l.remove(); setTimeout(() => URL.revokeObjectURL(u), 4000); }
+      try { const u = URL.createObjectURL(new Blob([data], { type: "application/json" })), l = document.createElement("a"); l.href = u; l.download = filename; document.body.appendChild(l); l.click(); l.remove(); setTimeout(() => URL.revokeObjectURL(u), 4000); toast("Save file downloading. If nothing arrives, use a save code."); }
+      catch { toast("This browser won't download files here. Use a save code."); }
     }
     if (a === "import") fileIn.click();
   }, true);
-  const _pauseAcct = pauseGame;
-  pauseGame = function () { _pauseAcct(); if (ACCT.cloudOk && ACCT.dirty) pushAuto(); };   // pausing is a natural moment to sync
 
   // the fine boss art is drawn after every other module has set up how picture text is flushed
   const _flushHiArt = flushHiText;
@@ -10141,7 +11126,14 @@
     const g = pk > 0.98 ? 0.98 / pk : 1; for (let i = 0; i < n; i++) v.setInt16(44 + i * 2, Math.max(-1, Math.min(1, d[i] * g)) * 32767, true);
     let bin = ""; const u8 = new Uint8Array(ab); for (let i = 0; i < u8.length; i += 8192) bin += String.fromCharCode.apply(null, u8.subarray(i, i + 8192));
     return { peak: pk, rms, wav: btoa(bin) };
-  }, trackKeys: () => Object.keys(TRACKS),  drawMon: (id, w = 220, h = 150, t) => { const c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d'); const M = MONSTERS[id]; const u = { id, name: M.name, sprite: M.sprite, boss: M.boss, hurt: 0, st: {}, hp: M.hp, maxHp: M.hp, side: 'foe', slot: 0, count: 1 }; if (t !== undefined) time = t; drawBattleMonster(M.pal ? palCtx(g, M.pal) : g, u, w / 2, h - 8); return c.toDataURL(); }, monIds: () => Object.keys(MONSTERS), bossArt: (id, ph = 0, white = false) => { const M = MONSTERS[id], u = { id, sprite: M.sprite }; const A = bossArtFor(u); return A ? artFrame(A, A.key, ph, white).toDataURL() : null; }, open: id => openDialog(id), endCine: () => { if (cine) endCine(); }, flee: () => { if (battle) endBattle("fled"); }, state: () => G, mode: () => mode, reach: () => {
+  }, trackKeys: () => Object.keys(TRACKS), forceWin: () => { if (!battle) return false; for (const f of battle.foes) { f.hp = 0; f.dead = true; } victory(); return true; }, cont: () => battle && battle.waitingContinue ? (battle.waitingContinue(), true) : false, lose: () => battle ? (endBattle("lost"), true) : false, dlgChoices: () => dlg && dlg.choices ? dlg.choices.map(c => typeof c.t === "function" ? c.t() : c.t) : null, voiceWav: async (who, text) => {   // a character's voice speaking a line, rendered offline for previews and level checks
+    const buf = await Voice.render(who, text), d = buf.getChannelData(0), sr = buf.sampleRate, n = d.length; let pk = 0, sq = 0; for (let i = 0; i < n; i++) { const a = Math.abs(d[i]); if (a > pk) pk = a; sq += d[i] * d[i]; }
+    const ab = new ArrayBuffer(44 + n * 2), v = new DataView(ab), w = (o, str) => { for (let i = 0; i < str.length; i++) v.setUint8(o + i, str.charCodeAt(i)); };
+    w(0, "RIFF"); v.setUint32(4, 36 + n * 2, true); w(8, "WAVE"); w(12, "fmt "); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, sr, true); v.setUint32(28, sr * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, "data"); v.setUint32(40, n * 2, true);
+    for (let i = 0; i < n; i++) v.setInt16(44 + i * 2, Math.max(-1, Math.min(1, d[i] * 0.6)) * 32767, true);
+    let bin = ""; const u8 = new Uint8Array(ab); for (let i = 0; i < u8.length; i += 8192) bin += String.fromCharCode.apply(null, u8.subarray(i, i + 8192));
+    return { peak: pk, rms: Math.sqrt(sq / n), secs: n / sr, wav: btoa(bin) };
+  },  drawMon: (id, w = 220, h = 150, t) => { const c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d'); const M = MONSTERS[id]; const u = { id, name: M.name, sprite: M.sprite, boss: M.boss, hurt: 0, st: {}, hp: M.hp, maxHp: M.hp, side: 'foe', slot: 0, count: 1 }; if (t !== undefined) time = t; drawBattleMonster(M.pal ? palCtx(g, M.pal) : g, u, w / 2, h - 8); return c.toDataURL(); }, monIds: () => Object.keys(MONSTERS), bossArt: (id, ph = 0, white = false) => { const M = MONSTERS[id], u = { id, sprite: M.sprite }; const A = bossArtFor(u); return A ? artFrame(A, A.key, ph, white).toDataURL() : null; }, open: id => openDialog(id), endCine: () => { if (cine) endCine(); }, flee: () => { if (battle) endBattle("fled"); }, state: () => G, mode: () => mode, reach: () => {
     const seen = new Set(), q = [[12, 47]]; seen.add("12,47");
     const pass = (x, y) => { const t = get(x, y); return (!SOLID.has(t) || t === T.LOCKED || t === T.DOOR) && !propSolid.has(x + "," + y); };
     const worldPass = (x, y) => pass(x, y) || [T.GDOOR, T.DEBRIS].includes(get(x, y));
