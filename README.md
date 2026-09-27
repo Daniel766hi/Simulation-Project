@@ -350,7 +350,6 @@ The site is static HTML (Chart.js is vendored in `vendor/`), so any static host 
 
 A single-file canvas RPG. It needs no build step, and everything, music and voices included, is synthesised live in the browser.
 
-- **Two art styles on purpose.** The world is pixel art. The heroine and the great villains (Sable, Voss, Hollis, Corvin, Vela, Aurel) are also painted as high-resolution tarot-style portraits with chiaroscuro lighting. These appear beside their dialogue, as Sable's key art on the title screen, and as a card reveal when a villain's battle begins.
 - **Voices.** A formant speech synthesiser babbles each line in the speaker's own voice, with pitch, throat size, pace, breath, rasp, growl, choir, water, metal and echo. Settings has Voiced, Blips, Spoken (browser text-to-speech) or Off.
 - **Saves for every player.** The game saves in the browser as you play. Where storage is blocked, progress is kept with the tab and the title screen says so. Save codes and save files carry a game anywhere. There is no account or server.
 - **The Long Road** (Pause menu):
