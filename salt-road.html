@@ -2279,6 +2279,10 @@
     player.scarf.unshift(neck);
     const sway = Math.sin(time * 5);
     player.scarf = player.scarf.slice(0, 22).map((p, i) => i === 0 ? p : { x: p.x + (moving ? 0 : sway * 0.18), y: p.y + (moving ? 0 : 0.1) });
+    // the party's path: a point for every two pixels walked, so followers keep a stride apart whatever the speed
+    const pth = player.path || (player.path = []), last = pth[0];
+    if (!last || Math.hypot(G.px - last.x, G.py - last.y) > 60) { player.path = [{ x: G.px, y: G.py }]; }
+    else if (Math.hypot(G.px - last.x, G.py - last.y) >= 2) { pth.unshift({ x: G.px, y: G.py }); if (pth.length > 90) pth.length = 90; }
 
     const tx = Math.floor(G.px / TILE), ty = Math.floor(G.py / TILE);
     if (get(tx, ty) === T.DARK && ty > 11 && ty < 19) G.checkpoint = { x: 34 * TILE + 8, y: 18 * TILE + 8 };
@@ -2380,7 +2384,8 @@
     // Chibi proportions: a big expressive head on a small, detailed body
     const st = personStyle(o), dir = o.dir || "down", side = dir === "left" || dir === "right", back = dir === "up";
     const phase = o.walking ? o.walk * Math.PI * 2 : 0;
-    const bob = o.walking ? Math.round(Math.abs(Math.sin(phase))) : (Math.sin(time * 1.8 + (o.bob || 0)) > 0.55 ? 1 : 0);
+    // walk: the body rises on each passing step and dips at contact; running bounds higher
+    const run = o.walking && o.run, bob = o.walking ? Math.round(Math.abs(Math.sin(phase)) * (run ? 2 : 1.3)) : (Math.sin(time * 1.8 + (o.bob || 0)) > 0.55 ? 1 : 0);
     const skin = o.skin, skinD = shadeHex(skin, -0.2), skinL = shadeHex(skin, 0.14), hair = o.hair, hairD = shadeHex(hair, -0.35), hairL = shadeHex(hair, 0.22);
     const cloth = o.robe, clothD = shadeHex(cloth, -0.32), clothL = shadeHex(cloth, 0.16), pants = st.pants || shadeHex(cloth, -0.5), boots = "#2a1e18", belt = "#5a3a22";
     const eye = o.glowEyes ? "#3ee0e8" : (st.eye || "#3a2a1a");
@@ -2397,20 +2402,24 @@
     };
     if (!back) backGear();
     // legs
-    if (st.dress) {
-      O(-4, -7 + by, 8, 6, cloth); P(-5, -2 + by, 10, 1, clothD); P(2, -7 + by, 2, 5, clothD);
-      P(-3 + Math.round(sw), -1, 2, 1, boots); P(1 - Math.round(sw), -1, 2, 1, boots);
-    } else if (side) {
-      const f = Math.round(sw * 2), lF = sw > 0.3 ? -1 : 0, lB = sw < -0.3 ? -1 : 0;
-      O(-1 - f, -5 + by + lB, 2, 3, shadeHex(pants, -0.2)); O(-1 - f, -2 + lB, 3, 2, boots);
-      O(-1 + f, -5 + by + lF, 2, 3, pants); O(-1 + f, -2 + lF, 3, 2, boots);
-    } else {
-      const lL = sw > 0.3 ? -1 : 0, lR = sw < -0.3 ? -1 : 0;
-      O(-3, -5 + by + lL, 2, 3, pants); O(-3, -2 + lL, 3, 2, boots);
-      O(1, -5 + by + lR, 2, 3, pants); O(1, -2 + lR, 3, 2, boots);
+    const lift = run ? 2 : 1;
+    if (st.dress) {   // the hem swings with the stride and the feet show beneath it in turn
+      const hs = o.walking ? Math.round(sw * (side ? 1.4 : 0.8)) : 0;
+      O(-4 + hs, -7 + by, 8, 6, cloth); P(-5 + hs, -2 + by, 10, 1, clothD); P(2 + hs, -7 + by, 2, 5, clothD);
+      if (side) { const f = Math.round(sw * (run ? 3 : 2)); P(-1 - f, -1 - (sw < -0.3 ? lift - 1 : 0), 3, 1, boots); P(-1 + f, -1 - (sw > 0.3 ? lift - 1 : 0), 3, 1, boots); }
+      else { P(-3 + Math.round(sw), -1 - (sw > 0.3 ? 1 : 0), 2, 1, boots); P(1 - Math.round(sw), -1 - (sw < -0.3 ? 1 : 0), 2, 1, boots); }
+    } else if (side) {   // stride: the leading foot reaches, the trailing foot pushes off; running folds the knee of the swinging leg
+      const f = Math.round(sw * (run ? 3 : 2)), lF = sw > 0.3 ? -lift : 0, lB = sw < -0.3 ? -lift : 0;
+      const legB = run && lB ? 2 : 3, legF = run && lF ? 2 : 3;
+      O(-1 - f, -5 + by + lB, 2, legB, shadeHex(pants, -0.2)); O(-1 - f - (run && lB ? 1 : 0), -2 + lB - (3 - legB), 3, 2, boots);
+      O(-1 + f, -5 + by + lF, 2, legF, pants); O(-1 + f + (run && lF ? 1 : 0), -2 + lF - (3 - legF), 3, 2, boots);
+    } else {   // seen from the front or back: the stepping leg lifts and swings a little out
+      const lL = sw > 0.3 ? -lift : 0, lR = sw < -0.3 ? -lift : 0, oL = run && lL ? -1 : 0, oR = run && lR ? 1 : 0;
+      O(-3 + oL, -5 + by + lL, 2, 3, pants); O(-3 + oL, -2 + lL, 3, 2, boots);
+      O(1 + oR, -5 + by + lR, 2, 3, pants); O(1 + oR, -2 + lR, 3, 2, boots);
     }
     // body
-    const armSw = Math.round(Math.sin(phase + Math.PI) * 1.5);
+    const armSw = Math.round(Math.sin(phase + Math.PI) * (run ? 2.6 : 1.7));
     const sleeve = st.sleeveless ? skin : (st.armor ? "#8a90a8" : cloth);
     if (side) { O(-1 - armSw, -11 + by, 2, 5, shadeHex(sleeve, -0.25)); P(-1 - armSw, -6 + by, 2, 1, skinD); }
     const tw = side ? 6 : 8, tx = side ? -3 : -4;
@@ -2422,9 +2431,12 @@
     if (o.extra === "veil" && !back) { P(-1, -11 + by, 2, 4, "#c8102e"); P(-2, -10 + by, 4, 1, "#c8102e"); }
     if (o.hero) { P(tx - 1, -13 + by, tw + 2, 2, "#3ee0e8"); P(tx - 1, -12 + by, tw + 2, 1, "#1fb8c2"); }
     if (side) { O(-1 + armSw, -11 + by, 2, 5, sleeve); P(-1 + armSw, -6 + by, 2, 1, skin); }
-    else { O(-6, -11 + by + (armSw > 0 ? 1 : 0), 2, 5, sleeve); P(-6, -6 + by + (armSw > 0 ? 1 : 0), 2, 1, skin); O(4, -11 + by + (armSw < 0 ? 1 : 0), 2, 5, sleeve); P(4, -6 + by + (armSw < 0 ? 1 : 0), 2, 1, skinD); }
+    else {
+      const aL = o.walking ? (armSw > 0 ? (run ? 2 : 1) : armSw < 0 ? -1 : 0) : 0, aR = o.walking ? (armSw < 0 ? (run ? 2 : 1) : armSw > 0 ? -1 : 0) : 0, len = run ? 4 : 5;
+      O(-6, -11 + by + aL, 2, len, sleeve); P(-6, -11 + len + by + aL, 2, 1, skin); O(4, -11 + by + aR, 2, len, sleeve); P(4, -11 + len + by + aR, 2, 1, skinD);
+    }
     // long hair behind the head
-    if (st.hair === "long" || (st.hair === "tail" && (side || back))) { const len = st.hair === "long" ? 13 : 9; O(-6, -22 + by, side ? 7 : 12, len, hair); P(-6, -22 + by, 1, len, hairL); }
+    if (st.hair === "long" || (st.hair === "tail" && (side || back))) { const len = st.hair === "long" ? 13 : 9, trail2 = o.walking ? (side ? -1 - (run ? 1 : 0) : Math.round(sw * 0.8)) : 0; O(-6 + trail2, -22 + by, side ? 7 : 12, len, hair); P(-6 + trail2, -22 + by, 1, len, hairL); }
     // big head
     const hw = side ? 11 : 12, hx = side ? -5 : -6, hy = -24 + by, blink = !o.walking && !o.glowEyes && ((time + (o.bob || 0) * 1.7) % 3.4) < 0.13;
     O(hx, hy, hw, 11, skin);
@@ -2796,9 +2808,14 @@
       } });
     }
     const trail = player.scarf;
-    G.members.slice(1).forEach((id, i) => {
-      const p = trail[Math.min(trail.length - 1, 4 + i * 4)] || { x: G.px, y: G.py - 10 };
-      actors.push({ y: p.y + 9, draw: () => drawPerson(g, p.x - ox, p.y + 10 - oy, { ...HEROES[id].look, dir: player.dir, walking: player.moving, walk: player.walk + i * .3, glowEyes: false }) });
+    const fdir = player.fdir || (player.fdir = {});
+    G.members.slice(1).forEach((id, i) => {   // each follower faces the way it is walking along the trail, and keeps its own step
+      const path = player.path && player.path.length ? player.path : [{ x: G.px, y: G.py }], idx = Math.min(path.length - 1, 7 * (i + 1));
+      const p0 = path[idx], p = { x: p0.x, y: p0.y - 10 }, q0 = path[Math.max(0, idx - 2)] || p0, q = { x: q0.x, y: q0.y - 10 };
+      const dx = q.x - p.x, dy = q.y - p.y;
+      if (Math.hypot(dx, dy) > 0.6) fdir[id] = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : (dy > 0 ? "down" : "up");
+      const dir = fdir[id] || player.dir;
+      actors.push({ y: p.y + 9, draw: () => drawPerson(g, p.x - ox, p.y + 10 - oy, { ...HEROES[id].look, dir, walking: player.moving, run: player.moving && player.sprint, walk: player.walk + i * 0.37, bob: 1.3 + i * 1.7, glowEyes: false }) });
     });
     if (!G.flags.butcherDead && G.stage >= 2) actors.push({ y: 28 * TILE + 8, draw: () => drawMiniBoss(g, 38 * TILE + 8 - ox, 28 * TILE + 8 - oy, "butcher") });
     if (!G.flags.motherDead && G.stage >= 3) actors.push({ y: MOTHER_POS.y, draw: () => drawMiniBoss(g, MOTHER_POS.x - ox, MOTHER_POS.y - oy, "mother") });
