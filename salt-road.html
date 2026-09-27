@@ -2877,7 +2877,8 @@
       const label = intentLabel(f), danger = f.intent && (f.intent.all || (f.intent.power || 0) >= 1.3 || (f.intent.charge && !f.intent.release));
       const ly = f.boss ? by + 12 : by - 4;
       hiText(label, p.x, ly, 7, f.st.stun ? "#ffcf4a" : danger ? "#ff6b6b" : "#f3efe6");
-      const ak = affShort(f.id); if (ak) hiText(ak, p.x, f.boss ? ly + 9 : ly - 9, 6, "#ffcf4a");   // weaknesses and resistances learned so far
+      [[breakInfo(f), "#ff9a3d"], [affShort(f.id), "#ffcf4a"]].filter(([t]) => t)   // break window, then weaknesses learned so far
+        .forEach(([t, c], i) => hiText(t, p.x, f.boss ? ly + 9 * (i + 1) : ly - 9 * (i + 1), 6, c));
       const sts = Object.keys(f.st).filter(k => ["bleed", "stun", "weak", "guard", "mark", "brk"].includes(k));
       sts.forEach((k, i) => { g.fillStyle = { bleed: "#c8102e", stun: "#ffcf4a", weak: "#b08aff", guard: "#6fc0d0", mark: "#ff9a3d", brk: "#aa5a5a" }[k]; g.fillRect(p.x + bw / 2 + 3 + i * 5, by, 4, 3); });
       if (B.hoverTarget === f || B.current === f) { g.strokeStyle = B.current === f ? "#ff6b6b" : "#ffcf4a"; g.lineWidth = 1; const w2 = f.boss ? 60 : 34; g.strokeRect(p.x - w2 / 2 + .5, p.y - (f.boss ? 108 : 56) + .5, w2, f.boss ? 112 : 58); }
@@ -7747,12 +7748,12 @@
     }
     return mv;
   };
-  const _intentLabelX = intentLabel;
-  intentLabel = function (f) {
-    const base = _intentLabelX(f);
-    if (f.st.stun || !winding(f)) return f.st.exposed && !f.st.stun ? `${base} · EXPOSED` : base;
-    return `${base} · BREAK: ${Math.max(0, breakNeed(f) - (f.chargeDmg || 0))} more`;
-  };
+  // shown on its own short line above the foe, so three foes' labels don't run into each other
+  function breakInfo(f) {
+    if (f.st.stun) return "";
+    if (winding(f)) return `BREAK: ${Math.max(0, breakNeed(f) - (f.chargeDmg || 0))} more`;
+    return f.st.exposed ? "EXPOSED" : "";
+  }
 
   // ================================================================== THE DRY SEA (rows 90-139)
   // The old seabed south of the Glass Flats, where the salt caravans run. Opens after Chapter I.
@@ -7937,7 +7938,7 @@
     n.walking = true; n.dir = dx > 0 ? "right" : "left";
     if (dd <= sp) { n.px = tx; n.py = ty; escort.leg++;
       const amb = escort.leg === 1 ? 0 : escort.leg === 3 ? 1 : -1;
-      if (amb >= 0 && !escort.fought[amb]) { escort.fought[amb] = true; n.walking = false; toast("Ambush on the road!"); const g = AMBUSHES[amb][((G.day || 1) + amb) % 3]; setTimeout(() => { if (mode === "play") startBattle(g, { area: "flats" }); }, 300); }
+      if (amb >= 0 && !escort.fought[amb]) { escort.fought[amb] = true; n.walking = false; toast("Ambush on the road!"); const g = AMBUSHES[amb][((G.day || 1) + amb) % 3]; setTimeout(() => { if (mode === "play") startBattle(g, { area: "dunes" }); }, 300); }
     } else { n.px += dx / dd * sp; n.py += dy / dd * sp; }
     n.x = Math.floor(n.px / TILE); n.y = Math.floor(n.py / TILE);
   }
@@ -8196,6 +8197,36 @@
     return true;
   };
   ACHIEVEMENTS.push(["duos", "Side by Side", "Use three different duo techniques.", () => (G.flags.duosUsed || []).length >= 3]);
+
+  // ---- once Chapter I is over, the player hears that the caravan road has opened
+  const _updateHintD = update;
+  update = function (dt) {
+    _updateHintD(dt);
+    if (mode === "play" && G && G.stage >= 2 && !G.flags.drySeaHint && !G.flags.epilogue && G.py < DRY.y0 * TILE) {
+      G.flags.drySeaHint = true; save();
+      card("A road opens", "The Dry Sea", "The dust storms over the old seabed have settled. South of the Glass Flats, past the belled signpost, the caravan road runs down to Tamar's Rest: salt pans, dunes, and people who could use a courier.");
+    }
+  };
+  // ---- the Dry Sea's battles happen on its own ground
+  const _areaAtD = areaAt;
+  areaAt = function (tx, ty, f) { return ty >= DRY.y0 ? (tx <= 44 ? "flats" : "dunes") : _areaAtD(tx, ty, f); };
+  SKIES2.dunes = ["#3a1e3a", "#e0905a"];
+  const _drawBattleBg2bD = drawBattleBg2b;
+  drawBattleBg2b = function (g, area) {
+    if (area !== "dunes") return _drawBattleBg2bD(g, area);
+    const t = time;
+    g.fillStyle = "#ffd98a"; g.beginPath(); g.arc(250, 62, 16, 0, Math.PI * 2); g.fill();                        // low sun
+    g.fillStyle = "rgba(255,217,138,.25)"; g.beginPath(); g.arc(250, 62, 24, 0, Math.PI * 2); g.fill();
+    for (const [base, amp, col, sp] of [[92, 10, "#b8704a", 0.02], [104, 8, "#c88a58", 0.035]]) {           // two rows of dunes
+      g.fillStyle = col; g.beginPath(); g.moveTo(-10, 130);
+      for (let x = -10; x <= VIEW_W + 10; x += 6) g.lineTo(x, base + Math.sin(x * sp + base) * amp);
+      g.lineTo(VIEW_W + 10, 130); g.fill();
+    }
+    g.fillStyle = "#d8a870"; g.fillRect(-10, 116, VIEW_W + 20, 90);                                          // the ground
+    g.fillStyle = "#c8945e"; for (let i = 0; i < 18; i++) { const x = (i * 37) % (VIEW_W + 20) - 10, y = 124 + (i * 13) % 60; g.fillRect(x, y, 22, 1); g.fillRect(x + 6, y + 3, 14, 1); }
+    if (!REDUCED) { g.fillStyle = "rgba(255,240,210,.18)"; for (let i = 0; i < 5; i++) g.fillRect(-10, 108 + i * 3 + Math.sin(t * 2 + i) * 1.5, VIEW_W + 20, 1); }   // heat shimmer
+    return true;
+  };
 
   // ================================================================== BOOT
   const saved = load();          // read the save before a fresh game could overwrite it
