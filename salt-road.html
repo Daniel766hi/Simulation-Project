@@ -1542,7 +1542,7 @@
     ].filter(([, show]) => show).map(([done, , t]) => `<li class="${done ? "done" : ""}">${done ? "✓ " : ""}${t}</li>`).join("");
     const tabs = LORE.filter(l => lore.includes(l.id)).map(l => `<li><b>${esc(l.title)}.</b> ${esc(val(l.text))}</li>`).join("") || `<li class="dim">None yet. Look for glowing stones.</li>`;
     const kills = G.flags.kills || {};
-    const beasts = Object.keys(BESTIARY).filter(k => kills[k]).map(k => `<li><b>${esc(MONSTERS[k].name)}</b> ×${kills[k]}. ${esc(BESTIARY[k])}</li>`).join("") || `<li class="dim">No monsters defeated yet.</li>`;
+    const beasts = Object.keys(BESTIARY).filter(k => kills[k]).map(k => `<li class="beast"><img alt="" data-mon="${k}"><span><b>${esc(MONSTERS[k].name)}</b> ×${kills[k]}. ${esc(BESTIARY[k])}</span></li>`).join("") || `<li class="dim">No monsters defeated yet.</li>`;
     const rel = (G.relics || []).map(r => `<li><b>${RELICS[r].name}</b>: ${RELICS[r].desc}${Object.entries(G.equip || {}).find(([, x]) => x === r) ? ` <span class="done">(worn by ${G.party[Object.entries(G.equip).find(([, x]) => x === r)[0]].name})</span>` : ""}</li>`).join("") || `<li class="dim">Bosses drop relics. None yet.</li>`;
     $("journalBody").innerHTML = `${fallenHtml()}<h3>The story so far</h3>${story}<h3>Tasks</h3><ul>${q}</ul><h3>Relics</h3><ul>${rel}</ul><h3>Bestiary (${Object.keys(BESTIARY).filter(k => kills[k]).length}/${Object.keys(BESTIARY).length})</h3><ul>${beasts}</ul><h3>Salt tablets</h3><ul>${tabs}</ul>${extraJournalHtml()}<p class="dim">Difficulty: ${difficulty[0].toUpperCase() + difficulty.slice(1)} (change it on the title screen).</p>`;
   }
@@ -9141,6 +9141,72 @@
       for (let i = 0; i < 3; i++) K.E(cx - 20 + i * 24, 140, 3, 2, "rgba(158,240,245,0.4)");
     } },
   };
+  // three that used to be recoloured guards, now their own people
+  const REG_ART_ID = {
+    thug: { w: 46, h: 60, ramps: ["ink", "gold", "leather", "flesh", "blood", "rust", "cloth", "bone"], paint(K, ph) {
+      const b = Math.sin(ph * Math.PI * 2) * 1.2, cx = 62;
+      // a Guild Enforcer: a big man in a gold-trimmed coat, face behind a toll-mask, an iron-banded cudgel
+      for (const s of [-1, 1]) { K.S([[cx + s * 12, 126], [cx + s * 14, 150], [cx + s * 13, 172]], 10, "#36241a"); K.E(cx + s * 14, 174, 10, 4, "#120f1c"); }
+      K.P([[cx - 30, 66 + b], [cx + 30, 66 + b], [cx + 34, 134], [cx - 34, 134]], K.LG(cx - 34, 0, cx + 34, 0, [[0, "#120f1c"], [0.4, "#332c52"], [1, "#07060c"]]));
+      K.S([[cx - 30, 66 + b], [cx - 34, 134]], 3, "#b08a28"); K.S([[cx + 30, 66 + b], [cx + 34, 134]], 3, "#b08a28");
+      K.P([[cx - 30, 66 + b], [cx + 30, 66 + b], [cx + 22, 84 + b], [cx - 22, 84 + b]], "#523828");
+      for (let i = 0; i < 3; i++) K.vol(cx - 16 + i * 16, 100 + b, 4, 4, ["#f6e07a", "#b08a28", "#2e1e06"]);
+      K.S([[cx - 34, 114], [cx + 34, 114]], 5, "#523828"); K.vol(cx, 114, 6, 5, ["#f6e07a", "#b08a28", "#2e1e06"]);
+      // arms thick as posts; the cudgel studded with nails
+      K.S([[cx - 30, 72 + b], [cx - 42, 104], [cx - 40, 128]], 12, "#221e38"); K.vol(cx - 40, 132, 8, 8, ["#e2b394", "#ad7058", "#4a2226"]);
+      K.S([[cx + 30, 72 + b], [cx + 46, 92], [cx + 50, 76]], 12, "#221e38"); K.vol(cx + 50, 72, 8, 8, ["#e2b394", "#ad7058", "#4a2226"]);
+      K.S([[cx + 50, 72], [cx + 58, 12]], 10, "#523828"); for (let i = 0; i < 3; i++) K.S([[cx + 47 + i * 1.3, 58 - i * 18], [cx + 61 + i * 1.3, 60 - i * 18]], 3, "#76381a");
+      for (let i = 0; i < 6; i++) K.P([[cx + 51 + (i % 2) * 8, 20 + i * 7], [cx + 46 + (i % 2) * 18, 18 + i * 7], [cx + 51 + (i % 2) * 8, 24 + i * 7]], "#a6aac2");
+      K.drip(cx + 56, 32, 10, 1.6, "#9a1224");
+      // head: bull neck, a brass toll-mask with a coin slot for a mouth, eyes behind it
+      K.vol(cx, 44 + b, 20, 22, ["#e2b394", "#8e5444", "#2a1418"]);
+      K.P([[cx - 18, 34 + b], [cx + 18, 34 + b], [cx + 16, 58 + b], [cx, 64 + b], [cx - 16, 58 + b]], K.LG(cx - 18, 0, cx + 18, 0, [[0, "#86621a"], [0.45, "#f6e07a"], [1, "#5a3c0e"]]));
+      K.E(cx - 7, 42 + b, 4, 2.6, ink); K.E(cx + 7, 42 + b, 4, 2.6, ink); K.E(cx + 7, 42 + b, 1.2, 1.2, "#ff2d2d");
+      K.R(cx - 6, 52 + b, 12, 2.4, ink); K.crack(cx + 10, 36 + b, 16, 1.7, "#2e1e06", 1);
+      K.P([[cx - 20, 30 + b], [cx + 20, 30 + b], [cx + 14, 16 + b], [cx - 14, 16 + b]], "#1d1830"); K.R(cx - 24, 28 + b, 48, 4, "#b08a28");
+    } },
+    dvillager: { w: 38, h: 58, ramps: ["ink", "corpse", "brine", "rot", "paper", "bone", "pale", "wood"], paint(K, ph) {
+      const b = Math.sin(ph * Math.PI * 2) * 1.5, cx = 57;
+      // a drowned villager: a woman still carrying her fish basket, hair gone to weed, a fishing net trailing
+      K.P([[cx - 22, 66 + b], [cx + 22, 66 + b], [cx + 34, 168], [cx - 34, 168]], K.LG(cx - 34, 0, cx + 34, 0, [[0, "#2e403a"], [0.45, "#7e9484"], [1, "#1e2a26"]]));
+      for (let i = 0; i < 7; i++) K.P([[cx - 34 + i * 10, 164], [cx - 30 + i * 10, 172 + (i % 2) * 4], [cx - 26 + i * 10, 164]], "#1e2a26");
+      K.P([[cx - 24, 110], [cx + 24, 110], [cx + 30, 150], [cx - 30, 150]], "rgba(186,176,142,0.55)");
+      for (let i = 0; i < 6; i++) K.S([[cx - 26 + i * 10, 112], [cx - 30 + i * 12, 150]], 0.8, "#6a6250");
+      // the net, dragged behind, full of small bones
+      K.Q([[cx + 30, 130], [cx + 52, 150], [cx + 46, 176]], 1.4, "#948a70"); for (let i = 0; i < 5; i++) K.S([[cx + 34 + i * 3, 136 + i * 7], [cx + 50 - i * 2, 146 + i * 6]], 0.8, "#948a70");
+      K.vol(cx + 44, 162, 3, 2, ["#e8e0cc", "#a2957c", "#4a4238"]); K.vol(cx + 38, 170, 2.6, 2, ["#e8e0cc", "#a2957c", "#4a4238"]);
+      // arms: one clutching the basket to her hip
+      K.S([[cx - 20, 74 + b], [cx - 32, 100], [cx - 26, 116]], 7, "#5e7466"); K.vol(cx - 26, 118, 5, 5, ["#cad8c8", "#7e9484", "#2e403a"]);
+      K.P([[cx - 44, 110], [cx - 14, 110], [cx - 18, 134], [cx - 40, 134]], "#78502a"); for (let i = 0; i < 4; i++) K.S([[cx - 44, 114 + i * 5], [cx - 14, 114 + i * 5]], 1.4, "#3a2616");
+      K.P([[cx - 40, 108], [cx - 30, 100], [cx - 20, 108]], "#a4b8a6"); K.E(cx - 32, 104, 2, 1.4, ink);
+      K.S([[cx + 20, 74 + b], [cx + 30, 102], [cx + 32, 124]], 7, "#5e7466"); K.vol(cx + 32, 128, 5, 5, ["#cad8c8", "#7e9484", "#2e403a"]);
+      // head: swollen, mouth open on water, hair a curtain of weed
+      K.vol(cx, 46 + b, 17, 20, ["#cad8c8", "#7e9484", "#2e403a"]);
+      for (let i = 0; i < 11; i++) K.Q([[cx - 18 + i * 3.6, 26 + b], [cx - 22 + i * 4.4 + Math.sin(ph * 6.28 + i) * 2, 60 + b], [cx - 24 + i * 4.8, 92 + b]], 2.2, i % 2 ? "#465228" : "#62703a");
+      K.E(cx - 6, 44 + b, 3.4, 3, "#ececf2"); K.E(cx + 6, 44 + b, 3.4, 3, "#ececf2");
+      K.E(cx, 56 + b, 5, 6, "#1e0306"); K.drip(cx, 60 + b, 16, 1.6, "#3f8a90"); K.drip(cx - 4, 58 + b, 10, 1.2, "#3f8a90");
+    } },
+    rootbound: { w: 44, h: 60, ramps: ["ink", "wood", "rot", "pale", "paper", "blood", "glowr"], paint(K, ph) {
+      const b = Math.sin(ph * Math.PI * 2) * 1, cx = 66;
+      // a Rootbound Debtor: a man grown into the Ledger Tree's roots, chained by his own pages
+      for (let i = 0; i < 6; i++) { const x1 = cx - 50 + i * 20; K.Q([[cx - 10 + i * 4, 130], [(cx + x1) / 2, 150], [x1, 178]], 7, "#3a2616"); K.Q([[cx - 10 + i * 4, 130], [(cx + x1) / 2, 150], [x1, 178]], 2.4, "#58391e"); }
+      K.P([[cx - 20, 70 + b], [cx + 20, 70 + b], [cx + 26, 138], [cx - 26, 138]], K.LG(cx - 26, 0, cx + 26, 0, [[0, "#3a2616"], [0.4, "#78502a"], [1, "#1e140c"]]));
+      for (let i = 0; i < 8; i++) K.Q([[cx - 20 + i * 5, 74 + b], [cx - 22 + i * 6, 104], [cx - 24 + i * 7, 138]], 1.4, "rgba(30,20,12,0.7)");
+      // what is left of him: a pale chest, ribs, one hand free
+      K.vol(cx - 2, 92 + b, 13, 16, ["#ccccd8", "#848498", "#3a3a4a"]); for (let i = 0; i < 4; i++) K.Q([[cx - 12, 86 + i * 6 + b], [cx - 2, 83 + i * 6 + b], [cx + 8, 86 + i * 6 + b]], 1.2, "#5e5e70");
+      K.S([[cx - 20, 78 + b], [cx - 36, 104], [cx - 42, 126]], 7, "#848498"); for (let f = 0; f < 4; f++) K.S([[cx - 42, 126], [cx - 48 + f * 4, 138]], 1.8, "#a8a8ba");
+      K.S([[cx + 20, 78 + b], [cx + 34, 94], [cx + 48, 86], [cx + 58, 70]], 8, "#58391e"); for (let f = 0; f < 4; f++) K.S([[cx + 58, 70], [cx + 54 + f * 4, 56 - (f % 2) * 4]], 3, "#3a2616");
+      // chains of ledger pages across him
+      for (const [y, d] of [[80, 1], [110, -1]]) for (let i = 0; i < 6; i++) { const x = cx - 26 + i * 10; K.P([[x, y + b + i * d * 3], [x + 9, y + b + i * d * 3 - 2], [x + 10, y + b + i * d * 3 + 8], [x + 1, y + b + i * d * 3 + 10]], "#ddd4b0"); K.S([[x + 2, y + b + i * d * 3 + 4], [x + 8, y + b + i * d * 3 + 3]], 0.7, "#9a1224"); }
+      // head: bark creeping over half the face, the other half still begging
+      K.vol(cx, 48 + b, 16, 19, ["#ccccd8", "#848498", "#3a3a4a"]);
+      K.P([[cx, 28 + b], [cx + 18, 36 + b], [cx + 16, 66 + b], [cx, 68 + b]], "#58391e"); for (let i = 0; i < 4; i++) K.S([[cx + 3 + i * 4, 32 + b], [cx + 2 + i * 4, 64 + b]], 1, "#3a2616");
+      K.E(cx - 7, 46 + b, 3.4, 3, ink); K.E(cx - 7, 46 + b, 1.2, 1.2, "#ff2d2d"); K.eye(cx + 8, 46 + b, 2.6, "#ff2d2d", null);
+      K.E(cx - 5, 58 + b, 4, 3.4, "#1e0306"); K.drip(cx - 9, 50 + b, 10, 1.2, "#848498");
+      for (let i = 0; i < 5; i++) K.S([[cx + 4 + i * 5, 28 + b], [cx + 8 + i * 7, 10 - (i % 2) * 4]], 2.4, "#3a2616");
+    } },
+  };
+
   REG_ART.leechling = { ...REG_ART.leech };
   // colour variants (hue in degrees, saturation and lightness multipliers) and frame size for the monsters that share a body
   const VARIANT = {
@@ -9167,9 +9233,9 @@
   const bossArtFor = u => {   // the fine art for any monster: a boss's own painting, or the body its kind shares, in its colours
     const M = u && MONSTERS[u.id]; if (!M) return null;
     if (M.boss && (u.id === "tollkeeper" || BOSS_ART[u.sprite])) { const A = u.id === "tollkeeper" ? BOSS_ART.tollkeeper : BOSS_ART[u.sprite]; A.key = A.key || (u.id === "tollkeeper" ? "tollkeeper" : u.sprite); return A; }
-    const base = REG_ART[u.sprite]; if (!base) return null;
+    const base = REG_ART_ID[u.id] || REG_ART[u.sprite]; if (!base) return null;
     if (artMemo.has(u.id)) return artMemo.get(u.id);
-    const v = VARIANT[u.id] || null, sc = (v && v.scale) || (M.boss ? 1.6 : 1);
+    const v = REG_ART_ID[u.id] ? null : VARIANT[u.id] || null, sc = (v && v.scale) || (M.boss ? 1.6 : 1);
     const A = { key: "reg:" + u.id, w: Math.round(base.w * sc), h: Math.round(base.h * sc), scale: sc, v: v && v.hue !== undefined ? v : null, ramps: v && v.hue !== undefined ? variantRamps(base.ramps, v) : base.ramps, paint: base.paint, regular: !M.boss };
     artMemo.set(u.id, A); return A;
   };
@@ -9519,6 +9585,39 @@
   toast = function (text) {
     if (battle) { const tx = text; const later = () => { if (battle) setTimeout(later, 500); else _toastBL(tx); }; setTimeout(later, 500); return; }
     _toastBL(text);
+  };
+
+  // ---- the same art out in the world: roaming monsters and the bosses waiting for you, drawn small into the picture
+  const bossIdBySprite = {};
+  for (const [id, M] of Object.entries(MONSTERS)) if (M.boss && !bossIdBySprite[M.sprite]) bossIdBySprite[M.sprite] = id;
+  function worldArt(g2, id, x, y, sc) {
+    const M = MONSTERS[id]; const A = M && bossArtFor({ id, sprite: M.sprite }); if (!A) return 0;
+    const fr = artFrame(A, A.key, Math.floor(((time * 1.1 + x * 0.013) % 1 + 1) % 1 * ART_FRAMES), false), w = A.w * sc, h = A.h * sc;
+    g2.fillStyle = "rgba(20,14,40,.32)"; g2.beginPath(); g2.ellipse(x, y + 1, Math.max(6, w * 0.32), 2.6, 0, 0, Math.PI * 2); g2.fill();
+    const sm = g2.imageSmoothingEnabled; g2.imageSmoothingEnabled = true; g2.drawImage(fr, Math.round(x - w / 2), Math.round(y - h + 1), Math.round(w), Math.round(h)); g2.imageSmoothingEnabled = sm;
+    return h;
+  }
+  const _drawFieldMonsterArt = drawFieldMonster;
+  drawFieldMonster = function (g2, f, x, y) {
+    x = Math.round(x); y = Math.round(y);
+    const bob = Math.round(Math.abs(Math.sin(f.t * 5)) * 1.5), h = worldArt(g2, f.group[0], x, y - bob, 0.44);
+    if (!h) return _drawFieldMonsterArt(g2, f, x, y);
+    if (f.elite) { g2.fillStyle = "#ffcf4a"; const cy = Math.round(y - h - 4 - bob); g2.fillRect(x - 3, cy, 7, 2); g2.fillRect(x - 3, cy - 2, 1, 2); g2.fillRect(x, cy - 2, 1, 2); g2.fillRect(x + 3, cy - 2, 1, 2); }
+  };
+  const _drawMiniBossArt = drawMiniBoss;
+  drawMiniBoss = function (g2, x, y, kind) { const id = bossIdBySprite[kind]; if (!id || !worldArt(g2, id, Math.round(x), Math.round(y), 0.36)) _drawMiniBossArt(g2, x, y, kind); };
+
+  // ---- the Bestiary shows each monster you have beaten as it looks in battle; portraits are painted a few at a time
+  const beastCss = document.createElement("style");
+  beastCss.textContent = "li.beast{display:flex;gap:10px;align-items:center;list-style:none;margin:6px 0}li.beast img{flex:none;width:64px;height:64px;object-fit:contain;background:rgba(0,0,0,.25);border:1px solid var(--edge);border-radius:6px}li.beast img:not([src]){visibility:hidden}";
+  document.head.appendChild(beastCss);
+  const portraitCache = {};
+  const _renderJournalArt = renderJournal;
+  renderJournal = function () {
+    _renderJournalArt();
+    const imgs = [...document.querySelectorAll("#journalBody img[data-mon]")];
+    const step = () => { const t0 = performance.now(); while (imgs.length && performance.now() - t0 < 12) { const im = imgs.shift(), id = im.dataset.mon, M = MONSTERS[id], A = M && bossArtFor({ id, sprite: M.sprite }); if (!A) continue; im.src = portraitCache[id] || (portraitCache[id] = artFrame(A, A.key, 0, false).toDataURL()); } if (imgs.length && mode === "journal") setTimeout(step, 16); };
+    step();
   };
 
   // the fine boss art is drawn after every other module has set up how picture text is flushed
