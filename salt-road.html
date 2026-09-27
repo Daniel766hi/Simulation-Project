@@ -8417,6 +8417,129 @@
   };
   ACHIEVEMENTS.push(["ninecups", "Nine Cups", "Open the well at Tamar's Rest to everyone, without drawing a blade.", () => G.flags.cup === "open"]);
 
+  // ================================================================== THE KING IN THE WATER: FORESHADOWING
+  // Three rest-dreams in the first half show a man standing in dark water, handing out cups all the same size,
+  // long before anyone says the name Aurel. The Tide Shrine and the King himself recognise them later.
+  const KDREAMS = [
+    { n: 1, stage: 1, title: "A Dream of Water", lines: [[null, "(Dark water to your waist, warm as blood. A man in a plain coat stands in it, handing cups to people you can't see. Every cup is the same size. He looks up at you as if you're late.)"],
+      ["sable", "(You wake with salt on your lips. Just a dream. The Flats give everyone dreams.)"]] },
+    { n: 2, stage: 3, title: "The Low Note", lines: [[null, "(The dark water again, at his chest now. He is still handing out cups. Behind him a bell hangs from nothing, and it rings once, very low, from under the water. Every cup in the valley shivers.)"],
+      [() => inParty("maru") ? "maru" : "sable", () => inParty("maru") ? "(In the morning Maru turns her blind face toward you.) You were humming in your sleep, courier. A drowned note, a low one. Where did you learn a note like that?" : "(You wake humming a note you've never heard, low as the bottom of a well.)"]] },
+    { n: 3, stage: 5, title: "The Question", lines: [[null, "(The water is at his throat. The cups are gone. His eyes are closed, and somewhere above him a choir is singing him down, gently, the way you sing a child to sleep. He opens his mouth to ask you something.)"],
+      ["sable", "(You wake before you hear it. All day you can't shake the feeling that the question was addressed to you, by name.)"]] },
+  ];
+  KDREAMS.forEach(d => d.lines.forEach(([who, text], i) => {
+    const id = `kd${d.n}_${i}`, last = i === d.lines.length - 1;
+    D[id] = { get who() { return typeof who === "function" ? who() : who; }, text, go: last ? null : `kd${d.n}_${i + 1}`, act: last ? () => { G.flags.kdreams = Math.max(G.flags.kdreams || 0, d.n); save(); } : undefined };
+  }));
+  const kingDreamReady = () => G.stage < 8 && KDREAMS.find(d => G.stage >= d.stage && (G.flags.kdreams || 0) === d.n - 1);
+  REST_SCENES.push({ id: "kingdreams", prio: () => kingDreamReady() ? 58 : 0,
+    run: () => { const d = kingDreamReady(); if (!d) return false; cardThen("A dream", d.title, "You sleep by the fire. The salt gives everyone dreams. This one is the same as before, only deeper.", `kd${d.n}_0`); return true; } });
+  Object.assign(D, {
+    kd_recog: say("sable", "(You know that face. The plain coat, the cups all the same size. The man in the water. You have been dreaming him since Kessa, and now you know his name.)"),
+    kd_king: say("king", "...You. I know your face. You kept wading into my dreams, courier, always late, always standing at the edge of the water. I thought you were one of mine.", () => G.flags.ledgerFate ? "led_king" : "king_scene3"),
+    led_king: say("king", () => ({ burned: "And they burned the Guild's ledger up there. My name was the first line in it. I felt it go, like a stone lifted off my chest.",
+      returned: "And the Guild's ledger has been cut into pages and handed back to the people it names. Mine too, I suppose. There is no one left alive to take it.",
+      council: "And the Guild's ledger sits in a council's hands now. The same pen, a kinder hand. We will see what it writes." })[G.flags.ledgerFate] || "", "king_scene3"),
+  });
+  D.tide_v1.go = () => (G.flags.kdreams || 0) >= 2 ? "kd_recog" : null;
+  D.king_scene2.go = () => (G.flags.kdreams || 0) >= 2 ? "kd_king" : G.flags.ledgerFate ? "led_king" : "king_scene3";
+
+  // ================================================================== THE MASTER LEDGER: A RECKONING WITH THE GUILD
+  // Once the King's story is known, Tobin the clerk shows Sable the Guild's Master Ledger. Its first entry is
+  // Aurel himself, written down as a debt for the sea to collect. Sable decides what happens to every debt in
+  // the valley before going down to answer the King.
+  Object.assign(D, {
+    led_0: say("tobin", "(Tobin has moved into the counting room. He eats bread over an open ledger the size of a door.) Courier. I've been waiting for somebody to ask what this is. It's everything. Every debt the Guild ever wrote, from the first page to Quill's last line.", "led_1"),
+    led_1: say("tobin", "The rakers' salt contracts. The farmers' rain insurance. 'Hands collected.' Mayor Ines wants it for the trials. The families who lent the Guild their savings want it kept, because it says what they're owed. And the debtors want it at the bottom of the sea.", "led_2"),
+    led_2: say("tobin", "Here's the part I can't stop reading. The first entry, four hundred years old, brown ink: 'AUREL, king. Refused the sale of water. Debt: the lowlands, and everyone in them. To be collected by the sea.' (He looks up.) They wrote him down as a debt, courier. Then they let the sea collect.", "led_3"),
+    led_3: { who: "tobin", text: "Nobody else will decide. Everyone agrees it should be the courier who opened the gate. So: what do we do with it?", choices: [
+      { t: "\"Burn it. Every page. Nobody owes the Guild anything, ever again.\"", go: "led_burn" },
+      { t: "\"Give every page to the person it names. Let them decide what their debt is worth.\"", go: "led_return" },
+      { t: "\"Give it to Mayor Ines. The debts get paid to a fund that rebuilds the lowlands, not to the Guild.\"", go: "led_council" },
+      { t: "\"Not yet. I need to think.\"", go: null } ] },
+    led_burn: say(null, "(The ledger burns all night in the plaza. Debtors come from every corner of Oru to watch; some of them dance. A widow who lent the Guild her husband's savings stands at the edge of the light with nothing in her hands.)", "led_burn2"),
+    led_burn2: say("tobin", "Nobody owes anybody now. I wonder who'll lend anybody anything next year. ...It was still right. I think it was still right.", null, () => ledgerDecided("burned")),
+    led_return: say(null, "(It takes Tobin and a dozen volunteers forty days to cut the ledger into pages and carry each one to the name written on it. Some people burn theirs. Some frame it. At the salt pans, a raker tears her grandmother's contract in half and uses it to start the evening fire.)", "led_return2"),
+    led_return2: say("tobin", "Slow justice. Every page its own small trial, judged by the person it happened to. It's the only kind I trust.", null, () => ledgerDecided("returned")),
+    led_council: say(null, "(Mayor Ines takes the ledger with both hands. The debts will still be paid, she promises, but to the Lowland Fund, which will rebuild the drowned farms and dig new wells. The Guild's collectors are hired back at lower wages, in new coats.)", "led_council2"),
+    led_council2: say("tobin", "The same pen in a kinder hand. That's either how the world gets better or how the next Guild begins. I'll write it all down, either way.", null, () => ledgerDecided("council")),
+    led_after: say("tobin", () => ({ burned: "The plaza still smells of smoke. People keep asking me what they owe. I tell them: nothing. They don't believe me yet.",
+      returned: "Page four thousand and twelve delivered this morning. Four thousand to go. My feet hurt. I have never been happier.",
+      council: "The Lowland Fund's first well is dug. The collectors grumble about their wages. I write down every coin, where anyone can read it. That part is new." })[G.flags.ledgerFate]),
+  });
+  { const t0 = D.tobin_0, go0 = t0.go; t0.go = () => G.stage >= 10 && !G.flags.ledgerFate ? "led_0" : val(go0); }   // meeting Tobin late runs straight on into the ledger
+  function ledgerDecided(fate) { G.flags.ledgerFate = fate; Music.sound("item"); toast("The Guild's Master Ledger: decided."); save(); updateHud(); }
+  const _dialogForLed = dialogFor;
+  dialogFor = function (n) {
+    if (n.id === "tobin" && G.stage >= 10) return !G.flags.tobinThanked ? "tobin_0" : G.flags.ledgerFate ? "led_after" : "led_0";
+    return _dialogForLed(n);
+  };
+  // the dive waits until the valley's debts are decided: the King's question is about exactly those people
+  { const w = WARPS.find(w => w.x === 117 && w.y === 86);
+    if (w) { const req = w.req, msg = w.msg; w.req = () => req() && !!G.flags.ledgerFate;
+      Object.defineProperty(w, "msg", { get: () => req() ? "Before you go down to answer the King, decide what happens to the Guild's Master Ledger. Tobin has it, in Oru's Guild Hall." : msg }); } }
+  const _goalLed = goal;
+  goal = function () {
+    const t = _goalLed();
+    if (G.stage === 12 && G.flags.bellReady && !G.flags.kingDead && !G.flags.ledgerFate && !G.flags.epilogue && !G.flags.job)
+      return { ch: t.ch, text: "Before the dive: Tobin holds the Guild's Master Ledger in Oru's Guild Hall. Decide what happens to every debt in the valley.", x: 79, y: 5 };
+    return t;
+  };
+
+  // ================================================================== NO BLADE DRAWN: PEACEFUL ROADS
+  // Two boss fights on the main road can end without one: Ada sings the Choirmaster's dead to rest, and Nell
+  // sings her drowned father his own shanty. A peace is worth what the fight was worth.
+  function peaceWin(boss, group) {
+    grantRelic(boss);
+    const xp = group.reduce((s, id) => s + MONSTERS[id].xp, 0), coins = group.reduce((s, id) => s + MONSTERS[id].coin[0], 0), ups = [];
+    G.coins += coins;
+    for (const id of G.members) {
+      const h = G.party[id]; h.xp += xp;
+      while (h.xp >= xpNeed(h.level)) { h.xp -= xpNeed(h.level); levelUp(h); ups.push(`${h.name} reaches level ${h.level}`); const ult = HEROES[id].skills.find(sk => sk.lvl === h.level); if (ult) ups.push(`${h.name} learns ${ult.name}`); }
+    }
+    G.flags.spared = [...new Set([...(G.flags.spared || []), boss])];
+    Music.sound("victory"); toast(`No blade drawn. +${xp} XP, +${coins} coin.${ups.length ? " " + ups.join(". ") + "." : ""}`); save(); updateHud();
+  }
+  const fightChoir = () => startBattle(["choirmaster", "choir"], { boss: "choirmaster", area: "cathedral" });
+  D.choir_scene = { who: "choirmaster", text: "A courier in my Cathedral. Stay for the performance. You will be the finale.", choices: [
+    { t: "Draw your blade. (Fight)", go: null, act: fightChoir },
+    { t: "Let Ada sing the dead to rest.", go: "choirp_0", req: () => inParty("ada"), reqText: "Sister Ada with you" } ] };
+  Object.assign(D, {
+    choirp_0: say("ada", "(Ada steps into the aisle and begins the sleeping-words, the ones the Choir taught her to say over the dying. Row by row, the drowned singers close their sewn mouths and sit down in the pews.)", "choirp_1"),
+    choirp_1: say("choirmaster", "Stop. STOP. They are mine, I paid for every voice... (His baton conducts nothing. The nave is silent.) ...Do you know what silence sounds like, to a conductor? It sounds like being dead.", "choirp_2"),
+    choirp_2: say("ada", adaLine("It sounds like rest. You taught me that, before you sold them. Put the baton down.", "It sounds like rest. You taught me that, before you sold them. Put the baton down."), "choirp_3"),
+    choirp_3: say(null, "(He looks at the bone baton for a long time. Then he snaps it across his knee, sits down in the last pew among his choir, and does not get up again. Behind the altar, the chest clicks open.)", null, () => {
+      peaceWin("choirmaster", ["choirmaster", "choir"]); G.flags.choirDead = true; G.flags.choirSpared = true; save(); toast("The Choirmaster's song is over. Open the chest."); }),
+  });
+  const mawOK = () => { const c = G.flags.creed || {}; return bondLevel("nell") >= 1 || c.mercy === "mercy" || c.many === "one"; };
+  D.maw_scene4.choices = [...D.maw_scene4.choices, { t: "Let Nell sing him his own shanty.", go: "mawp_0", req: mawOK, reqText: "Nell's trust (a bond talk), or a creed of mercy" }];
+  Object.assign(D, {
+    mawp_0: say("nell", "(Nell sheathes the cutlass and starts to sing, badly, the smuggler's shanty he taught her on the Gull: 'No toll on the tide, no toll on the sky, no toll on the children who can't pay to fly...')", "mawp_1"),
+    mawp_1: say("maw", "(The eels go still. The great drowned head tilts.) ...That's wrong. You're flat on the turn. You were always flat on the turn. (A sound comes out of him that might once have been a laugh.) Nellie. What have I been doing down here?", "mawp_2"),
+    mawp_2: say("nell", "Nothing you can't stop, Da. Come up. Or rest. But not this.", "mawp_3"),
+    mawp_3: say("maw", "(He lays the anchor across his knees.) I can't come up, girl. His water's in me. But I can stop. Cut the chain yourself; I'd like it to be you. And Nellie... don't pay the toll. Not theirs, not his. Not anybody's.", "maw_after2",
+      () => { peaceWin("maw", ["maw", "sailor"]); G.flags.mawDead = true; G.flags.mawSpared = true; save(); }),
+  });
+  ACHIEVEMENTS.push(["peace", "No Blade Drawn", "End the Choirmaster's and Captain Maw's stories without a fight.", () => G.flags.choirSpared && G.flags.mawSpared]);
+  const _extraFatesS3 = extraFates;
+  extraFates = function (k) {
+    const out = _extraFatesS3(k), f = G.flags;
+    if (f.ledgerFate === "burned") out.push("The Guild's ledger burned in one night. For a year nobody in the valley owes anybody anything, and nobody lends anybody anything either. Then, slowly, people start trusting each other with small sums, and writing nothing down.");
+    if (f.ledgerFate === "returned") out.push("Every page of the Guild's ledger went home to the name written on it. Some were burned, some forgiven, a few paid in full out of stubborn pride. Nobody tells anybody else what to do with theirs.");
+    if (f.ledgerFate === "council") out.push("The Lowland Fund rebuilds three drowned villages in ten years, and prints its accounts on the town hall door. Every generation someone asks whether it is just the Guild again, and every generation the door is checked.");
+    if (f.choirSpared) out.push("The Choirmaster never leaves the last pew of the Salt Cathedral. Pilgrims say that, for the rest of his life, he hums the sleeping-words under his breath, and that the Cathedral is the quietest place in the valley.");
+    if (f.mawSpared) out.push("On the Gull's rail, under her father's name, Nell carves a second line: HE STOPPED.");
+    return out;
+  };
+  const _extraJournalS3 = extraJournalHtml;
+  extraJournalHtml = function () {
+    const f = G.flags, rows = [];
+    if ((f.kdreams || 0) > 0) rows.push(`<li>${["", "A man in dark water, handing out cups all the same size.", "The water rising, and a bell ringing under it.", "A choir singing him down, and a question you woke before hearing."].slice(1, (f.kdreams || 0) + 1).join(" ")}</li>`);
+    const led = G.stage >= 10 && f.quillDead ? (f.ledgerFate ? `<li class="done">✓ The Guild's Master Ledger: ${{ burned: "burned in the plaza", returned: "every page returned to the name on it", council: "given to Mayor Ines's Lowland Fund" }[f.ledgerFate]}.</li>` : `<li>Tobin holds the Guild's Master Ledger in Oru's Guild Hall. Decide what happens to it.</li>`) : "";
+    return _extraJournalS3() + (rows.length ? `<h3>Dreams</h3><ul>${rows.join("")}</ul>` : "") + (led ? `<h3>The Master Ledger</h3><ul>${led}</ul>` : "");
+  };
+
   // ================================================================== NO TEXT OVER CHARACTERS
   // 1. Viewport inset: when a panel covers the bottom of the screen (dialogue, cutscene captions, scene lines),
   //    the picture is drawn smaller above it instead of behind it, so nobody is ever under the text.
@@ -8771,7 +8894,7 @@
   }
   requestAnimationFrame(loop);
   // For quick checks from a browser console, e.g. window.__saltRoad.battle(["ghoul","jackal"])
-  window.__saltRoad = { battle: (grp, opts) => startBattle(grp, opts || {}), closeDlg: () => { if (dlg) closeDialogFor(null); }, endCine: () => { if (cine) endCine(); }, flee: () => { if (battle) endBattle("fled"); }, state: () => G, mode: () => mode, reach: () => {
+  window.__saltRoad = { battle: (grp, opts) => startBattle(grp, opts || {}), closeDlg: () => { if (dlg) closeDialogFor(null); }, open: id => openDialog(id), endCine: () => { if (cine) endCine(); }, flee: () => { if (battle) endBattle("fled"); }, state: () => G, mode: () => mode, reach: () => {
     const seen = new Set(), q = [[12, 47]]; seen.add("12,47");
     const pass = (x, y) => { const t = get(x, y); return (!SOLID.has(t) || t === T.LOCKED || t === T.DOOR) && !propSolid.has(x + "," + y); };
     const worldPass = (x, y) => pass(x, y) || [T.GDOOR, T.DEBRIS].includes(get(x, y));
