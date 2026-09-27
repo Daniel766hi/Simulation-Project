@@ -10,7 +10,7 @@ self-contained: no backend, no build step, no network access required.
 | `bass.html` | Product adoption / Bass diffusion | Agent-based |
 | `m5.html` | Walmart demand forecasting (Kaggle M5) → inventory impact | Machine learning + inventory simulation |
 | `tetris.html` | Line Clear, a Tetris-style block game | Game (canvas) |
-| `salt-road.html` | The Salt Road, a dark adventure RPG: explore, recruit a party, turn-based battles, four chapters, two endings | Game (canvas) |
+| `salt-road.html` | The Salt Road, a dark adventure RPG: explore, recruit a party, turn-based battles, twelve chapters, four endings, an endless dungeon | Game (canvas) |
 
 ---
 
@@ -343,3 +343,21 @@ The site is static HTML (Chart.js is vendored in `vendor/`), so any static host 
   The site then lives at `https://daniel766hi.github.io/Simulation-Project/`.
 - **Vercel:** import the repository at vercel.com/new; `vercel.json` sets the build command and
   output folder, so no settings need changing.
+
+---
+
+# The Salt Road (`salt-road.html`)
+
+A single-file canvas RPG. It needs no build step, and everything, music and voices included, is synthesised live in the browser.
+
+- **Voices.** A formant speech synthesiser babbles each line in the speaker's own voice, with pitch, throat size, pace, breath, rasp, growl, choir, water, metal and echo. Settings has Voiced, Blips, Spoken (browser text-to-speech) or Off.
+- **Saves for every player.** The game saves in the browser as you play. Where storage is blocked, progress is kept with the tab and the title screen says so. Save codes and save files carry a game anywhere. There is no account or server.
+- **Arms and armour.** Each hero has a weapon and an armour slot beside the relic, with five tiers per weapon kind. The smiths sell them: Odo in Kessa, Dov in Oru and Qasim on the Dry Sea, with better stock as the story opens up. Buying fits the gear at once and trades the old piece in for half. The metal, glow and trim show on the battle figures. Because gear can be bought, every monster has a quarter more health and attack.
+- **Boss phases.** At half health every boss transforms into a second form with its own design: the Butcher unbound, the Brood Queen, the Dead Conductor, Voss as the Bell Incarnate, Hollis as one great maw, the Ledger Made Flesh, a bloated Gulp, Maw fused with his ship, the Screaming Choir, Vela as the storm itself, Aurel as the Deep's Crown, Corvin as the Golden Debt, the Burning Ledger Tree, the Toll Engine, the Abyss Mouth and the three-headed Crystal Dragon. The change plays out on screen (a white flicker, bursting shards, a title splash). The boss then speaks, flares with an aura, hits harder, moves faster and readies its worst move next.
+- **The Long Road** (Pause menu):
+  - a Courier Rank and perks kept across playthroughs
+  - a daily welcome-back gift with a visiting streak
+  - the Deep Stair, an endless descent with boons between floors
+  - the Hall of Echoes, boss rematches at three tiers
+  - a Weekly Trial
+
