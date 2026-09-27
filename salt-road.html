@@ -1459,7 +1459,7 @@
       const wrap = document.createElement("div"); wrap.className = "rcard";
       const b = document.createElement("button"); b.type = "button"; b.className = on ? "on" : "";
       b.innerHTML = `<b><span>${h.name}</span><span class="tag">${on ? "Fighting" : "Resting"}</span></b>
-        <small>${def.role} · Lv ${h.level} · HP ${h.hp}/${h.maxHp} · SP ${h.maxSp} · ATK ${h.atk} · DEF ${h.def} · SPD ${h.spd}</small>
+        <small>${def.role} · strikes ${heroType(id)} · Lv ${h.level} · HP ${h.hp}/${h.maxHp} · SP ${h.maxSp} · ATK ${h.atk} · DEF ${h.def} · SPD ${h.spd}</small>
         <small>${def.bio}</small><small style="color:var(--text)">${def.skills.map(s => s.name).join(" · ")}</small>`;
       b.addEventListener("click", () => {
         if (on) { if (G.active.length > 1) G.active = G.active.filter(x => x !== id); else toast("Someone has to fight."); }
@@ -1802,14 +1802,14 @@
     const m = menuState; if (!m) return [];
     const u = m.unit, h = u.ref, def = HEROES[u.id];
     if (m.page === "main") return [
-      { label: "Attack", sub: "A plain strike.", go: () => toTarget({ kind: "attack", target: "enemy" }) },
+      { label: "Attack", sub: `A plain strike (${heroType(h.id)}).`, go: () => toTarget({ kind: "attack", target: "enemy" }) },
       { label: "Skills", sub: `${h.sp} SP`, go: () => { m.page = "skills"; m.sel = 0; } },
       { label: "Guard", sub: "Halve damage until your next turn, +3 SP.", go: () => finish({ kind: "guard" }) },
       ...(battle.fury >= 100 ? [{ label: "★ Chain Assault", sub: "Fury is full. Every standing hero strikes one enemy in turn; the last blow always lands critical.", go: () => toTarget({ kind: "chain", target: "enemy" }) }] : []),
       { label: "Items", sub: itemCount().map(([k, n]) => `${ITEMS[k].name} ×${n}`).join(", ") || "None", go: () => { m.page = "items"; m.sel = 0; }, disabled: !itemCount().length },
       { label: "Flee", sub: battle.opts.boss ? "You can't run from this." : "60% chance.", go: () => finish({ kind: "flee" }), disabled: !!battle.opts.boss },
     ];
-    if (m.page === "skills") return [...def.skills.filter(s => !s.lvl || h.level >= s.lvl).map(s => ({ label: `${s.name} (${s.cost} SP)`, sub: s.desc, disabled: h.sp < s.cost, go: () => toTarget({ kind: "skill", skill: s, target: s.target }) })), { label: "Back", go: () => { m.page = "main"; m.sel = 1; } }];
+    if (m.page === "skills") return [...def.skills.filter(s => !s.lvl || h.level >= s.lvl).map(s => ({ label: `${s.name} (${s.cost} SP)`, sub: skillTypeTag(h.id, s) + s.desc, disabled: h.sp < s.cost, go: () => toTarget({ kind: "skill", skill: s, target: s.target }) })), { label: "Back", go: () => { m.page = "main"; m.sel = 1; } }];
     if (m.page === "items") return [...itemCount().map(([k]) => ({ label: `${ITEMS[k].name} ×${G.items[k]}`, sub: ITEMS[k].desc, go: () => toTarget({ kind: "item", item: k, target: ITEMS[k].target }) })), { label: "Back", go: () => { m.page = "main"; m.sel = 3; } }];
     if (m.page === "target") return [...m.options.map(o => ({ label: o.label, sub: o.sub, go: () => finish({ ...m.action, unit: o.unit }) })), { label: "Back", go: () => { m.page = m.action.kind === "skill" ? "skills" : m.action.kind === "item" ? "items" : "main"; m.sel = 0; } }];
     return [];
@@ -8112,6 +8112,8 @@
     if (a && a.u === att && a.skill && SKILL_TYPE[a.skill.name]) return SKILL_TYPE[a.skill.name];
     return HERO_TYPE[att.id] || null;
   };
+  function heroType(id) { return HERO_TYPE[id] || "plain"; }
+  function skillTypeTag(id, s) { const dmg = s.power || s.dmg || s.execute; return dmg ? `[${SKILL_TYPE[s.name] || heroType(id)}] ` : ""; }
   function learnAffinity(id, type, mult) {
     const known = G.flags.aff || (G.flags.aff = {}), k = known[id] || (known[id] = { weak: [], resist: [] });
     const list = mult > 1 ? k.weak : k.resist;
