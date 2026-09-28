@@ -12300,29 +12300,41 @@
     ["rank10", "A Name on Every Road", "Reach Courier Rank 10.", () => meta.rank >= 10],
     ["weekly", "Seven Days' Work", "Win a Weekly Trial.", () => !!(meta.weekly && meta.weekly.cleared)]);
 
-  // ================================================================== CHAPTER STRENGTH: MONSTERS KEEP UP WITH THE PARTY
+  // ================================================================== MONSTER STRENGTH: MONSTERS KEEP UP WITH THE PARTY
   // Heroes grow every level and with gear, forge, temper and talents; a monster's numbers were fixed, so from the
-  // fourth chapter on fights ended in a round or two. Each kind of monster now has the strength of the chapter where it
-  // is first met (so going back to an early road stays easy), tuned with the balance simulation below: ordinary fights
-  // take about three rounds, bosses six to nine, and a party that never shops can still win.
-  const HOME = {};
-  for (const f of FIELD) for (const id of f.group) HOME[id] = Math.min(HOME[id] === undefined ? 99 : HOME[id], f.minStage || 0);
-  const BOSS_HOME = { butcher: 2, mother: 3, wyrm: 4, choirmaster: 4, voss: 5, hollis: 6, moonmother: 6, quill: 7, tollkeeper: 7, gulp: 8, ledgertree: 9, oldmouth: 9, colossus: 10, maw: 10, vela: 11, corvin: 12, king: 12 };
-  Object.assign(HOME, BOSS_HOME);
-  const STRENGTH = {   // by chapter 0..12
-    hp:      [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-    atk:     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-    bossHp:  [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-    bossAtk: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+  // fourth chapter on fights ended in a round or two. Each kind of monster now grows with the party level expected
+  // where it lives (its first chapter on the map; the five Act I kinds are placed by hand), one step per chapter, so the
+  // first monsters are unchanged and going back to an early road stays easy. The steps were fitted with the
+  // balance simulation below: ordinary fights take about three rounds, bosses six to nine, and a party that never shops
+  // can still win. The King is tuned on his own (THE LAST TIDE).
+  const STRENGTH = {   // by home chapter 0..12: regular health and attack; each main boss its own; other bosses by chapter
+    hp: [1.0, 2.03, 1.2, 1.97, 2.67, 2.72, 4.48, 3.5, 3.32, 2.83, 4.4, 2.94, 2.94],
+    atk: [1.0, 1.43, 1.83, 1.77, 2.22, 2.89, 3.55, 3.61, 3.31, 2.04, 1.78, 2.84, 3.62],
+    bossHp: [1.0, 1.74, 1.73, 1.75, 2.35, 2.57, 2.45, 3.34, 2.46, 2.53, 2.77, 3.13, 3.41],
+    bossAtk: [1.0, 0.96, 0.97, 1.1, 1.31, 1.22, 1.14, 1.81, 1.41, 1.49, 1.6, 1.4, 1.17],
+    boss: { butcher: [1.59, 0.92], mother: [1.58, 1.21], choirmaster: [2.5, 1.31], voss: [3.06, 1.2], hollis: [2.12, 0.85], quill: [3.58, 1.81], gulp: [2.02, 1.28], colossus: [2.32, 1.96], maw: [3.02, 1.79], vela: [3.21, 1.45], corvin: [3.12, 1.47],
+      wyrm: [1.54, 0.96], tollkeeper: [1.81, 1.08], ledgertree: [1.63, 1.0] },   // optional bosses: already strong by nature, so a gentler step
   };
-  const homeOf = id => { const h = HOME[id]; return h === undefined || h > 12 ? Math.max(0, Math.min(12, G.stage || 0)) : h; };
+
+  const ELITES = new Set(["rotfang", "widow", "pincer"]);   // bounty elites are strong by nature too: a smaller step than their chapter's
+
+  const EXPECT_LV = [2, 4, 5, 7, 8, 10, 12, 14, 15, 17, 19, 21, 22];   // party level a typical player has, chapter by chapter
+  const HOME = { jackal: 0, ghoul: 1, leech: 2, spawn: 2, choir: 3 };
+  for (const f of FIELD) if (f.minStage) for (const id of f.group) if (HOME[id] === undefined || HOME[id] > f.minStage) HOME[id] = f.minStage;
+  const BOSS_HOME = { butcher: 2, mother: 3, wyrm: 4, choirmaster: 4, voss: 5, hollis: 6, moonmother: 6, quill: 7, tollkeeper: 7, gulp: 8, ledgertree: 9, oldmouth: 9, colossus: 10, maw: 10, vela: 11, corvin: 12, king: 12 };
+  function strengthOf(id, boss) {
+    const S = (typeof SIM !== "undefined" && SIM.strength) || STRENGTH;
+    const h = Math.max(0, Math.min(12, (boss ? BOSS_HOME[id] : undefined) ?? HOME[id] ?? (G.stage || 0)));
+    if (boss) return (S.boss && S.boss[id]) || [S.bossHp[h], S.bossAtk[h]];
+    return ELITES.has(id) ? [1 + (S.hp[h] - 1) * 0.7, 1 + (S.atk[h] - 1) * 0.6] : [S.hp[h], S.atk[h]];
+  }
+  const strHome = (id, boss) => Math.max(0, Math.min(12, (boss ? BOSS_HOME[id] : undefined) ?? HOME[id] ?? 6));
   const _unitFromMonsterS = unitFromMonster;
   unitFromMonster = function (id, i, n) {
     const u = _unitFromMonsterS(id, i, n);
     if (G.stage === 0 && !(G.ng > 0)) return u;   // the prologue keeps its hand-tuned tutorial numbers
-    const S = (typeof SIM !== "undefined" && SIM.strength) || STRENGTH, h = homeOf(id), boss = u.boss || !!BOSS_HOME[id];
-    u.maxHp = u.hp = Math.max(1, Math.round(u.maxHp * (boss ? S.bossHp : S.hp)[h]));
-    u.atk = Math.max(1, Math.round(u.atk * (boss ? S.bossAtk : S.atk)[h]));
+    const [hk, ak] = strengthOf(id, u.boss);
+    u.maxHp = u.hp = Math.max(1, Math.round(u.maxHp * hk)); u.atk = Math.max(1, Math.round(u.atk * ak));
     return u;
   };
 
@@ -12363,8 +12375,7 @@
   heroChoose = function (u) { if (!simAuto || !battle) return _heroChooseSim(u); return Promise.resolve(simAct(u)); };
   // expected party level at a chapter: XP from most of the map's fights (each is fought once) plus the main bosses,
   // for a player who does some but not all of the optional regions
-  const SIM_LEVEL = [2, 4, 5, 7, 8, 10, 12, 14, 15, 17, 19, 21, 22];
-  const simLevelAt = st => SIM_LEVEL[Math.max(0, Math.min(12, st))];
+  const simLevelAt = st => EXPECT_LV[Math.max(0, Math.min(12, st))];
   function simParty(st, P) {
     G.stage = st; G.party = {}; G.members = []; G.gear = {}; G.temper = {}; G.talents = {}; G.equip = {}; G.forge = {};
     const L = Math.max(1, (P.level || simLevelAt(st)) + (P.levelDelta || 0));
@@ -12399,18 +12410,20 @@
     finally { const saved = JSON.parse(keep); for (const k of Object.keys(G)) if (!(k in saved)) delete G[k]; Object.assign(G, saved); difficulty = dk; }
   }
   async function simRun(spec) {   // spec: { fights: [{ group, opts, stage }], n, profile }
-    SIM.fast = true; simAuto = true; SIM.noChamp = !!(spec.profile || {}).noChamp; SIM.strength = (spec.profile || {}).strength || null; const out = [];
+    SIM.fast = true; simAuto = true; SIM.noChamp = !!(spec.profile || {}).noChamp; SIM.strength = (spec.profile || {}).strength || null; SIM.kingTide = (spec.profile || {}).kingTide || null; SIM.kingDuel = (spec.profile || {}).kingDuel || null; const out = [];
     try {
       for (const f of spec.fights) {
         const rs = []; for (let i = 0; i < (spec.n || 10); i++) rs.push(await simFight(f.group, f.opts || {}, f.stage, spec.profile || {}));
         const ok = rs.filter(r => r && !r.error), avg = k => ok.length ? ok.reduce((a, r) => a + r[k], 0) / ok.length : null;
         out.push({ label: f.label || f.group.join("+"), stage: f.stage, level: ok[0] && ok[0].level, n: ok.length, win: avg("win"), rounds: avg("rounds"), hp: avg("hp"), ko: avg("ko"), timeouts: ok.filter(r => r.timeout).length, errors: rs.filter(r => r && r.error).map(r => r.error).slice(0, 2) });
       }
-    } finally { SIM.fast = false; simAuto = false; SIM.noChamp = false; SIM.strength = null; }
+    } finally { SIM.fast = false; simAuto = false; SIM.noChamp = false; SIM.strength = null; SIM.kingTide = null; SIM.kingDuel = null; }
     return out;
   }
   setTimeout(() => Object.assign(window.__saltRoad || (window.__saltRoad = {}), {
     sim: spec => simRun(spec),
+    strHome: (ids, boss) => ids.map(id => strHome(id, boss)),
+    strength: () => JSON.parse(JSON.stringify(STRENGTH)),
     simLevels: () => Object.fromEntries([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(s => [s, simLevelAt(s)])),
     simData: () => ({ bosses: Object.fromEntries(Object.keys(SIM_BOSS_STAGE).filter(id => MONSTERS[id]).map(id => [id, { stage: SIM_BOSS_STAGE[id], xp: MONSTERS[id].xp, hp: MONSTERS[id].hp, atk: MONSTERS[id].atk, def: MONSTERS[id].def }])),
       field: FIELD.map(f => ({ id: f.id, group: f.group, minStage: f.minStage || 0, elite: !!f.elite, xp: f.group.reduce((a, id) => a + (MONSTERS[id] ? MONSTERS[id].xp : 0), 0), area: f.area || null })) }),
@@ -13054,6 +13067,246 @@
     markGuideBtn(); toast(`New in How it works (pause menu): ${fresh.map(([, t]) => t).join(", ")}.`);
   }, 2500);
   setTimeout(() => Object.assign(window.__saltRoad || (window.__saltRoad = {}), { guide: () => guideOpen().map(([id]) => id), guideHtml: () => guideHtml() }), 0);
+
+  // ================================================================== THE LAST TIDE: KING AUREL'S FINAL BATTLE
+  // The last fight has rules no other fight has, in three tides:
+  //   First tide, the Drowned Court (full health to two thirds): the sea rises every round. While his court kneels
+  //     around him the King takes a third less damage, so the court comes first.
+  //   Second tide, the King Rises (two thirds): he transforms, and every third round he drags a fighter below.
+  //     A fighter held below loses their turns and drowns a little each round, until the party hurts the King enough
+  //     in one round to make him let go (or two rounds pass).
+  //   Third tide, the Last Rain (a quarter): the rain falls upward, the sea rises twice as fast, his Last Rain
+  //     comes every third round, and the party's Fury builds half again as fast (the living song answering).
+  // Over it all, the water: a level from 0 to 10 drawn rising over the party. From 6 it drowns everyone a little each
+  // round; at 10 it becomes the Flood, his strongest blow. Any fighter can spend a turn to Ring the Rain Bell (the Bell
+  // Sable carried all this way): the sea falls back 4, the King is exposed for a round, and a wind-up is broken. The Bell
+  // needs a round's breath between rings (none in the last tide). The apology's honest duel keeps its own rules.
+  const KING_TIDE = [0.85, 0.7], KING_DUEL = [1.25, 1.35];   // health and attack on top of the usual strength (tuned with the simulation: about 11 rounds, and 8 for the apology's duel)
+  const KB = () => battle && battle.king;   // the final battle's state, or nothing
+  const kingUnit = () => battle && battle.foes.find(f => f.id === "king" && !f.dead);
+  const _startBattleK = startBattle;
+  startBattle = function (group, opts = {}) {
+    const r = _startBattleK(group, opts);
+    const k0 = battle && group && group[0] === "king" ? battle.foes.find(f => f.id === "king") : null;
+    if (k0) {   // his own tuning on top of the usual strength: with the sea and the tides it is the longest fight of the road
+      const [hk, ak] = (opts || {}).apology ? (SIM.kingDuel || KING_DUEL) : (SIM.kingTide || KING_TIDE);
+      k0.maxHp = k0.hp = Math.round(k0.maxHp * hk); k0.atk = Math.round(k0.atk * ak);
+    }
+    if (battle && group && group[0] === "king" && !(opts || {}).apology) {
+      battle.king = { water: 0, tide: 1, bellReady: 1, below: null, roundDmg: 0, lastRound: 0, souls: [] };
+      blog("The floor of the deep is water now, and the water is rising. (Ring the Rain Bell to push the sea back.)");
+    }
+    return r;
+  };
+  const kingSplash = (name, sub) => { $("splashName").textContent = name; $("splashSub").textContent = sub; const sp = $("splash"); sp.hidden = true; void sp.offsetWidth; sp.hidden = false; clearTimeout(sp._t); sp._t = setTimeout(() => { sp.hidden = true; }, 2600); };
+  const kingSay = (f, text) => { for (let i = RIG_FX.length - 1; i >= 0; i--) if (RIG_FX[i].kind === "say" && RIG_FX[i].unit === f) RIG_FX.splice(i, 1); RIG_FX.push({ kind: "say", text, unit: f, t0: time, dur: 3 }); Voice.say("king", text); };
+  function raiseWater(n) {
+    const K = KB(); if (!K) return; K.water = Math.max(0, Math.min(10, K.water + n));
+    if (n > 0 && K.water >= 10) popupText(kingUnit() || battle.heroes[0], "THE FLOOD COMES", "#9ef0f5");
+  }
+  // each round, when the King chooses his move
+  const _chooseIntentK = chooseIntent;
+  chooseIntent = function (f) {
+    const K = KB();
+    if (!K || f.id !== "king" || f.dead) return _chooseIntentK(f);
+    if (K.lastRound !== battle.round) {
+      K.lastRound = battle.round; K.roundDmg = 0;
+      raiseWater(battle.round === 1 ? 0 : K.tide === 3 ? 2 : 1);
+      if (K.water >= 6) {   // the sea takes a little from everyone
+        const pct = 0.04 * (K.water - 5);
+        for (const h of battle.heroes) if (alive(h)) { const d = Math.max(1, Math.round(h.ref.maxHp * pct)); damage(h, d, { silent: true, noFury: true }); popup(h, d, "#4ab8d8"); }
+        blog(`The sea is at ${K.water} of 10. Everyone chokes on brine.`);
+      }
+      if (K.below) {   // a fighter held under
+        const h = K.below.unit;
+        if (--K.below.rounds <= 0 || !alive(h)) freeBelow(false);
+        else { h.st.stun = true; const d = Math.max(1, Math.round(h.ref.maxHp * 0.06)); damage(h, d, { silent: true, noFury: true }); popup(h, d, "#4ab8d8"); }
+      }
+    }
+    if (K.water >= 10) { K.water = 5; return { name: "The Flood", power: 1.9, all: true, kingMove: "flood", announce: "THE FLOOD. The whole sea stands up and falls on you." }; }
+    if (K.tide >= 2 && !K.below && battle.round % 3 === 0 && battle.heroes.filter(alive).length > 1) return { name: "Taken Below", kingMove: "below" };
+    return _chooseIntentK(f);
+  };
+  // the court shields him; the tides turn at two thirds and a quarter; the Last Rain feeds the party's song
+  onBattle("damage", ctx => {
+    const K = KB(); if (!K || ctx.target.id !== "king" || ctx.target.side !== "foe") return;
+    if (battle.foes.some(f => f.summoned && !f.dead) && ctx.amount > 1) ctx.amount = Math.max(1, Math.round(ctx.amount * 0.67));
+  });
+  onBattle("damaged", (ctx, d) => {
+    const K = KB(), f = ctx.target; if (!K || f.id !== "king" || f.side !== "foe" || f.dead) return;
+    K.roundDmg += d;
+    if (K.below && K.roundDmg >= f.maxHp * 0.08) freeBelow(true);
+    if (K.tide === 1 && f.hp <= f.maxHp * 0.66) {
+      K.tide = 2; if (!f.phase2) enterPhase2(f);
+      setTimeout(() => { if (KB()) kingSplash("The King Rises", "Second tide"); }, 2700);
+    }
+    if (K.tide === 2 && f.hp <= f.maxHp * 0.25) {
+      K.tide = 3; K.bellReady = 0; f.phase3 = true;
+      setTimeout(() => { if (!KB()) return; kingSplash("The Last Rain", "Third tide"); kingSay(f, "Then let it all come down."); blog("THE LAST RAIN. The rain falls upward. Your Fury answers faster: the living song against the sea."); flash(1); shake = Math.max(shake, 12); Music.sound("boss"); }, 300);
+    }
+  });
+  const _addFuryK = addFury;
+  addFury = function (n) { const K = KB(); return _addFuryK(K && K.tide === 3 && n > 0 ? n * 1.5 : n); };
+  function freeBelow(early) {
+    const K = KB(); if (!K || !K.below) return; const h = K.below.unit; K.below = null; delete h.st.stun; delete h.st.below;
+    if (!alive(h)) return;
+    popupText(h, early ? "PULLED FREE" : "SURFACES", "#9ef0f5"); Music.sound("heal");
+    blog(early ? `You hurt the King enough that he lets go. ${h.name} breaks the surface, gasping.` : `${h.name} claws back to the surface.`);
+    const k = kingUnit(); if (early && k) { k.st.exposed = Math.max(k.st.exposed || 0, 2); popupText(k, "EXPOSED", "#ffcf4a"); }
+  }
+  // his own moves
+  const _doFoeK = doFoe;
+  doFoe = async function (f) {
+    const K = KB(), mv = f && f.intent;
+    if (!K || !mv || !mv.kingMove || f.st.stun) return _doFoeK(f);
+    if (mv.kingMove === "below") {
+      const pool = battle.heroes.filter(alive).filter(h => !h.st.taunt), h = pick(pool.length ? pool : battle.heroes.filter(alive)); if (!h) return;
+      f.anim = { k: "wind", t0: time }; await wait(300); f.anim = null; if (!KB()) return;
+      K.below = { unit: h, rounds: 2 }; h.st.stun = true; h.st.below = true; K.belowT = time;
+      shake = Math.max(shake, 9); Music.sound("bleed"); popupText(h, "TAKEN BELOW", "#4ab8d8");
+      kingSay(f, pick(["Stay with us. It is quiet here.", "One more for the deep.", "Below, courier. Where they all are."]));
+      blog(`The King's hundred hands drag ${h.name} under the water! Hit him hard (${Math.round(f.maxHp * 0.08)} in one round) to make him let go.`);
+      await wait(900); return;
+    }
+    if (mv.kingMove === "flood") {
+      blog(mv.announce); flash(1); shake = 14; Music.sound("boss"); await wait(700); if (!KB()) return;
+      const texts = []; for (const t of battle.heroes.filter(alive)) { const r = attackRoll(f, t, mv.power); texts.push(r.dodged ? `${t.name} dodges` : `${t.name} ${r.dmg}`); }
+      blog(`The Flood: ${texts.join(", ")}. The water falls back to 5.`); await wait(900); return;
+    }
+    return _doFoeK(f);
+  };
+  // the Rain Bell, on every fighter's menu in this battle
+  const bellOk = () => { const K = KB(); return K && battle.round >= K.bellReady; };
+  const _menuItemsK = menuItems;
+  menuItems = function () {
+    const items = _menuItemsK(), K = KB();
+    if (!K || !menuState || menuState.page !== "main") return items;
+    const ok = bellOk(), wait2 = K.bellReady - battle.round;
+    items.splice(1, 0, { label: "🔔 Ring the Rain Bell", sub: ok ? `Push the sea back 4 (now ${K.water}/10), expose the King for a round, break his wind-up.` : `The Bell is still ringing out (ready in ${wait2} round${wait2 === 1 ? "" : "s"}). The sea: ${K.water}/10.`, disabled: !ok, go: () => finish({ kind: "bell" }) });
+    return items;
+  };
+  const _doHeroK = doHero;
+  doHero = async function (u, act) {
+    const K = KB();
+    if (!K || !act || act.kind !== "bell") return _doHeroK(u, act);
+    const k = kingUnit(); K.bellReady = battle.round + (K.tide === 3 ? 1 : 2);
+    playAct(u, "cast", 0.9); await wait(250); if (!KB()) return;
+    raiseWater(-4); K.bellT = time; flash(0.9); shake = Math.max(shake, 8); Music.sound("heal"); Music.sound("crit");
+    let extra = "";
+    if (k) {
+      k.st.exposed = Math.max(k.st.exposed || 0, 2); popupText(k, "EXPOSED", "#ffcf4a");
+      if (k.charged || (k.intent && k.intent.release)) { k.charged = false; k.chargeDmg = 0; k.intent = { name: "Staggered" }; k.st.stun = true; extra = " His wind-up breaks apart!"; popupText(k, "BROKEN", "#ffcf4a"); }
+      else if (k.intent && k.intent.kingMove === "flood") { k.intent = { name: "Staggered" }; k.st.stun = true; extra = " The Flood breaks before it falls!"; }
+    }
+    if (G.flags) G.flags.bellRung = (G.flags.bellRung || 0) + 1;
+    blog(`${u.name} rings the Rain Bell. The sea shrinks back to ${K.water}.${extra}`); renderCards();
+    await wait(800);
+  };
+  // the souls go up when he falls
+  const _victoryK = victory;
+  victory = function () { const K = KB(); if (K) { K.won = time; if (K.below) { const h = K.below.unit; delete h.st.stun; delete h.st.below; K.below = null; } for (let i = 0; i < 60; i++) K.souls.push({ x: rand(20, VIEW_W - 20), y: rand(120, 200), v: rand(14, 34), w: rand(0, 6.28), s: rand(0.6, 1.4) }); } return _victoryK(); };
+  // ---- on screen
+  const _drawRigFxK = drawRigFx;
+  drawRigFx = function (k) {
+    _drawRigFxK(k);
+    const K = KB(); if (!K) return;
+    const X = x => VP.ox + x * k, Y = y => VP.oy + y * k, W = VIEW_W;
+    ctx.save();
+    // the Last Rain: rain falling upward
+    if (K.tide === 3 && !K.won) {
+      ctx.strokeStyle = "rgba(158,240,245,0.55)"; ctx.lineWidth = Math.max(1, 0.8 * k);
+      for (let i = 0; i < 70; i++) { const px = (i * 37.3) % W, py = 200 - ((time * (90 + (i % 7) * 12) + i * 23) % 220); ctx.beginPath(); ctx.moveTo(X(px), Y(py)); ctx.lineTo(X(px - 1.5), Y(py + 7)); ctx.stroke(); }
+    }
+    // the water, rising over the party
+    const lvl = K.won ? K.water * Math.max(0, 1 - (time - K.won) / 2.5) : K.water, top = 196 - lvl * 9.5;   // it drains away when he falls
+    if (lvl > 0 || K.bellT) {
+      const g2 = ctx.createLinearGradient(0, Y(top), 0, Y(200)); g2.addColorStop(0, "rgba(62,200,220,0.42)"); g2.addColorStop(1, "rgba(10,40,70,0.7)");
+      ctx.fillStyle = g2; ctx.beginPath(); ctx.moveTo(X(0), Y(210));
+      for (let x = 0; x <= W; x += 4) ctx.lineTo(X(x), Y(top + Math.sin(x * 0.06 + time * 2.2) * 1.6 + Math.sin(x * 0.13 - time * 1.4) * 0.8));
+      ctx.lineTo(X(W), Y(210)); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = "rgba(220,250,255,0.75)"; ctx.lineWidth = Math.max(1, 1 * k); ctx.beginPath();
+      for (let x = 0; x <= W; x += 4) { const y = top + Math.sin(x * 0.06 + time * 2.2) * 1.6 + Math.sin(x * 0.13 - time * 1.4) * 0.8; x ? ctx.lineTo(X(x), Y(y)) : ctx.moveTo(X(x), Y(y)); } ctx.stroke();
+      ctx.fillStyle = "rgba(220,250,255,0.6)";   // bubbles
+      for (let i = 0; i < 18; i++) { const s = (time * 0.4 + i / 18) % 1, bx = (i * 53.7) % W, by = 200 - s * (200 - top); ctx.fillRect(X(bx + Math.sin(time * 3 + i) * 2), Y(by), 1.2 * k, 1.2 * k); }
+      if (lvl >= 6) {   // drowned hands reaching up through the surface
+        ctx.fillStyle = "rgba(150,190,200,0.55)";
+        for (let i = 0; i < lvl - 4; i++) { const hx = 24 + ((i * 71) % (W - 48)), rise = 4 + 3 * Math.sin(time * 1.7 + i); ctx.fillRect(X(hx), Y(top - rise), 2 * k, (rise + 3) * k); ctx.fillRect(X(hx - 2), Y(top - rise - 2), 1 * k, 3 * k); ctx.fillRect(X(hx + 2), Y(top - rise - 3), 1 * k, 3 * k); ctx.fillRect(X(hx + 4), Y(top - rise - 1), 1 * k, 3 * k); }
+      }
+    }
+    // the gauge: the sea, and where the Flood comes
+    const gx = 8, gy = 40, gh = 90;
+    if (!K.won) {
+    ctx.fillStyle = "rgba(10,8,24,0.75)"; ctx.fillRect(X(gx - 2), Y(gy - 2), 8 * k, (gh + 4) * k);
+    ctx.fillStyle = lvl >= 8 ? "#ff6b6b" : lvl >= 6 ? "#ffcf4a" : "#3ec8dc"; ctx.fillRect(X(gx), Y(gy + gh * (1 - lvl / 10)), 4 * k, gh * lvl / 10 * k);
+    ctx.fillStyle = "#ffffff"; ctx.fillRect(X(gx - 2), Y(gy + gh * 0.5), 8 * k, 1 * k);
+    ctx.font = `${Math.round(6 * k)}px 'Pixelify Sans', monospace`; ctx.textAlign = "left"; ctx.fillStyle = "#e8f4ff";
+    ctx.fillText(`SEA ${lvl}/10`, X(gx - 2), Y(gy - 5)); ctx.fillText(bellOk() ? "BELL ✓" : `BELL ${Math.max(0, K.bellReady - battle.round)}`, X(gx - 2), Y(gy + gh + 10));
+    }
+    // a fighter held below: a dark column of water and hands
+    if (K.below && alive(K.below.unit)) {
+      const p = unitPos(K.below.unit), a = Math.min(1, (time - (K.belowT || 0)) / 0.5);
+      const g3 = ctx.createLinearGradient(0, Y(p.y - 50), 0, Y(p.y + 4)); g3.addColorStop(0, "rgba(10,40,70,0)"); g3.addColorStop(1, `rgba(10,40,70,${0.78 * a})`);
+      ctx.fillStyle = g3; ctx.fillRect(X(p.x - 16), Y(p.y - 50), 32 * k, 56 * k);
+      ctx.fillStyle = `rgba(150,190,200,${0.8 * a})`; for (let i = 0; i < 4; i++) { const hx = p.x - 10 + i * 6, hy = p.y - 16 - 10 * Math.abs(Math.sin(time * 2 + i)); ctx.fillRect(X(hx), Y(hy), 2 * k, (p.y - hy) * k); }
+      ctx.fillStyle = "#9ef0f5"; ctx.textAlign = "center"; ctx.fillText(`BELOW · ${K.below.rounds}`, X(p.x), Y(p.y - 52));
+    }
+    // the Bell: rings of gold going out
+    if (K.bellT && time - K.bellT < 1.2) {
+      const a = (time - K.bellT) / 1.2; ctx.strokeStyle = `rgba(255,207,74,${1 - a})`; ctx.lineWidth = 2 * k;
+      for (let r = 0; r < 3; r++) { ctx.beginPath(); ctx.arc(X(W / 2), Y(40), (a * 170 + r * 18) * k, 0, Math.PI * 2); ctx.stroke(); }
+    }
+    // when he falls, the drowned go up toward a surface they can see now
+    if (K.won) {
+      ctx.globalCompositeOperation = "lighter";
+      for (const s of K.souls) {
+        const t = time - K.won, y = s.y - t * s.v; if (y < -10) continue;
+        const a = Math.min(1, t * 1.5) * Math.max(0, Math.min(1, 1.8 - t * 0.16)), x = s.x + Math.sin(t * 1.5 + s.w) * 5, r = (2.5 + s.s * 2) * k;
+        const gl = ctx.createRadialGradient(X(x), Y(y), 0, X(x), Y(y), r * 2.4); gl.addColorStop(0, `rgba(232,248,255,${0.9 * a})`); gl.addColorStop(0.35, `rgba(158,240,245,${0.45 * a})`); gl.addColorStop(1, "rgba(158,240,245,0)");
+        ctx.fillStyle = gl; ctx.fillRect(X(x) - r * 2.4, Y(y) - r * 2.4, r * 4.8, r * 4.8);
+        ctx.fillStyle = `rgba(158,240,245,${0.35 * a})`; ctx.fillRect(X(x) - 0.5 * k, Y(y), 1 * k, 10 * s.s * k);   // a faint trail below it
+      }
+    }
+    ctx.restore();
+  };
+  ACHIEVEMENTS.push(["bellking", "The Bell Answers", "Ring the Rain Bell against the Drowned King.", () => (G.flags.bellRung || 0) >= 1]);
+  GUIDE.push(["tides", "The last battle: the sea and the Bell", () => !!KB() || !!G.flags.kingDead,
+    "Against the Drowned King the sea rises every round (the gauge on the left). From 6 it drowns everyone a little; at 10 it falls on you as the Flood. Any fighter can spend a turn to Ring the Rain Bell: the sea falls back 4, the King is exposed, and his wind-up breaks. The Bell needs a round between rings, except in the last tide. His court shields him until it falls; later he drags a fighter below, and hurting him hard in one round makes him let go."]);
+  // the balance simulation's player rings the Bell when the sea is high, or to break a wind-up
+  const _simActK = simAct;
+  simAct = function (u) {
+    const K = KB(), k = kingUnit();
+    if (K && bellOk() && (K.water >= 4 || (k && (k.charged || (k.intent && k.intent.kingMove === "flood"))))) return { kind: "bell" };
+    return _simActK(u);
+  };
+  setTimeout(() => Object.assign(window.__saltRoad || (window.__saltRoad = {}), {
+    kingState: () => { const K = KB(), k = battle && battle.foes.find(f => f.id === "king"); return K ? { water: K.water, tide: K.tide, bellReady: K.bellReady, round: battle.round, below: K.below ? K.below.unit.id : null, hp: k && k.hp, maxHp: k && k.maxHp, court: battle.foes.filter(f => f.summoned && !f.dead).length } : null; },
+    kingSet: o => { const K = KB(), k = kingUnit(); if (!K) return null; if (o.water !== undefined) K.water = o.water; if (o.hpPct !== undefined && k) { k.hp = Math.round(k.maxHp * o.hpPct); damage(k, 1, { noFury: true }); } return true; },
+  }), 0);
+
+  // ================================================================== A HELPING HAND AFTER A DEFEAT
+  // Normal is tuned for a party that uses the smiths. A party that falls to the same boss again gets a little help:
+  // each defeat (up to three) makes that boss a tenth weaker next time, and the game says so, and what else helps.
+  // Winning clears it. The Long Road's challenges keep their own rules.
+  const lossesTo = id => ((G.flags.bossLoss || {})[id] || 0);
+  const _defeatH = defeat;
+  defeat = function () {
+    const o = battle && battle.opts, id = o && o.boss;
+    if (id && !o.deep && !o.echo && !o.weekly) {
+      G.flags.bossLoss = G.flags.bossLoss || {}; const n = G.flags.bossLoss[id] = Math.min(3, lossesTo(id) + 1);
+      setTimeout(() => toast(`The salt remembers: next time ${MONSTERS[id].name.split(",")[0]} will be a little weaker (${n} of 3). Better arms from the smiths help too, and Story difficulty is gentler.`), 0);
+    }
+    return _defeatH();
+  };
+  const _startBattleH = startBattle;
+  startBattle = function (group, opts = {}) {
+    const r = _startBattleH(group, opts), o = opts || {}, n = o.boss && !o.deep && !o.echo && !o.weekly ? lossesTo(o.boss) : 0;
+    if (battle && n) {
+      for (const f of battle.foes) if (f.id === o.boss) { f.maxHp = f.hp = Math.max(1, Math.round(f.maxHp * (1 - 0.1 * n))); f.atk = Math.max(1, Math.round(f.atk * (1 - 0.07 * n))); }
+      setTimeout(() => { if (battle) blog(`The salt remembers your last attempt: ${MONSTERS[o.boss].name.split(",")[0]} is a little weaker this time.`); }, 1200);
+    }
+    return r;
+  };
+  onBattle("won", B => { const id = B.opts && B.opts.boss; if (id && G.flags.bossLoss && G.flags.bossLoss[id]) delete G.flags.bossLoss[id]; });
 
   // ================================================================== SAVES: FOR EVERY PLAYER
   // The game saves itself as you play, into this browser (see the store at the top). Where the browser refuses to
