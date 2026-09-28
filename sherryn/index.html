@@ -246,6 +246,48 @@
 
   footer { text-align: center; padding: 36px 16px 90px; color: var(--muted); font-size: .95rem; }
 
+  .reply { display: inline-block; margin-bottom: 14px; text-decoration: none; }
+
+  /* ── Sherryn Wrapped (stories) ──────────────── */
+  .hero-wrapped { margin-top: 18px; }
+  #wrapped-section { text-align: center; padding-top: 40px; }
+  .wrapped-card {
+    display: block; position: relative; overflow: hidden; width: min(360px, 100%); margin: 0 auto; border: 0; border-radius: 24px;
+    padding: 26px 22px; color: #fff; text-align: left; cursor: pointer; box-shadow: 0 16px 40px rgba(90,40,50,.28);
+    background: linear-gradient(135deg, #1f1b2e, #e8567a 60%, #f4a13a);
+  }
+  .wrapped-card .k { font-weight: 700; letter-spacing: .14em; text-transform: uppercase; font-size: .75rem; opacity: .85; }
+  .wrapped-card .t { display: block; max-width: 72%; font: 700 2.1rem/1.1 Fredoka, sans-serif; margin: 6px 0 16px; }
+  .wrapped-card .go { display: inline-flex; align-items: center; gap: 8px; background: #fff; color: var(--ink); border-radius: 999px; padding: 8px 16px; font-weight: 700; }
+  .wrapped-card .gift-emo { position: absolute; right: 6px; bottom: -8px; font-size: 4.4rem; rotate: -12deg; animation: float 4s ease-in-out infinite; }
+  #story { position: fixed; inset: 0; z-index: 55; display: flex; align-items: center; justify-content: center; background: #000; }
+  #story[hidden] { display: none; }
+  .story-frame { position: relative; width: 100%; max-width: 460px; height: 100%; overflow: hidden; color: #fff; background: var(--sbg, #e8567a); }
+  @media (min-width: 500px) { .story-frame { height: 92vh; border-radius: 20px; } }
+  .story-bars { position: absolute; top: 12px; left: 12px; right: 12px; display: flex; gap: 4px; z-index: 4; }
+  .story-bars i { flex: 1; height: 3px; border-radius: 2px; background: rgba(255,255,255,.35); overflow: hidden; }
+  .story-bars b { display: block; height: 100%; width: 0; background: #fff; }
+  .story-bars i.done b { width: 100%; }
+  .story-bars i.now b { animation: fill var(--dur) linear forwards; }
+  #story.paused .story-bars i.now b { animation-play-state: paused; }
+  @keyframes fill { to { width: 100%; } }
+  .story-top { position: absolute; top: 24px; left: 14px; right: 10px; z-index: 4; display: flex; align-items: center; justify-content: space-between; font-weight: 700; font-size: .9rem; }
+  .story-top button { border: 0; background: none; color: #fff; font-size: 1.8rem; line-height: 1; cursor: pointer; padding: 4px 8px; }
+  .story-body { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 70px 26px 50px; text-align: center; }
+  .story-body > * { animation: story-in .6s cubic-bezier(.2,1.4,.4,1) both; animation-delay: calc(var(--n) * .15s); }
+  @keyframes story-in { from { opacity: 0; transform: translateY(26px) scale(.9); } to { opacity: 1; transform: none; } }
+  .story-body .ph { width: 62%; max-width: 250px; aspect-ratio: 1; background: center / cover; border: 8px solid #fff; box-shadow: 0 16px 40px rgba(0,0,0,.35); rotate: -4deg; margin-bottom: 12px; animation-name: ph-in; }
+  @keyframes ph-in { from { opacity: 0; transform: scale(.5) rotate(14deg); } to { opacity: 1; transform: none; } }
+  .story-body .k { text-transform: uppercase; letter-spacing: .16em; font-weight: 700; font-size: .8rem; opacity: .9; }
+  .story-body .big { font: 700 clamp(2.1rem, 10vw, 3.3rem)/1.1 Fredoka, sans-serif; text-shadow: 0 3px 0 rgba(0,0,0,.12); }
+  .story-body .num { font: 700 clamp(4.2rem, 24vw, 7rem)/1 Fredoka, sans-serif; text-shadow: 0 4px 0 rgba(0,0,0,.15); }
+  .story-body .sub { font-size: 1.1rem; max-width: 320px; opacity: .95; }
+  .story-end { position: relative; z-index: 5; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 14px; }
+  .story-end .btn { box-shadow: none; }
+  .story-tap { position: absolute; top: 0; bottom: 0; z-index: 3; border: 0; background: none; padding: 0; cursor: pointer; }
+  .story-tap.prev { left: 0; width: 33%; } .story-tap.next { right: 0; width: 67%; }
+  .story-hint { position: absolute; left: 0; right: 0; bottom: 16px; z-index: 4; text-align: center; font-size: .8rem; opacity: .75; pointer-events: none; }
+
   /* ── Floating bits ──────────────────────────── */
   canvas#confetti { position: fixed; inset: 0; pointer-events: none; z-index: 60; }
   .spark { position: fixed; pointer-events: none; z-index: 61; font-size: 22px; left: 0; top: 0; }
@@ -318,6 +360,7 @@
   <div class="date" id="date"></div>
   <div class="countdown" id="countdown"></div>
   <p class="tagline" id="tagline"></p>
+  <button class="btn hero-wrapped" id="wrapped-hero">▶ Tonton Sherryn Wrapped</button>
   <div class="pop-count" id="pop-count">psst, the balloons can be popped 🎈</div>
   <a class="scroll-hint" href="#gallery"><span>scroll down</span><b>↓</b></a>
 </header>
@@ -327,6 +370,15 @@
   <p class="sub hand reveal">tap a photo to see it bigger</p>
   <button class="btn ghost show-btn reveal" id="slideshow">▶ Play as a slideshow</button>
   <div class="grid" id="grid"></div>
+</section>
+
+<section id="wrapped-section">
+  <button class="wrapped-card reveal" id="wrapped-card">
+    <span class="k">edisi ulang tahun</span>
+    <span class="t" id="wrapped-title">Sherryn Wrapped</span>
+    <span class="go">▶ Tonton sekarang</span>
+    <span class="gift-emo" aria-hidden="true">🎁</span>
+  </button>
 </section>
 
 <section id="song-section">
@@ -385,7 +437,21 @@
   <div class="scratch reveal"><div class="msg" id="secret"></div><canvas id="scratch"></canvas></div>
 </section>
 
-<footer id="footer"></footer>
+<footer>
+  <a class="btn reply" id="reply" target="_blank" rel="noopener"></a>
+  <div id="footer"></div>
+</footer>
+
+<div id="story" hidden role="dialog" aria-modal="true" aria-label="Sherryn Wrapped">
+  <div class="story-frame">
+    <div class="story-bars"></div>
+    <div class="story-top"><span id="story-name"></span><button id="story-close" aria-label="Close">×</button></div>
+    <div class="story-body"></div>
+    <button class="story-tap prev" aria-label="Previous"></button>
+    <button class="story-tap next" aria-label="Next"></button>
+    <div class="story-hint">tap buat lanjut · tahan buat pause</div>
+  </div>
+</div>
 
 <div id="lyric" hidden><span>🎤</span><span id="lyric-text"></span><button id="lyric-skip" aria-label="Skip the song">✕</button></div>
 <button id="toast" hidden></button>
@@ -618,6 +684,100 @@
     envelope.classList.add("opening");
     sparkle(e.clientX || innerWidth / 2, e.clientY || innerHeight / 2, 8);
     setTimeout(() => { envelope.remove(); paper.hidden = false; }, 550);
+  });
+
+  // ── Reply on WhatsApp ──
+  const fromName = (C.from || "").split(",").pop().trim();
+  if (C.replyText) {
+    $("#reply").textContent = `💌 Balas ke ${fromName || "aku"}`;
+    $("#reply").href = `https://wa.me/?text=${encodeURIComponent(C.replyText)}`;
+  } else $("#reply").remove();
+
+  // ── Sherryn Wrapped: full-screen story slides ──
+  const W = C.wrapped || [];
+  const story = $("#story"), frame = story.querySelector(".story-frame"), sbody = story.querySelector(".story-body"), sbars = story.querySelector(".story-bars");
+  const DUR = 5200;
+  let si = 0, holdTimer = null, held = false, lastFocus = null;
+  if (!W.length) { $("#wrapped-section").remove(); $("#wrapped-hero").remove(); }
+  $("#wrapped-title").textContent = `${name} Wrapped`;
+  $("#wrapped-hero").textContent = `▶ Tonton ${name} Wrapped`;
+  $("#story-name").textContent = `${name} Wrapped`;
+  sbars.innerHTML = W.map(() => "<i><b></b></i>").join("");
+  sbars.addEventListener("animationend", () => { if (si < W.length - 1) goSlide(si + 1); else burst(200); });
+
+  function goSlide(i) {
+    si = Math.max(0, Math.min(W.length - 1, i));
+    const sl = W[si];
+    frame.style.setProperty("--sbg", sl.bg || "linear-gradient(160deg,#e8567a,#f4a13a)");
+    [...sbars.children].forEach((bar, k) => {
+      bar.className = k < si ? "done" : "";
+      bar.style.setProperty("--dur", `${DUR}ms`);
+    });
+    void sbars.offsetWidth;
+    sbars.children[si].className = "now";
+    story.classList.remove("paused");
+    let n = 0;
+    const parts = [];
+    if (sl.photo) parts.push(`<div class="ph" style="--n:${n++};background-image:url('photos/${esc(sl.photo)}')"></div>`);
+    if (sl.kicker) parts.push(`<div class="k" style="--n:${n++}">${esc(sl.kicker)}</div>`);
+    if (typeof sl.count === "number") parts.push(`<div class="num" style="--n:${n++}" data-count="${sl.count}">0</div>`);
+    if (sl.big) parts.push(`<div class="big" style="--n:${n++}">${esc(sl.big)}</div>`);
+    if (sl.sub) parts.push(`<div class="sub" style="--n:${n++}">${esc(sl.sub)}</div>`);
+    if (si === W.length - 1) parts.push(`<div class="story-end" style="--n:${n++}"><button class="btn ghost" id="story-again">🔁 Lagi</button><button class="btn" id="story-done">Tutup 💖</button></div>`);
+    sbody.innerHTML = parts.join("");
+    const num = sbody.querySelector(".num");
+    if (num) {
+      const target = +num.dataset.count, t0 = performance.now();
+      const step = (now) => {
+        const p = Math.min(1, (now - t0) / 1400), e = 1 - Math.pow(1 - p, 3);
+        num.textContent = Math.round(target * e).toLocaleString("id-ID");
+        if (p < 1 && !story.hidden) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    }
+    if (si === W.length - 1) {
+      $("#story-again").onclick = () => goSlide(0);
+      $("#story-done").onclick = closeStory;
+      setTimeout(() => burst(160), 500);
+    }
+  }
+  function openStory() {
+    if (!W.length) return;
+    lastFocus = document.activeElement;
+    story.hidden = false;
+    document.body.style.overflow = "hidden";
+    goSlide(0);
+    $("#story-close").focus();
+  }
+  function closeStory() {
+    story.hidden = true;
+    document.body.style.overflow = "";
+    if (lastFocus) lastFocus.focus();
+  }
+  $("#story-close").onclick = closeStory;
+  $("#wrapped-card").onclick = openStory;
+  $("#wrapped-hero").onclick = openStory;
+  // Tap to move on; press and hold to pause.
+  story.querySelectorAll(".story-tap").forEach((zone) => {
+    const dir = zone.classList.contains("next") ? 1 : -1;
+    zone.addEventListener("pointerdown", () => {
+      held = false;
+      holdTimer = setTimeout(() => { held = true; story.classList.add("paused"); }, 220);
+    });
+    const release = () => { clearTimeout(holdTimer); story.classList.remove("paused"); };
+    zone.addEventListener("pointerup", release);
+    zone.addEventListener("pointerleave", release);
+    zone.addEventListener("click", () => {
+      const ni = si + dir;
+      if (!held && ni >= 0 && ni < W.length) goSlide(ni);
+      held = false;
+    });
+  });
+  document.addEventListener("keydown", (e) => {
+    if (story.hidden) return;
+    if (e.key === "Escape") closeStory();
+    if (e.key === "ArrowRight" && si < W.length - 1) goSlide(si + 1);
+    if (e.key === "ArrowLeft" && si > 0) goSlide(si - 1);
   });
 
   // ── Scroll reveal ──
