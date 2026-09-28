@@ -353,6 +353,16 @@ A single-file canvas RPG. It needs no build step, and everything, music and voic
 - **Voices.** A formant speech synthesiser babbles each line in the speaker's own voice, with pitch, throat size, pace, breath, rasp, growl, choir, water, metal and echo. Settings has Voiced, Blips, Spoken (browser text-to-speech) or Off.
 - **Saves for every player.** The game saves in the browser as you play. Where storage is blocked, progress is kept with the tab and the title screen says so. Save codes and save files carry a game anywhere. There is no account or server.
 - **Arms and armour.** Each hero has a weapon and an armour slot beside the relic, with five tiers per weapon kind. The smiths sell them: Odo in Kessa, Dov in Oru and Qasim on the Dry Sea, with better stock as the story opens up. Buying fits the gear at once and trades the old piece in for half. The metal, glow and trim show on the battle figures. Because gear can be bought, every monster has a quarter more health and attack.
+- **Champions, spoils and the anvil.** Any ordinary monster can turn up as a champion, with more health and one or two powers that change the fight:
+  - Vampiric: heals from every wound it deals.
+  - Ironhide: armoured, and every blow on it lands a fifth lighter.
+  - Swift: often strikes a second time.
+  - Thorned: a fifth of every blow comes back at the striker.
+  - Frenzied: hits harder each time it is hurt.
+  - Warded: a ward soaks damage first and returns every third round.
+  - Undying: gets up once after it falls.
+
+  Some roam the map already glowing. Every win pays salt shards, and champions and bosses also drop champion cores. At the smiths' anvils, shards temper each fighter's weapon and armour up to +5, and cores set runes. There are four weapon runes (Hooks, Thirst, Thunder, Salt) and three armour runes (Brambles, Wells, the Wall). Runes circle the fighter in battle and flare when they fire.
 - **Boss phases.** At half health every boss transforms into a second form with its own design: the Butcher unbound, the Brood Queen, the Dead Conductor, Voss as the Bell Incarnate, Hollis as one great maw, the Ledger Made Flesh, a bloated Gulp, Maw fused with his ship, the Screaming Choir, Vela as the storm itself, Aurel as the Deep's Crown, Corvin as the Golden Debt, the Burning Ledger Tree, the Toll Engine, the Abyss Mouth and the three-headed Crystal Dragon. The change plays out on screen (a white flicker, bursting shards, a title splash). The boss then speaks, flares with an aura, hits harder, moves faster and readies its worst move next.
 - **The Long Road** (Pause menu):
   - a Courier Rank and perks kept across playthroughs
