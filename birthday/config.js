@@ -4,7 +4,7 @@
 // ─────────────────────────────────────────────────────────────
 window.BIRTHDAY = {
   // Your best friend's name (shown big at the top)
-  name: "Bestie",
+  name: "Sherryn",
 
   // Who it's from (shown at the end of the letter)
   from: "Your best friend",
@@ -19,18 +19,25 @@ window.BIRTHDAY = {
   letter: [
     "Happy birthday! I wanted to make you something a little different this year, so here it is: a small corner of the internet that is only about you.",
     "Thank you for all the laughs, the late-night talks, and for always showing up. I'm so lucky to call you my best friend.",
-    "Here's to another year of adventures together. I love you, always."
+    "From climbing Andong in the dark to sunsets at Prambanan and shouting along at concerts, every adventure is better with you. Here's to another year of them. I love you, always."
   ],
 
   // Photos: put the image files in the  birthday/photos/  folder,
-  // then list them here. "caption" is optional.
+  // then list them here. "caption" is optional. "pos" (optional) moves the
+  // square crop on the photo wall, e.g. "center 70%" to show lower down.
   photos: [
-    { file: "photo-1.jpg", caption: "The first of many" },
-    { file: "photo-2.jpg", caption: "That one day we couldn't stop laughing" },
-    { file: "photo-3.jpg", caption: "Partners in crime" },
-    { file: "photo-4.jpg", caption: "" },
-    { file: "photo-5.jpg", caption: "" },
-    { file: "photo-6.jpg", caption: "" }
+    { file: "01-andong-summit.jpg",    caption: "We made it to the top of Andong!" },
+    { file: "02-prambanan-sunset.jpg", caption: "Golden hour at Prambanan", pos: "center 70%" },
+    { file: "03-prambanan-field.jpg",  caption: "Main character energy" },
+    { file: "04-prambanan-pose.jpg",   caption: "Posing like a pro", pos: "center 70%" },
+    { file: "05-concert-crowd.jpg",    caption: "Concert night" },
+    { file: "06-concert-selfie.jpg",   caption: "Front row attitude" },
+    { file: "07-concert-blur.jpg",     caption: "Too hyped to hold the camera still" },
+    { file: "08-concert-stage.jpg",    caption: "Screaming every lyric" },
+    { file: "09-festival-silly.jpg",   caption: "Serious faces only" },
+    { file: "10-cafe-rock.jpg",        caption: "Rock on" },
+    { file: "11-cafe-thinking.jpg",    caption: "Deep in thought (not really)" },
+    { file: "12-mirror.jpg",           caption: "Spot the photobomber" }
   ],
 
   // A few things you love about them (shown as little cards). Leave [] to hide.

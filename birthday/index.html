@@ -270,6 +270,7 @@
     const img = new Image();
     img.onload = () => {
       card.querySelector(".img").style.backgroundImage = `url("${src}")`;
+      if (p.pos) card.querySelector(".img").style.backgroundPosition = p.pos;
       loaded.push({ i, src, caption: p.caption || "" });
       loaded.sort((a, b) => a.i - b.i);
       card.addEventListener("click", () => openBox(loaded.findIndex((x) => x.i === i)));
