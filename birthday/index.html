@@ -68,7 +68,27 @@
   header .kicker { font-size: 2rem; color: var(--accent); margin-bottom: 4px; }
   header h1 { font-size: clamp(2.6rem, 10vw, 6rem); line-height: 1.05; }
   header .date { margin-top: 12px; color: var(--muted); letter-spacing: .15em; text-transform: uppercase; font-size: .85rem; }
+  header { position: relative; overflow: hidden; }
+  header > *:not(.balloons) { position: relative; z-index: 1; }
   header .tagline { max-width: 520px; margin: 20px auto 0; font-size: 1.15rem; color: var(--muted); }
+  .countdown { margin-top: 14px; display: inline-block; background: var(--card); color: var(--accent); border-radius: 999px; padding: 6px 16px; font-weight: 500; box-shadow: var(--shadow); font-size: .95rem; }
+  .countdown:empty { display: none; }
+
+  /* Balloons (tap to pop) */
+  .balloons { position: absolute; inset: 0; pointer-events: none; z-index: 0; }
+  .balloon {
+    position: absolute; bottom: -140px; width: 56px; height: 70px; border-radius: 50% 50% 48% 48% / 55% 55% 45% 45%;
+    background: radial-gradient(circle at 32% 28%, rgba(255,255,255,.55) 0 8%, transparent 9%), var(--c);
+    pointer-events: auto; cursor: pointer; border: 0; padding: 0;
+    animation: rise var(--d) linear var(--delay) infinite;
+  }
+  .balloon::after { content: ""; position: absolute; left: 50%; top: 100%; width: 1px; height: 60px; background: rgba(90,60,70,.35); }
+  .balloon.popped { visibility: hidden; }
+  @keyframes rise {
+    0% { transform: translate(0, 0) rotate(-4deg); }
+    50% { transform: translate(18px, -60vh) rotate(4deg); }
+    100% { transform: translate(-10px, -125vh) rotate(-4deg); }
+  }
   .scroll-hint { margin-top: 48px; color: var(--muted); text-decoration: none; font-size: 1.6rem; animation: bob 1.8s ease-in-out infinite; }
   @keyframes bob { 50% { transform: translateY(8px); } }
 
@@ -92,6 +112,7 @@
     aspect-ratio: 1 / 1; width: 100%; background: #f1e6e0 center / cover no-repeat;
     display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: .85rem; padding: 12px;
   }
+  .show-btn { display: block; margin: -20px auto 36px; }
   .polaroid .cap { font-family: Caveat, cursive; font-size: 1.45rem; min-height: 2.2rem; padding-top: 6px; line-height: 1.2; }
   .polaroid.missing { cursor: default; }
   .polaroid.missing .img { border: 2px dashed #d9c3bb; background: #fbf4f0; }
@@ -102,12 +123,14 @@
     display: none; align-items: center; justify-content: center; flex-direction: column; padding: 16px; gap: 12px;
   }
   #lightbox.show { display: flex; }
-  #lightbox img { max-width: 100%; max-height: 80vh; border: 10px solid #fff; box-shadow: 0 20px 60px rgba(0,0,0,.5); }
+  #lightbox img { max-width: 100%; max-height: 78vh; border: 10px solid #fff; box-shadow: 0 20px 60px rgba(0,0,0,.5); transition: opacity .35s ease; }
+  #lightbox img.fading { opacity: 0; }
   #lightbox .cap { color: #fff; font-family: Caveat, cursive; font-size: 1.8rem; text-align: center; }
   #lightbox button { position: absolute; background: rgba(255,255,255,.15); color: #fff; border: 0; border-radius: 50%; width: 48px; height: 48px; font-size: 1.5rem; cursor: pointer; }
   #lightbox .close { top: 16px; right: 16px; }
   #lightbox .prev { left: 16px; top: 50%; }
   #lightbox .next { right: 16px; top: 50%; }
+  #lightbox .play { top: 16px; left: 16px; font-size: 1.1rem; }
 
   /* ── Reasons ────────────────────────────────── */
   .reasons { max-width: 900px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
@@ -119,6 +142,32 @@
 
   /* ── Letter ─────────────────────────────────── */
   #letter { background: var(--bg-2); }
+  .envelope {
+    display: block; position: relative; width: min(340px, 100%); aspect-ratio: 3 / 2; margin: 0 auto; cursor: pointer;
+    background: #f6d6c8; border: 0; border-radius: 8px; box-shadow: var(--shadow); padding: 0; font: inherit; color: inherit;
+    transition: transform .5s ease, opacity .5s ease;
+  }
+  .envelope::before { /* flap */
+    content: ""; position: absolute; inset: 0 0 38% 0; background: #efc3b2;
+    clip-path: polygon(0 0, 100% 0, 50% 100%); border-radius: 8px 8px 0 0; transform-origin: top; transition: transform .5s ease;
+  }
+  .envelope::after { /* front pocket */
+    content: ""; position: absolute; inset: 30% 0 0 0; background: #f9e1d6;
+    clip-path: polygon(0 0, 50% 45%, 100% 0, 100% 100%, 0 100%); border-radius: 0 0 8px 8px;
+  }
+  .envelope .seal {
+    position: absolute; left: 50%; top: 52%; transform: translate(-50%, -50%); z-index: 2;
+    width: 54px; height: 54px; border-radius: 50%; background: var(--accent); color: #fff;
+    display: flex; align-items: center; justify-content: center; font: 700 1.6rem Fraunces, serif; box-shadow: 0 3px 8px rgba(0,0,0,.2);
+  }
+  .envelope .to { position: absolute; left: 0; right: 0; bottom: 12px; z-index: 2; font-family: Caveat, cursive; font-size: 1.4rem; color: var(--muted); }
+  .envelope:hover { transform: translateY(-4px) rotate(-1deg); }
+  .envelope:focus-visible { outline: 3px dashed var(--accent); outline-offset: 8px; }
+  .envelope.opening::before { transform: rotateX(180deg); }
+  .envelope.opening { transform: translateY(20px) scale(.9); opacity: 0; }
+  .paper[hidden] { display: none; }
+  .paper.unfold { animation: unfold .7s ease both; }
+  @keyframes unfold { from { opacity: 0; transform: translateY(30px) scale(.96); } to { opacity: 1; transform: none; } }
   .paper {
     max-width: 680px; margin: 0 auto; background: #fffdf8; padding: 40px 32px;
     box-shadow: var(--shadow); border-radius: 4px; position: relative;
@@ -137,13 +186,38 @@
   .candles { position: absolute; bottom: 126px; left: 50%; transform: translateX(-50%); display: flex; gap: 22px; }
   .candle { width: 10px; height: 44px; background: repeating-linear-gradient(45deg, #fff 0 6px, var(--accent) 6px 12px); border-radius: 3px; position: relative; }
   .flame { position: absolute; top: -22px; left: 50%; width: 14px; height: 22px; transform: translateX(-50%); background: radial-gradient(circle at 50% 70%, #fff6b0 0 30%, #ffb52e 55%, transparent 70%); border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%; animation: flicker .15s infinite alternate; transition: opacity .4s; }
-  .blown .flame { opacity: 0; animation: none; }
+  .candle.out .flame { opacity: 0; animation: none; }
+  .candle .smoke { position: absolute; top: -20px; left: 50%; width: 8px; height: 8px; border-radius: 50%; background: rgba(160,150,150,.6); opacity: 0; transform: translateX(-50%); }
+  .candle.out .smoke { animation: smoke 1.4s ease-out forwards; }
+  @keyframes smoke { 0% { opacity: .8; } 100% { opacity: 0; transform: translate(-50%, -50px) scale(3); } }
   @keyframes flicker { to { transform: translateX(-50%) scale(1.08, .94) rotate(3deg); } }
   .btn {
     background: var(--accent); color: #fff; border: 0; border-radius: 999px; padding: 14px 28px;
     font: 500 1rem Inter, sans-serif; cursor: pointer; box-shadow: 0 6px 18px rgba(232,86,122,.4);
   }
   .btn:hover { filter: brightness(1.05); }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .btn.ghost { background: var(--card); color: var(--accent); box-shadow: 0 4px 14px rgba(90,40,50,.12); }
+  .btn-row { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+  .karaoke { max-width: 460px; margin: 0 auto 28px; min-height: 1px; }
+  .karaoke p { margin: 2px 0; font-family: Caveat, cursive; font-size: 1.7rem; color: #c9b5b9; transition: color .3s, transform .3s; }
+  .karaoke p.on { color: var(--accent); transform: scale(1.08); }
+  .karaoke p.done { color: var(--ink); }
+  .karaoke[hidden] { display: none; }
+  #cake-hint { color: var(--muted); min-height: 1.6em; margin: 0 0 16px; }
+  .mic-meter { width: 160px; height: 6px; border-radius: 3px; background: #f0e2d8; margin: 14px auto 0; overflow: hidden; }
+  .mic-meter i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .08s; }
+  .mic-meter[hidden] { display: none; }
+
+  /* Music button */
+  #music {
+    position: fixed; right: 16px; bottom: 16px; z-index: 45; width: 52px; height: 52px; border-radius: 50%;
+    border: 0; background: var(--accent); color: #fff; font-size: 1.4rem; cursor: pointer; box-shadow: 0 6px 18px rgba(232,86,122,.45);
+  }
+  #music[hidden] { display: none; }
+  #music.on { animation: pulse 1.6s ease-in-out infinite; }
+  #music.off { background: var(--card); color: var(--muted); }
+  @keyframes pulse { 50% { box-shadow: 0 6px 26px rgba(232,86,122,.75); } }
   #wish { font-size: 2rem; color: var(--accent); min-height: 3rem; margin-top: 16px; }
 
   footer { text-align: center; padding: 32px 16px 48px; color: var(--muted); font-size: .9rem; }
@@ -180,9 +254,11 @@
 <canvas id="confetti"></canvas>
 
 <header>
+  <div class="balloons" id="balloons" aria-hidden="true"></div>
   <div class="kicker hand">Happy Birthday,</div>
   <h1 id="name"></h1>
   <div class="date" id="date"></div>
+  <div class="countdown" id="countdown"></div>
   <p class="tagline" id="tagline"></p>
   <a class="scroll-hint" href="#gallery" aria-label="Scroll down">↓</a>
 </header>
@@ -190,6 +266,7 @@
 <section id="gallery">
   <h2 class="reveal">Our favourite moments</h2>
   <p class="sub hand reveal">tap a photo to see it bigger</p>
+  <button class="btn ghost show-btn reveal" id="slideshow">▶ Play as a slideshow</button>
   <div class="grid" id="grid"></div>
 </section>
 
@@ -202,25 +279,40 @@
 <section id="letter">
   <h2 class="reveal">A little letter</h2>
   <p class="sub hand reveal">read this one slowly</p>
-  <div class="paper reveal" id="paper"></div>
+  <button class="envelope reveal" id="envelope" aria-label="Open the letter">
+    <span class="seal" id="seal"></span>
+    <span class="to" id="envelope-to"></span>
+  </button>
+  <div class="paper" id="paper" hidden></div>
 </section>
 
 <section id="cake-section">
   <h2 class="reveal">Make a wish</h2>
+  <p class="sub hand reveal">sing first, then blow</p>
   <div class="cake" id="cake">
-    <div class="candles"><div class="candle"><div class="flame"></div></div><div class="candle"><div class="flame"></div></div><div class="candle"><div class="flame"></div></div></div>
+    <div class="candles"><div class="candle"><div class="flame"></div><div class="smoke"></div></div><div class="candle"><div class="flame"></div><div class="smoke"></div></div><div class="candle"><div class="flame"></div><div class="smoke"></div></div></div>
     <div class="layer icing"></div>
     <div class="layer l2"></div>
     <div class="layer l1"></div>
   </div>
-  <button class="btn" id="blow">Blow out the candles</button>
+  <div class="karaoke" id="karaoke" hidden></div>
+  <p id="cake-hint"></p>
+  <div class="btn-row" id="cake-buttons">
+    <button class="btn" id="sing">🎵 Sing the birthday song</button>
+    <button class="btn ghost" id="mic">🎤 Blow into the mic</button>
+    <button class="btn ghost" id="blow">Tap to blow</button>
+  </div>
+  <div class="mic-meter" id="mic-meter" hidden><i></i></div>
   <div id="wish" class="hand"></div>
 </section>
 
 <footer id="footer"></footer>
 
+<button id="music" hidden aria-label="Turn music off" title="Music">♫</button>
+
 <div id="lightbox" role="dialog" aria-modal="true" aria-label="Photo viewer">
   <button class="close" aria-label="Close">×</button>
+  <button class="play" aria-label="Play slideshow">▶</button>
   <button class="prev" aria-label="Previous photo">‹</button>
   <img alt="">
   <div class="cap"></div>
@@ -228,6 +320,7 @@
 </div>
 
 <script src="config.js"></script>
+<script src="music.js"></script>
 <script>
 (() => {
   const C = window.BIRTHDAY || {};
@@ -240,6 +333,24 @@
   $("#date").textContent = C.date || "";
   $("#tagline").textContent = C.tagline || "";
   $("#footer").textContent = `made with love for ${C.name || "you"}`;
+  $("#seal").textContent = (C.name || "♥").charAt(0).toUpperCase();
+  $("#envelope-to").textContent = `for ${C.name || "you"}`;
+
+  // ── Countdown to the birthday (only shown close to the day) ──
+  (() => {
+    const months = ["jan", "feb", "mar", "apr", "mei|may", "jun", "jul", "agu|aug", "sep", "okt|oct", "nov", "des|dec"];
+    const m = String(C.date || "").toLowerCase().match(/(\d{1,2})\s+([a-z]+)/);
+    if (!m) return;
+    const mi = months.findIndex((k) => k.split("|").some((x) => m[2].startsWith(x)));
+    if (mi < 0) return;
+    const now = new Date(), today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const day = new Date(now.getFullYear(), mi, +m[1]);
+    const diff = Math.round((day - today) / 86400000);
+    const el = $("#countdown");
+    if (diff === 0) el.textContent = "🎉 It's your day today!";
+    else if (diff === 1) el.textContent = "🎈 1 day to go";
+    else if (diff > 1 && diff <= 60) el.textContent = `🎈 ${diff} days to go`;
+  })();
 
   const paper = $("#paper");
   (C.letter || []).forEach((p) => { const el = document.createElement("p"); el.textContent = p; paper.appendChild(el); });
@@ -283,33 +394,47 @@
     img.src = src;
   });
 
-  // ── Lightbox ──
-  const lb = $("#lightbox"), lbImg = lb.querySelector("img"), lbCap = lb.querySelector(".cap");
-  let cur = 0;
-  function show(n) {
+  // ── Lightbox + slideshow ──
+  const lb = $("#lightbox"), lbImg = lb.querySelector("img"), lbCap = lb.querySelector(".cap"), lbPlay = lb.querySelector(".play");
+  let cur = 0, auto = null;
+  function show(n, fadeIn) {
     if (!loaded.length) return;
     cur = (n + loaded.length) % loaded.length;
-    lbImg.src = loaded[cur].src;
-    lbCap.textContent = loaded[cur].caption;
+    const item = loaded[cur];
+    if (fadeIn) {
+      lbImg.classList.add("fading");
+      setTimeout(() => { lbImg.src = item.src; lbCap.textContent = item.caption; lbImg.classList.remove("fading"); }, 350);
+    } else {
+      lbImg.src = item.src;
+      lbCap.textContent = item.caption;
+    }
   }
-  function openBox(n) { show(n); lb.classList.add("show"); lb.querySelector(".close").focus(); }
-  function closeBox() { lb.classList.remove("show"); }
+  function setAuto(on) {
+    clearInterval(auto);
+    auto = on ? setInterval(() => show(cur + 1, true), 3500) : null;
+    lbPlay.textContent = on ? "❚❚" : "▶";
+    lbPlay.setAttribute("aria-label", on ? "Pause slideshow" : "Play slideshow");
+  }
+  function openBox(n, slideshow) { show(n); lb.classList.add("show"); setAuto(!!slideshow); lb.querySelector(".close").focus(); }
+  function closeBox() { lb.classList.remove("show"); setAuto(false); }
   lb.querySelector(".close").onclick = closeBox;
-  lb.querySelector(".prev").onclick = (e) => { e.stopPropagation(); show(cur - 1); };
-  lb.querySelector(".next").onclick = (e) => { e.stopPropagation(); show(cur + 1); };
+  lbPlay.onclick = (e) => { e.stopPropagation(); setAuto(!auto); };
+  lb.querySelector(".prev").onclick = (e) => { e.stopPropagation(); setAuto(false); show(cur - 1); };
+  lb.querySelector(".next").onclick = (e) => { e.stopPropagation(); setAuto(false); show(cur + 1); };
+  $("#slideshow").onclick = () => { if (loaded.length) openBox(0, true); };
   lb.addEventListener("click", (e) => { if (e.target === lb) closeBox(); });
   document.addEventListener("keydown", (e) => {
     if (!lb.classList.contains("show")) return;
     if (e.key === "Escape") closeBox();
-    if (e.key === "ArrowLeft") show(cur - 1);
-    if (e.key === "ArrowRight") show(cur + 1);
+    if (e.key === "ArrowLeft") { setAuto(false); show(cur - 1); }
+    if (e.key === "ArrowRight") { setAuto(false); show(cur + 1); }
   });
   let tx = null;
   lb.addEventListener("touchstart", (e) => { tx = e.touches[0].clientX; }, { passive: true });
   lb.addEventListener("touchend", (e) => {
     if (tx === null) return;
     const dx = e.changedTouches[0].clientX - tx;
-    if (Math.abs(dx) > 50) show(cur + (dx < 0 ? 1 : -1));
+    if (Math.abs(dx) > 50) { setAuto(false); show(cur + (dx < 0 ? 1 : -1)); }
     tx = null;
   });
 
@@ -325,12 +450,12 @@
   let bits = [], running = false;
   function resize() { cv.width = innerWidth * devicePixelRatio; cv.height = innerHeight * devicePixelRatio; ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0); }
   addEventListener("resize", resize); resize();
-  function burst(n = 160) {
+  function burst(n = 160, x = innerWidth / 2, y = innerHeight * 0.45, spread = 1) {
     if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     for (let k = 0; k < n; k++) {
       bits.push({
-        x: innerWidth / 2 + (Math.random() - 0.5) * 120, y: innerHeight * 0.45,
-        vx: (Math.random() - 0.5) * 14, vy: -Math.random() * 16 - 4,
+        x: x + (Math.random() - 0.5) * 120 * spread, y,
+        vx: (Math.random() - 0.5) * 14 * spread, vy: (-Math.random() * 16 - 4) * spread,
         w: 6 + Math.random() * 6, h: 8 + Math.random() * 8,
         r: Math.random() * Math.PI, vr: (Math.random() - 0.5) * 0.3,
         c: colors[(Math.random() * colors.length) | 0], life: 0
@@ -350,28 +475,160 @@
     if (bits.length) requestAnimationFrame(tick); else { running = false; ctx.clearRect(0, 0, innerWidth, innerHeight); }
   }
 
+  // ── Balloons ──
+  const balloonColors = ["#e8567a", "#f4a13a", "#ffd166", "#7bc8a4", "#6fa8dc", "#c38fe0", "#f28cae"];
+  for (let k = 0; k < 8; k++) {
+    const b = document.createElement("button");
+    b.className = "balloon";
+    b.tabIndex = -1;
+    b.style.left = `${4 + k * 12 + Math.random() * 5}%`;
+    b.style.setProperty("--c", balloonColors[k % balloonColors.length]);
+    b.style.setProperty("--d", `${11 + Math.random() * 7}s`);
+    b.style.setProperty("--delay", `${-Math.random() * 16}s`);
+    b.addEventListener("click", () => {
+      const r = b.getBoundingClientRect();
+      burst(40, r.left + r.width / 2, r.top + r.height / 2, 0.55);
+      b.classList.add("popped");
+      setTimeout(() => b.classList.remove("popped"), 4000);
+    });
+    $("#balloons").appendChild(b);
+  }
+
+  // ── Letter in an envelope ──
+  const envelope = $("#envelope");
+  envelope.addEventListener("click", () => {
+    envelope.classList.add("opening");
+    setTimeout(() => {
+      envelope.remove();
+      paper.hidden = false;
+      paper.classList.add("unfold");
+    }, 550);
+  });
+
+  // ── Music ──
+  const M = window.BirthdayMusic || { supported: false };
+  const musicBtn = $("#music");
+  function syncMusicBtn() {
+    musicBtn.classList.toggle("on", M.enabled);
+    musicBtn.classList.toggle("off", !M.enabled);
+    musicBtn.textContent = M.enabled ? "♫" : "🔇";
+    musicBtn.setAttribute("aria-label", M.enabled ? "Turn music off" : "Turn music on");
+  }
+  musicBtn.addEventListener("click", () => { M.setEnabled(!M.enabled); syncMusicBtn(); });
+  if (!M.supported) $("#sing").remove();
+
   // ── Open the gift ──
   const gift = $("#gift");
   gift.addEventListener("click", () => {
     if (gift.classList.contains("open")) return;
     gift.classList.add("open");
+    if (M.supported) { M.startBg(); musicBtn.hidden = false; syncMusicBtn(); }
     setTimeout(() => { burst(220); $("#intro").classList.add("gone"); }, 550);
   });
 
-  // ── Candles ──
+  // ── Cake: sing, then blow ──
+  const cake = $("#cake"), candles = [...cake.querySelectorAll(".candle")], hint = $("#cake-hint");
+  const lyrics = (C.songLyrics || ["Selamat ulang tahun", "Selamat ulang tahun", "Selamat ulang tahun, {name}", "Selamat ulang tahun"])
+    .map((l) => l.replace("{name}", C.name || ""));
+  const karaoke = $("#karaoke");
+  lyrics.forEach((l) => { const p = document.createElement("p"); p.textContent = l; karaoke.appendChild(p); });
+  const lines = [...karaoke.children];
+
+  if (M.supported) $("#sing").addEventListener("click", () => {
+    if (M.songPlaying) return;
+    stopMic();
+    if (!M.enabled) { M.setEnabled(true); syncMusicBtn(); }
+    relight();
+    karaoke.hidden = false;
+    lines.forEach((p) => p.classList.remove("on", "done"));
+    $("#sing").disabled = true;
+    hint.textContent = "Sing along! 🎶";
+    M.playSong(
+      (i) => lines.forEach((p, k) => { p.classList.toggle("on", k === i); p.classList.toggle("done", k < i); }),
+      () => {
+        lines.forEach((p) => { p.classList.remove("on"); p.classList.add("done"); });
+        $("#sing").disabled = false;
+        $("#sing").textContent = "🎵 Sing it again";
+        hint.textContent = "Now close your eyes, make a wish… and blow! 🌬️";
+      }
+    );
+  });
+
+  function outCount() { return candles.filter((c) => c.classList.contains("out")).length; }
+  function blowOne() {
+    const c = candles.find((x) => !x.classList.contains("out"));
+    if (!c) return;
+    c.classList.add("out");
+    if (outCount() === candles.length) allOut();
+  }
+  function allOut() {
+    stopMic();
+    $("#wish").textContent = "I hope every wish comes true 🎉";
+    hint.textContent = "";
+    $("#blow").textContent = "Light them again";
+    burst(220);
+    setTimeout(() => burst(160, innerWidth * 0.25, innerHeight * 0.5), 400);
+    setTimeout(() => burst(160, innerWidth * 0.75, innerHeight * 0.5), 800);
+  }
+  function relight() {
+    candles.forEach((c) => c.classList.remove("out"));
+    $("#wish").textContent = "";
+    $("#blow").textContent = "Tap to blow";
+  }
   $("#blow").addEventListener("click", () => {
-    const cake = $("#cake");
-    if (cake.classList.contains("blown")) {
-      cake.classList.remove("blown");
-      $("#blow").textContent = "Blow out the candles";
-      $("#wish").textContent = "";
+    if (outCount() === candles.length) { relight(); return; }
+    candles.forEach((c, k) => setTimeout(() => { if (!c.classList.contains("out")) blowOne(); }, k * 180));
+  });
+
+  // Blow detection: sustained loud input on the microphone puts out one candle at a time.
+  let micStream = null, micRaf = null, micCtx = null;
+  const meter = $("#mic-meter"), meterBar = meter.querySelector("i");
+  async function startMic() {
+    if (micStream) { stopMic(); return; }
+    if (outCount() === candles.length) relight();
+    try {
+      micStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+    } catch (e) {
+      hint.textContent = "The mic isn't available here, so tap “Tap to blow” instead.";
       return;
     }
-    cake.classList.add("blown");
-    $("#blow").textContent = "Light them again";
-    $("#wish").textContent = "I hope every wish comes true 🎉";
-    burst(200);
-  });
+    micCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const src = micCtx.createMediaStreamSource(micStream);
+    const an = micCtx.createAnalyser();
+    an.fftSize = 1024;
+    src.connect(an);
+    const buf = new Float32Array(an.fftSize);
+    let loudMs = 0, last = performance.now();
+    if (M.supported && !M.songPlaying) M.stopBg();
+    meter.hidden = false;
+    $("#mic").textContent = "🎤 Stop the mic";
+    hint.textContent = "Blow into your phone's mic! 🌬️";
+    const loop = (now) => {
+      an.getFloatTimeDomainData(buf);
+      let sum = 0;
+      for (let k = 0; k < buf.length; k++) sum += buf[k] * buf[k];
+      const rms = Math.sqrt(sum / buf.length);
+      meterBar.style.width = `${Math.min(100, rms * 400)}%`;
+      const dt = now - last; last = now;
+      loudMs = rms > 0.12 ? loudMs + dt : Math.max(0, loudMs - dt / 2);
+      if (loudMs > 260) { loudMs = 0; blowOne(); }
+      if (micStream) micRaf = requestAnimationFrame(loop);
+    };
+    micRaf = requestAnimationFrame(loop);
+  }
+  function stopMic() {
+    if (!micStream) return;
+    micStream.getTracks().forEach((t) => t.stop());
+    micStream = null;
+    cancelAnimationFrame(micRaf);
+    if (micCtx) micCtx.close();
+    micCtx = null;
+    meter.hidden = true;
+    $("#mic").textContent = "🎤 Blow into the mic";
+    if (M.supported && M.enabled && !M.songPlaying) setTimeout(M.startBg, 1500);
+  }
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) $("#mic").remove();
+  else $("#mic").addEventListener("click", startMic);
 })();
 </script>
 </body>

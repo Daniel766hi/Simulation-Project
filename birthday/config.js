@@ -41,6 +41,18 @@ window.BIRTHDAY = {
     { file: "12-mirror.jpg",           caption: "Spot the photobomber" }
   ],
 
+  // Lyrics shown line by line while the birthday song plays ({name} becomes the name above).
+  songLyrics: [
+    "Selamat ulang tahun",
+    "Selamat ulang tahun",
+    "Selamat ulang tahun, {name}",
+    "Selamat ulang tahun"
+  ],
+
+  // Background music. Leave "" for the built-in music box, or put an audio file in
+  // this folder (e.g. "music/our-song.mp3") to loop that instead.
+  backgroundMusic: "",
+
   // A few things you love about them (shown as little cards). Leave [] to hide.
   reasons: [
     "You're kind, always",
