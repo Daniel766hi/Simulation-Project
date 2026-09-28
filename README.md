@@ -373,6 +373,28 @@ A single-file canvas RPG. It needs no build step, and everything, music and voic
   | 14 | Legend | Last Stand or Storm Heart |
 
   The choice comes up after a battle, or any time on the Party screen, where it can be switched for 20 coin. Talents flash over the hero when they fire. Odo's three smithing counters now sit together under one "Smithing" menu.
+- **The last battle: King Aurel's three tides.** The final fight has rules no other fight has:
+
+  | Tide | When | What happens |
+  |---|---|---|
+  | The Drowned Court | from the start | The sea rises every round. While his court kneels around him, the King takes a third less damage. |
+  | The King Rises | two thirds health | He transforms. Every third round he drags a fighter below, where they lose their turns and slowly drown until the party hurts him enough in one round to make him let go. |
+  | The Last Rain | a quarter health | The rain falls upward, the sea rises twice as fast, and the party's Fury builds half again as fast. |
+
+  - The sea level (0–10) is drawn rising over the party. From 6 it drowns everyone a little each round; at 10 it becomes the Flood, his strongest blow.
+  - Any fighter can spend a turn to **Ring the Rain Bell**, the Bell Sable carried all the way: the sea falls back 4, the King is exposed, and his wind-up breaks.
+  - When he falls, the water drains and the drowned rise as lights.
+  - The apology route keeps its honest sword duel.
+- **Monster strength.** A balance simulation fought every chapter's battles with an automatic player and a typical party. Before this change, bosses from Chapter 4 on died in 2–3 rounds with the party near full health. Monsters and bosses now grow with the party level expected where they live. Going back to an early road stays easy.
+
+  With a typical party (a gear tier behind the best, forge upgrades, talents):
+  - ordinary fights take about 3 rounds;
+  - main bosses take about 7 rounds and leave the party at roughly half health;
+  - the King takes about 13 rounds.
+
+  A party three levels behind still wins most fights. Each defeat by the same boss makes it a little weaker next time, up to three defeats, and Story difficulty stays the gentle option.
+- **How it works** (pause menu): a guide to every system, in plain words. Each topic appears once you have met that system, marked "new". Champions now start in Chapter II.
+- **Clearer battles.** Floating words over a fighter go up one after another instead of on top of each other, and champion tags are shorter. Champion powers, runes, talents and the King's rules share one set of battle hooks; a rule that fails is logged and skipped, and the fight goes on.
 - **Boss phases.** At half health every boss transforms into a second form with its own design: the Butcher unbound, the Brood Queen, the Dead Conductor, Voss as the Bell Incarnate, Hollis as one great maw, the Ledger Made Flesh, a bloated Gulp, Maw fused with his ship, the Screaming Choir, Vela as the storm itself, Aurel as the Deep's Crown, Corvin as the Golden Debt, the Burning Ledger Tree, the Toll Engine, the Abyss Mouth and the three-headed Crystal Dragon. The change plays out on screen (a white flicker, bursting shards, a title splash). The boss then speaks, flares with an aura, hits harder, moves faster and readies its worst move next.
 - **The Long Road** (Pause menu):
   - a Courier Rank and perks kept across playthroughs
