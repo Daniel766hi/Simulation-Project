@@ -7,10 +7,10 @@ window.BIRTHDAY = {
   name: "Sherryn",
 
   // Who it's from (shown at the end of the letter)
-  from: "Your best friend",
+  from: "Your best friend, Daniel",
 
   // Optional: their birthday, shown under the title. Leave "" to hide.
-  date: "",
+  date: "30 September",
 
   // A short line under the title
   tagline: "Another year of you, and the world is better for it.",
@@ -19,7 +19,8 @@ window.BIRTHDAY = {
   letter: [
     "Happy birthday! I wanted to make you something a little different this year, so here it is: a small corner of the internet that is only about you.",
     "Thank you for all the laughs, the late-night talks, and for always showing up. I'm so lucky to call you my best friend.",
-    "From climbing Andong in the dark to sunsets at Prambanan and shouting along at concerts, every adventure is better with you. Here's to another year of them. I love you, always."
+    "From climbing Andong in the dark to sunsets at Prambanan and shouting along at concerts, every adventure is better with you. Here's to another year of them.",
+    "I wish you all the best for your wlw life. You certainly deserve better, and I hope this year gives you exactly that."
   ],
 
   // Photos: put the image files in the  birthday/photos/  folder,
@@ -42,10 +43,10 @@ window.BIRTHDAY = {
 
   // A few things you love about them (shown as little cards). Leave [] to hide.
   reasons: [
-    "You make every ordinary day feel fun",
-    "You always know what to say",
-    "Your laugh is contagious",
-    "You never judge, you just listen",
-    "You're the first person I want to tell everything to"
+    "You're kind, always",
+    "You're honest with me, even when it's not the easy thing to say",
+    "You say things straight, no beating around the bush",
+    "You're impulsive (haha), which is how we end up on the best adventures",
+    "Talking to you is never boring: the jokes never stop"
   ]
 };
