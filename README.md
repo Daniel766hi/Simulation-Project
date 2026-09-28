@@ -363,6 +363,16 @@ A single-file canvas RPG. It needs no build step, and everything, music and voic
   - Undying: gets up once after it falls.
 
   Some roam the map already glowing. Every win pays salt shards, and champions and bosses also drop champion cores. At the smiths' anvils, shards temper each fighter's weapon and armour up to +5, and cores set runes. There are four weapon runes (Hooks, Thirst, Thunder, Salt) and three armour runes (Brambles, Wells, the Wall). Runes circle the fighter in battle and flare when they fire.
+- **Talents.** At levels 3, 6, 10 and 14 every fighter learns one of two talents:
+
+  | Level | Tier | Choice |
+  |---|---|---|
+  | 3 | Instinct | First Blood or Second Wind |
+  | 6 | Craft | Open Wounds or Bulwark |
+  | 10 | Resolve | Executioner or Momentum |
+  | 14 | Legend | Last Stand or Storm Heart |
+
+  The choice comes up after a battle, or any time on the Party screen, where it can be switched for 20 coin. Talents flash over the hero when they fire. Odo's three smithing counters now sit together under one "Smithing" menu.
 - **Boss phases.** At half health every boss transforms into a second form with its own design: the Butcher unbound, the Brood Queen, the Dead Conductor, Voss as the Bell Incarnate, Hollis as one great maw, the Ledger Made Flesh, a bloated Gulp, Maw fused with his ship, the Screaming Choir, Vela as the storm itself, Aurel as the Deep's Crown, Corvin as the Golden Debt, the Burning Ledger Tree, the Toll Engine, the Abyss Mouth and the three-headed Crystal Dragon. The change plays out on screen (a white flicker, bursting shards, a title splash). The boss then speaks, flares with an aura, hits harder, moves faster and readies its worst move next.
 - **The Long Road** (Pause menu):
   - a Courier Rank and perks kept across playthroughs
