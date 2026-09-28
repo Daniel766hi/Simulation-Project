@@ -49,9 +49,18 @@ window.BIRTHDAY = {
     "Selamat ulang tahun"
   ],
 
-  // Background music. Leave "" for the built-in music box, or put an audio file in
-  // this folder (e.g. "music/our-song.mp3") to loop that instead.
+  // Background music. Leave "" for the built-in upbeat loop (music/loop.mp3), or put an
+  // audio file in the music folder (e.g. "music/other.mp3") to loop that instead.
   backgroundMusic: "",
+
+  // The song for her, played through Spotify's own player. This is the ID at the end of the
+  // Spotify link (open.spotify.com/track/<ID>). Leave "" to hide the section.
+  // Now: "Semua Aku Dirayakan" by Nadin Amizah.
+  spotifyTrack: "4rcuS31IcZynp91dqvmhmA",
+  spotifyNote: "Putar ini sambil baca suratnya ya 💌",
+
+  // Hidden under the scratch card at the very end (scratch to reveal). Use \n for a new line.
+  secretMessage: "Kamu resmi naik level! 🎉\nSemoga tahun ini penuh ketawa, petualangan seru, dan orang-orang yang pantas buat kamu. 💖",
 
   // A few things you love about them (shown as little cards). Leave [] to hide.
   reasons: [
