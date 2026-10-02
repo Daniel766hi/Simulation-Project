@@ -224,6 +224,16 @@
     .dialog, #cineBox, #banter { top: calc(100% + 8px) !important; bottom: auto !important; }
     .battle-bottom { top: calc(100% + 8px) !important; bottom: auto !important; grid-template-columns: 1fr !important; }
     .battle-bottom .menu { max-height: none !important; }
+    /* the party, coin and goal panels sit there too, so the short picture stays clear for the road */
+    .hud { inset: calc(100% + 8px) 0 auto 0; gap: 8px; }
+    .hud > div:first-child, .hud .goal { flex: 1 1 0; min-width: 0; max-width: none; margin: 0; }
+    .hud .goal { font-size: 12px; padding: 6px 9px; } .hud .goal b { font-size: 10px; }
+    .pm { grid-template-columns: minmax(0, 1fr) 72px; font-size: 12px; } .row { font-size: 11px; max-width: none; }
+    /* menus and the party and journal screens take the whole screen, like the story cards */
+    .overlay { position: fixed; inset: 0; z-index: 50; border-radius: 0; align-items: flex-start; padding: max(12px, env(safe-area-inset-top)) 10px max(12px, env(safe-area-inset-bottom)); }
+    .overlay .roster { max-height: 100%; }
+    .pmenu { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; } .pmenu button { padding: 8px 6px; }
+    .toast { font-size: 13px; padding: 6px 10px; }
   }
   .rotateTip { display: none; font-size: 13px; color: var(--gold); margin: 4px 0 0; }
 </style>
@@ -11538,8 +11548,11 @@
         if (y + h > cr.bottom - 4) continue;
         cands.push({ x, y, d: Math.abs(fy - home) * 3 + Math.abs(fx - 0.5) });
       }
+      // taller than the picture (a long toast on an upright phone): it sits at the top, over whatever is there
+      const tall = !cands.length;
+      if (tall) cands.push({ x: clamp(cr.left + cr.width / 2 - w / 2, cr.left + 6, Math.max(cr.left + 6, cr.right - w - 6)), y: cr.top + 4, d: 0 });
       cands.sort((a, b) => a.d - b.d);
-      const free = cands.find(c => !others.some(o => hitRect({ x: c.x, y: c.y, w, h }, o)));
+      const free = tall ? cands[0] : cands.find(c => !others.some(o => hitRect({ x: c.x, y: c.y, w, h }, o)));
       const pick = free || cands[0];
       // nowhere clear (a crowded dialogue on a phone): the toast waits out of sight, and its clock waits with it
       el.style.visibility = free ? "" : "hidden";
