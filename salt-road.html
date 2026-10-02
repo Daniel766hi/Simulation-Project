@@ -13023,6 +13023,19 @@
   setTimeout(titleSummary, 0);
   localStorage.ready.then(() => setTimeout(titleSummary, 0));
 
+  // ---- coming back after a while: the last page of Tobin's Chronicle and where the road was heading
+  const AWAY = 60 * 60 * 1000;
+  const _saveSeen = save;
+  save = function () { if (G && mode !== "title") G.lastPlayed = Date.now(); _saveSeen(); };
+  const _startGameRecap = startGame;
+  startGame = function () {
+    const away = G && G.stage > 0 && !G.flags.epilogue && G.lastPlayed && Date.now() - G.lastPlayed >= AWAY;
+    _startGameRecap();
+    if (!away) return;
+    const pages = chronicle().filter(([h]) => h), [head, text] = pages[pages.length - 1] || ["", ""], t = goal();
+    card("Previously", head || t.ch || "The Salt Road", `${text}${t.text ? ` Where the road leads now: ${t.text}` : ""}`.trim());
+  };
+
   // ================================================================== BOOT
   const saved = load();          // read the save before a fresh game could overwrite it
   newGame(false);
