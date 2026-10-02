@@ -11148,9 +11148,12 @@
     colossus: ["We scream. We scream.", "#9ef0f5"], vela: ["Hear the storm. Hear it end you.", "#c8d8ff"], king: ["Then drown with us. All of you.", "#9ef0f5"], corvin: ["Every debt. Every name. Paid.", "#ffcf4a"],
     ledgertree: ["The interest is due.", "#ff2d2d"], tollkeeper: ["Final audit. No appeals.", "#ffcf4a"], oldmouth: ["Hunger.", "#3ee0e8"], wyrm: ["Hhhsssss!", "#e8ecf8"],
   };
+  const OWN_PHASES = new Set(["hollis"]);
   function enterPhase2(f) {
     const [line] = PHASE2[f.id]; f.phase2 = time;
-    f.atk = Math.round(f.atk * 1.2); f.def += 2; f.spd += 2;
+    // Hollis was built with phases of his own (the drowned at 60%, the Tide at 30%, which hits a quarter harder):
+    // he still transforms, but without the extra strength on top, which made him harder than the Drowned King
+    if (!OWN_PHASES.has(f.id)) { f.atk = Math.round(f.atk * 1.2); f.def += 2; f.spd += 2; }
     const M = MONSTERS[f.id]; if (M && M.moves.some(m => m.charge) && !f.charged) f.charged = true;   // its worst move comes next
     shake = Math.max(shake, 14); flash(1); Music.sound("boss");
     blog(`${f.name.split(",")[0]} changes. The second phase begins.`);
