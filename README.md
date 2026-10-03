@@ -374,6 +374,18 @@ A single-file canvas RPG. It needs no build step, and everything, music and voic
 
   The choice comes up after a battle, or any time on the Party screen, where it can be switched for 20 coin. Talents flash over the hero when they fire. Odo's three smithing counters now sit together under one "Smithing" menu.
 - **Boss phases.** At half health every boss transforms into a second form with its own design: the Butcher unbound, the Brood Queen, the Dead Conductor, Voss as the Bell Incarnate, Hollis as one great maw, the Ledger Made Flesh, a bloated Gulp, Maw fused with his ship, the Screaming Choir, Vela as the storm itself, Aurel as the Deep's Crown, Corvin as the Golden Debt, the Burning Ledger Tree, the Toll Engine, the Abyss Mouth and the three-headed Crystal Dragon. The change plays out on screen (a white flicker, bursting shards, a title splash). The boss then speaks, flares with an aura, hits harder, moves faster and readies its worst move next. Hollis keeps his own three phases instead (the drowned at 60%, the Tide at 30%), so he transforms without the extra strength.
+- **Rebuilding Kessa.** From Chapter I, Elder Nadia's board by the well lists six places to rebuild with coin and salt shards. Each has two levels, the builders finish by the next dawn (sleep at night to get there sooner), and the new building appears on its lot:
+
+  | Place | Level 1 | Level 2 |
+  |---|---|---|
+  | Herb Garden | Salves heal 30 | Salves heal 40, Tonics restore 10 SP |
+  | Salt Bed Inn | Benched companions earn 75% XP | They earn full XP |
+  | Market Hall | Two Salves to collect each day | Plus a Tonic and a rarer remedy |
+  | Village Forge | Arms and armour 10% cheaper | 20% cheaper |
+  | Training Yard | Battles start with 15 Fury | 30 Fury |
+  | Courier Post | Battles pay 15% more coin | 30% more |
+
+  Finishing everything brings a "Home Again" card and an achievement, and the endings remember what was built.
 - **Phones held upright.** The party, coin and goal panels sit under the picture with the dialogue and battle menus, so the road stays clear. The pause menu, party screen and journal use the whole screen.
 - **The Long Road** (Pause menu):
   - a Courier Rank and perks kept across playthroughs
