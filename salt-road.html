@@ -224,6 +224,17 @@
     .dialog, #cineBox, #banter { top: calc(100% + 8px) !important; bottom: auto !important; }
     .battle-bottom { top: calc(100% + 8px) !important; bottom: auto !important; grid-template-columns: 1fr !important; }
     .battle-bottom .menu { max-height: none !important; }
+    /* the party, coin and goal panels sit there too, so the short picture stays clear for the road */
+    .hud { inset: calc(100% + 8px) 0 auto 0; gap: 8px; }
+    .hud > div:first-child, .hud .goal { flex: 1 1 0; min-width: 0; max-width: none; margin: 0; }
+    .hud .goal { font-size: 12px; padding: 6px 9px; } .hud .goal b { font-size: 10px; }
+    .pm { grid-template-columns: minmax(0, 1fr) 72px; font-size: 12px; } .row { font-size: 11px; max-width: none; }
+    /* menus and the party and journal screens take the whole screen, like the story cards */
+    .overlay { position: fixed; inset: 0; z-index: 50; border-radius: 0; align-items: flex-start; padding: max(12px, env(safe-area-inset-top)) 10px max(12px, env(safe-area-inset-bottom)); }
+    .overlay .roster { max-height: 100%; }
+    .pmenu { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; } .pmenu button { padding: 8px 6px; }
+    .toast { font-size: 13px; padding: 6px 10px; }
+    .frame:has(#card:not([hidden])) .hud { visibility: hidden; }   /* a story card is read on its own */
   }
   .rotateTip { display: none; font-size: 13px; color: var(--gold); margin: 4px 0 0; }
 </style>
@@ -3295,7 +3306,13 @@
   for (const b of $("diffRow").children) b.addEventListener("click", () => { difficulty = b.dataset.d; try { localStorage.setItem("salt-road-diff", difficulty); } catch { /* storage unavailable */ } renderDiff(); });
   renderDiff();
   $("startBtn").addEventListener("click", startGame);
-  $("newBtn").addEventListener("click", () => { newGame(); startGame(); });
+  // "Start over" erases the saved game, so it asks once before it does
+  let newArmed = 0;
+  $("newBtn").addEventListener("click", () => {
+    const b = $("newBtn");
+    if (Date.now() - newArmed > 5000) { newArmed = Date.now(); b.dataset.label = b.dataset.label || b.textContent; b.textContent = "Erase your saved game and start over? Press again"; b.classList.add("armed"); setTimeout(() => { if (Date.now() - newArmed >= 5000) { b.textContent = b.dataset.label; b.classList.remove("armed"); } }, 5000); return; }
+    newArmed = 0; b.textContent = b.dataset.label; b.classList.remove("armed"); newGame(); startGame();
+  });
 
   // ================================================================== ACT II · THE RAINS
   // Chapters VII-XII. Everything here plugs into the engine through the *Act2 / *2 hooks.
@@ -5298,16 +5315,24 @@
   }
 
   // ================================================================== NEW GAME+
+  // what a finished game hands on is kept in storage too, so closing the tab on the ending card doesn't lose it:
+  // the title screen offers it until it is used
+  const NG_KEY = "salt-road-ngplus";
+  function readNGPlus() { try { const c = JSON.parse(localStorage.getItem(NG_KEY)); return c && c.sable && c.ng ? c : null; } catch { return null; } }
+  function startNGPlus(carry) {
+    newGame(); Object.assign(G, { coins: carry.coins, relics: carry.relics, items: carry.items, forge: carry.forge, ng: carry.ng }); G.party.sable = carry.sable; G.party.sable.hp = G.party.sable.maxHp; G.flags.kills = carry.kills;
+    save(); startGame(); toast(`New Game+ ${carry.ng}. The salt remembers you. So do the monsters.`);
+  }
   function showNGPlus() {
     let b2 = $("cardBtn2");
     if (!b2) { b2 = document.createElement("button"); b2.id = "cardBtn2"; b2.className = "ghost"; $("card").appendChild(b2); }
     const carry = { sable: JSON.parse(JSON.stringify(G.party.sable)), coins: G.coins, relics: G.relics || [], items: { ...G.items }, forge: { ...(G.forge || {}) }, kills: { ...(G.flags.kills || {}) }, ng: (G.ng || 0) + 1 };
+    try { localStorage.setItem(NG_KEY, JSON.stringify(carry)); } catch { /* storage unavailable */ }
     b2.textContent = `New Game+ ${carry.ng}: keep Sable's level, relics, items, coin and forge; monsters grow stronger`;
     b2.hidden = false;
     b2.onclick = () => {
       b2.hidden = true; delete $("cardBtn").dataset.ending; $("cardBtn").onclick = null; $("cardBtn").textContent = "Continue"; $("card").hidden = true;
-      newGame(); Object.assign(G, { coins: carry.coins, relics: carry.relics, items: carry.items, forge: carry.forge, ng: carry.ng }); G.party.sable = carry.sable; G.party.sable.hp = G.party.sable.maxHp; G.flags.kills = carry.kills;
-      save(); startGame(); toast(`New Game+ ${carry.ng}. The salt remembers you. So do the monsters.`);
+      startNGPlus(carry);
     };
   }
   const _showNextCard = showNextCard;
@@ -11123,9 +11148,12 @@
     colossus: ["We scream. We scream.", "#9ef0f5"], vela: ["Hear the storm. Hear it end you.", "#c8d8ff"], king: ["Then drown with us. All of you.", "#9ef0f5"], corvin: ["Every debt. Every name. Paid.", "#ffcf4a"],
     ledgertree: ["The interest is due.", "#ff2d2d"], tollkeeper: ["Final audit. No appeals.", "#ffcf4a"], oldmouth: ["Hunger.", "#3ee0e8"], wyrm: ["Hhhsssss!", "#e8ecf8"],
   };
+  const OWN_PHASES = new Set(["hollis"]);
   function enterPhase2(f) {
     const [line] = PHASE2[f.id]; f.phase2 = time;
-    f.atk = Math.round(f.atk * 1.2); f.def += 2; f.spd += 2;
+    // Hollis was built with phases of his own (the drowned at 60%, the Tide at 30%, which hits a quarter harder):
+    // he still transforms, but without the extra strength on top, which made him harder than the Drowned King
+    if (!OWN_PHASES.has(f.id)) { f.atk = Math.round(f.atk * 1.2); f.def += 2; f.spd += 2; }
     const M = MONSTERS[f.id]; if (M && M.moves.some(m => m.charge) && !f.charged) f.charged = true;   // its worst move comes next
     shake = Math.max(shake, 14); flash(1); Music.sound("boss");
     blog(`${f.name.split(",")[0]} changes. The second phase begins.`);
@@ -11524,8 +11552,11 @@
         if (y + h > cr.bottom - 4) continue;
         cands.push({ x, y, d: Math.abs(fy - home) * 3 + Math.abs(fx - 0.5) });
       }
+      // taller than the picture (a long toast on an upright phone): it sits at the top, over whatever is there
+      const tall = !cands.length;
+      if (tall) cands.push({ x: clamp(cr.left + cr.width / 2 - w / 2, cr.left + 6, Math.max(cr.left + 6, cr.right - w - 6)), y: cr.top + 4, d: 0 });
       cands.sort((a, b) => a.d - b.d);
-      const free = cands.find(c => !others.some(o => hitRect({ x: c.x, y: c.y, w, h }, o)));
+      const free = tall ? cands[0] : cands.find(c => !others.some(o => hitRect({ x: c.x, y: c.y, w, h }, o)));
       const pick = free || cands[0];
       // nowhere clear (a crowded dialogue on a phone): the toast waits out of sight, and its clock waits with it
       el.style.visibility = free ? "" : "hidden";
@@ -12946,6 +12977,67 @@
       if (battle) drawRigFx(k);
     }
     _flushHiArt();
+  };
+
+  // ================================================================== A FINISHED GAME STAYS FINISHED
+  // At an ending the game hands its gear and tempering back as coin (for New Game+) and deletes the save. Daily
+  // tasks, gifts and renown kept saving afterwards, which wrote that stripped game back: a reload offered "Continue"
+  // into Chapter XII with the gear gone. Now nothing is saved from the ending until a new game or the epilogue.
+  let gameDone = false;
+  const _saveDone = save;
+  save = function () {
+    if (gameDone) return;
+    _saveDone();
+    // a New Game+ run starts before Chapter I, where a reload begins afresh: its offer stays on the title until then
+    if (G && G.ng && G.stage > 0) { const c = readNGPlus(); if (c && c.ng <= G.ng) try { localStorage.removeItem(NG_KEY); } catch { /* storage unavailable */ } }
+  };
+  const _endingDone = ending;
+  ending = function (kind) { gameDone = true; return _endingDone(kind); };
+  const _finalCreditsDone = finalCredits;
+  finalCredits = function () { gameDone = true; return _finalCreditsDone(); };
+  const _startEpilogueDone = startEpilogue;
+  startEpilogue = function (kind) { gameDone = false; return _startEpilogueDone(kind); };
+  const _newGameDone = newGame;
+  newGame = function (persist) { gameDone = false; return _newGameDone(persist); };
+
+  // ---- the title screen: what Continue leads to, and New Game+ when a finished game left one
+  const titleCss = document.createElement("style");
+  titleCss.textContent = "#saveSum{margin:-4px 0 0;max-width:68ch;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}#saveSum b{color:var(--text);font-weight:500}"
+    + "#ngBtn{border-color:var(--gold);color:var(--gold)}.screen .ghost.armed{border-color:var(--blood);color:#ffb3bf}.screen .ghost:focus-visible{outline:2px solid var(--gold);outline-offset:2px}";
+  document.head.appendChild(titleCss);
+  const sumEl = document.createElement("p"); sumEl.id = "saveSum"; sumEl.hidden = true;
+  $("startBtn").insertAdjacentElement("afterend", sumEl);
+  const ngBtn = document.createElement("button"); ngBtn.id = "ngBtn"; ngBtn.className = "ghost"; ngBtn.type = "button"; ngBtn.hidden = true;
+  $("newBtn").insertAdjacentElement("afterend", ngBtn);
+  let ngArmed = 0;
+  function titleSummary() {
+    if (mode !== "title" || !G) return;
+    const has = G.stage > 0, t = has ? goal() : null;
+    sumEl.hidden = !has;
+    if (has) sumEl.innerHTML = `<b>${t.ch || "The Salt Road"}</b> · ${fmtTime(G.stats && G.stats.time)} played · ${G.members.map(id => `${G.party[id].name} ${G.party[id].level}`).slice(0, 4).join(", ")}${G.members.length > 4 ? ` +${G.members.length - 4}` : ""}${G.ng ? ` · New Game+ ${G.ng}` : ""}`;
+    const c = readNGPlus();
+    ngBtn.hidden = !c;
+    if (c) ngBtn.textContent = `New Game+ ${c.ng}: Sable at level ${c.sable.level}, with your relics, items, coin and forge`;
+  }
+  ngBtn.addEventListener("click", () => {
+    const c = readNGPlus(); if (!c) { titleSummary(); return; }
+    if (G.stage > 0 && Date.now() - ngArmed > 5000) { ngArmed = Date.now(); ngBtn.textContent = "This replaces your saved game. Press again to begin New Game+"; ngBtn.classList.add("armed"); setTimeout(() => { if (Date.now() - ngArmed >= 5000) { ngBtn.classList.remove("armed"); titleSummary(); } }, 5000); return; }
+    ngBtn.classList.remove("armed"); startNGPlus(c);
+  });
+  setTimeout(titleSummary, 0);
+  localStorage.ready.then(() => setTimeout(titleSummary, 0));
+
+  // ---- coming back after a while: the last page of Tobin's Chronicle and where the road was heading
+  const AWAY = 60 * 60 * 1000;
+  const _saveSeen = save;
+  save = function () { if (G && mode !== "title") G.lastPlayed = Date.now(); _saveSeen(); };
+  const _startGameRecap = startGame;
+  startGame = function () {
+    const away = G && G.stage > 0 && !G.flags.epilogue && G.lastPlayed && Date.now() - G.lastPlayed >= AWAY;
+    _startGameRecap();
+    if (!away) return;
+    const pages = chronicle().filter(([h]) => h), [head, text] = pages[pages.length - 1] || ["", ""], t = goal();
+    card("Previously", head || t.ch || "The Salt Road", `${text}${t.text ? ` Where the road leads now: ${t.text}` : ""}`.trim());
   };
 
   // ================================================================== BOOT
