@@ -390,7 +390,8 @@ A single-file canvas RPG. It needs no build step, and everything, music and voic
 - **The Long Road** (Pause menu):
   - a Courier Rank and perks kept across playthroughs
   - a daily welcome-back gift with a visiting streak
-  - the Deep Stair, an endless descent with boons between floors
+  - the Deep Stair, an endless descent through five biomes (Salt Steps, Drowned Galleries, Counting Vaults, Storm Shaft, Sunken Choir), each with its own monsters, backdrop and twist. There are twelve boons between floors, one of them rare, and relics at floors 10, 20 and 30
+  - the Daily Descent, one Stair run a day with the same floors, champions and boon offers for every player, plus a record of recent runs
   - the Hall of Echoes, boss rematches at three tiers
   - a Weekly Trial
 

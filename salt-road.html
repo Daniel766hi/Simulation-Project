@@ -12161,40 +12161,81 @@
     gild: { name: "Gilded Road", desc: "+50% coin at the end of every floor (stacks)." },
     scholar: { name: "Scholar's Lamp", desc: "+40% bonus experience after every floor (stacks)." },
     slow: { name: "Heavy Air", desc: "Monsters on the Stair lose 1 speed (stacks)." },
+    ember: { name: "Kindling", desc: "Every fight on the Stair starts with 20 Fury (stacks)." },
+    bleed: { name: "Salt Wounds", desc: "Monsters start every fight bleeding." },
+    crack: { name: "Cracked Shells", desc: "Monsters start every fight with broken armour." },
+    mend: { name: "Mending Song", desc: "After each floor the party recovers a fifth of its health (stacks)." },
+    shard: { name: "Shard Seam", desc: "+2 salt shards after each floor, for the anvil or Kessa's builders (stacks)." },
+    glass: { name: "Glass Pact", desc: "Monsters have 30% less health but hit 20% harder (stacks).", rare: true },
   };
+  // the Stair goes down through five places, five floors each, then round again, deeper and harder
+  const BIOMES = [
+    { name: "The Salt Steps", area: "deep", pool: ["jackal", "ghoul", "choir", "wraith", "crawler", "mirage", "scorpion", "dunewraith", "saltworm"], note: "" },
+    { name: "The Drowned Galleries", area: "marsh", pool: ["leech", "drowned", "bogghoul", "toad", "dvillager", "eel", "crab", "angler"], note: "Monsters here have a fifth more health.", mod: () => scaleFoes(1.2, 1) },
+    { name: "The Counting Vaults", area: "oru", pool: ["clerk", "thug", "ledgercrow", "sluicer", "minerghoul", "saltworm"], note: "Monsters here have +2 defence.", mod: () => { for (const f of battle.foes) f.def += 2; } },
+    { name: "The Storm Shaft", area: "spire", pool: ["harpy", "spark", "singer", "wraith", "ledgercrow"], note: "Monsters here are faster: +2 speed.", mod: () => { for (const f of battle.foes) f.spd += 2; } },
+    { name: "The Sunken Choir", area: "cathedral", pool: ["priest", "choir", "singer", "angler", "wraith", "sailor"], note: "Monsters here hit a tenth harder.", mod: () => scaleFoes(1, 1.1) },
+  ];
+  const biomeOf = floor => BIOMES[Math.floor((floor - 1) / 5) % BIOMES.length];
+  // the Daily Descent: one run a day whose floors and boon offers are the same for everyone that day
+  const seeded = (seed, fn) => {
+    const keep = Math.random; let a = Math.floor(seed * 4294967296) >>> 0 || 1;
+    Math.random = () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+    try { return fn(); } finally { Math.random = keep; }
+  };
+  const daySeed = (day, floor, salt) => hash(Number(String(day).replace(/-/g, "")) % 1000003, floor * 31 + salt);
+  Object.assign(RELICS, {
+    stairlamp: { name: "Stair Lantern", from: "_stair10", desc: "Floor 10 of the Deep Stair. +1 SP each turn, +5% critical chance.", spRegen: 1, crit: 0.05 },
+    stairheart: { name: "Heart of the Galleries", from: "_stair20", desc: "Floor 20 of the Deep Stair. +2 defence, +2 health each turn.", def: 2, regen: 2 },
+    staireye: { name: "Eye of the Deep", from: "_stair30", desc: "Floor 30 of the Deep Stair. +2 speed, +10% critical chance.", spd: 2, crit: 0.1 },
+  });
   const deepRun = () => G.flags.deep && G.flags.deep.active ? G.flags.deep : null;
   function deepGroup(floor) {
     if (floor % 5 === 0) {   // an echo of a boss, the strongest one the party should be able to face
       const known = HALL.filter(bossKnown), band = known.filter(id => bossLevel(id) <= partyLevel() + floor / 5);
       const pickB = (band.length ? band : known.length ? known : HALL.slice(0, 2)); return { group: [pickB[Math.min(pickB.length - 1, Math.floor(floor / 5) - 1 + Math.floor(Math.random() * 2))] || pickB[0]], boss: true };
     }
-    const target = Math.max(10, partyLevel() * 5) + floor * 4, n = floor < 3 ? 2 : floor < 9 ? 3 : 3 + (Math.random() < 0.5 ? 1 : 0);
-    const near = DEEP_POOL.map(id => [id, Math.abs(MONSTERS[id].xp - target)]).sort((a, b) => a[1] - b[1]).slice(0, 6).map(x => x[0]);
-    return { group: Array.from({ length: n }, () => pick(near)), boss: false };
+    const run = deepRun(), roll = () => {
+      const target = Math.max(10, partyLevel() * 5) + floor * 4, n = floor < 3 ? 2 : floor < 9 ? 3 : 3 + (Math.random() < 0.5 ? 1 : 0);
+      const pool = biomeOf(floor).pool.filter(id => MONSTERS[id]), from = pool.length >= 3 ? pool : DEEP_POOL;
+      const near = from.map(id => [id, Math.abs(MONSTERS[id].xp - target)]).sort((a, b) => a[1] - b[1]).slice(0, 4).map(x => x[0]);
+      return { group: Array.from({ length: n }, () => pick(near)), boss: false };
+    };
+    return run && run.daily ? seeded(daySeed(run.daily, floor, 7), roll) : roll();
   }
-  function deepStart() {
-    G.flags.deep = { active: true, floor: 0, boons: perk(6) ? { keen: 1 } : {}, coins: 0, xp: 0 };
+  function deepStart(daily) {
+    G.flags.deep = { active: true, floor: 0, boons: perk(6) ? { keen: 1 } : {}, coins: 0, xp: 0, daily: daily ? today() : null };
+    if (daily) { meta.dailyDeep = { day: today(), floor: 0 }; saveMeta(); }
     meta.deepRuns++; saveMeta(); save(); deepNext();
   }
   function deepNext() {
     const run = deepRun(); if (!run) return;
     run.floor++; save();
-    const { group, boss } = deepGroup(run.floor), b = run.boons;
-    startBattle(group, { deep: run.floor, area: "deep", boss: boss ? group[0] : undefined });
+    const { group, boss } = deepGroup(run.floor), b = run.boons, B = biomeOf(run.floor);
+    const begin = () => startBattle(group, { deep: run.floor, area: B.area, boss: boss ? group[0] : undefined });
+    if (run.daily) seeded(daySeed(run.daily, run.floor, 19), begin); else begin();   // champions too are the same for everyone on a daily run
     if (!battle) return;
     const extra = Math.max(0, run.floor - 8) * 0.07, [ch, ca] = boss ? catchUp(group[0]) : [1, 1];
-    scaleFoes((1 + extra) * ch * Math.pow(0.88, b.keen || 0), (1 + extra * 0.6) * ca * Math.pow(0.9, b.ward || 0), Math.floor(run.floor / 6));
+    scaleFoes((1 + extra) * ch * Math.pow(0.88, b.keen || 0) * Math.pow(0.7, b.glass || 0), (1 + extra * 0.6) * ca * Math.pow(0.9, b.ward || 0) * Math.pow(1.2, b.glass || 0), Math.floor(run.floor / 6));
+    if (B.mod) B.mod();
     if (b.slow) for (const f of battle.foes) f.spd = Math.max(1, f.spd - b.slow);
-    blog(`The Deep Stair, floor ${run.floor}${boss ? ": an echo waits on the landing" : ""}.`);
+    if (b.ember) addFury(20 * b.ember);
+    if (b.bleed) for (const f of battle.foes) f.st.bleed = { dmg: 3 + Math.floor(run.floor / 3), turns: 3 };
+    if (b.crack) for (const f of battle.foes) f.st.brk = 3;
+    blog(`${run.daily ? "Today's Descent" : "The Deep Stair"}, floor ${run.floor}: ${B.name}${boss ? ". An echo waits on the landing" : ""}.`);
+    if (run.floor % 5 === 1) setTimeout(() => toast(`${B.name}${B.note ? `. ${B.note}` : ""}`), 900);
   }
   function deepEnd(fell) {
     const run = deepRun(); if (!run) return;
     const cleared = fell ? run.floor - 1 : run.floor;
-    run.active = false; const best = cleared > meta.deepBest; meta.deepBest = Math.max(meta.deepBest, cleared); saveMeta();
+    run.active = false; const best = cleared > meta.deepBest; meta.deepBest = Math.max(meta.deepBest, cleared);
+    meta.deepLog = [{ d: today(), f: cleared, daily: !!run.daily }, ...(meta.deepLog || [])].slice(0, 6);
+    if (run.daily) { meta.dailyDeep = { day: run.daily, floor: cleared }; meta.dailyBest = Math.max(meta.dailyBest || 0, cleared); }
+    saveMeta();
     if (fell) for (const id of G.members) { const h = G.party[id]; h.hp = Math.max(h.hp, Math.ceil(h.maxHp * 0.5)); h.sp = Math.max(h.sp, Math.ceil(h.maxSp * 0.5)); }
     save(); updateHud();
     card("The Deep Stair", fell ? `Carried back up from floor ${run.floor}` : `You climb out from floor ${run.floor}`,
-      `${cleared} floor${cleared === 1 ? "" : "s"} cleared this run${best ? ", a new best" : ""} (best: ${meta.deepBest}). Spoils kept: ${run.coins} coin and ${run.xp} bonus experience from boons, plus everything the fights paid.${fell ? " Someone always comes down for you." : ""}`);
+      `${run.daily ? "Today's Descent: " : ""}${cleared} floor${cleared === 1 ? "" : "s"} cleared this run${best ? ", a new best" : ""} (best: ${meta.deepBest}). Spoils kept: ${run.coins} coin and ${run.xp} bonus experience from boons, plus everything the fights paid.${fell ? " Someone always comes down for you." : ""}`);
   }
   function deepBoon() {
     const run = deepRun(); if (!run) return;
@@ -12203,11 +12244,16 @@
     if (bonusX) { run.xp += bonusX; for (const id of G.members) { const h = G.party[id]; h.xp += bonusX; while (h.xp >= xpNeed(h.level)) { h.xp -= xpNeed(h.level); levelUp(h); toast(`${h.name} reaches level ${h.level}`); } } }
     renown(3 * run.floor, run.floor % 5 === 0 ? "an echo on the Stair" : "");
     if (run.floor > meta.deepBest) { meta.deepBest = run.floor; saveMeta(); }
+    if (run.daily && meta.dailyDeep && meta.dailyDeep.day === run.daily) { meta.dailyDeep.floor = Math.max(meta.dailyDeep.floor, run.floor); saveMeta(); }
+    if (run.boons.mend) for (const id of G.members) { const h = G.party[id]; if (h.hp > 0) h.hp = Math.min(h.maxHp, h.hp + Math.ceil(h.maxHp * 0.2 * run.boons.mend)); }
+    if (run.boons.shard) spoils().shards += 2 * run.boons.shard;
+    for (const [n, r] of [[10, "stairlamp"], [20, "stairheart"], [30, "staireye"]]) if (run.floor >= n && !(G.relics || []).includes(r)) setTimeout(() => giveRelic(r), 1800);
     save(); updateHud();
-    const keys = Object.keys(BOONS).sort(() => Math.random() - 0.5).slice(0, perk(15) ? 4 : 3);
+    const offer = () => Object.keys(BOONS).filter(k => !BOONS[k].rare || Math.random() < 0.2).sort(() => Math.random() - 0.5).slice(0, perk(15) ? 4 : 3);
+    const keys = run.daily ? seeded(daySeed(run.daily, run.floor, 13), offer) : offer();
     const hpNow = G.members.map(id => `${G.party[id].name} ${G.party[id].hp}/${G.party[id].maxHp}`).join(" · ");
-    D.__deepBoon = { who: null, text: `Floor ${run.floor} cleared: +${bonusC} coin${bonusX ? `, +${bonusX} experience` : ""}. The stair winds on down. Choose a boon for the way (best: floor ${meta.deepBest}). ${hpNow}`,
-      choices: [...keys.map(k => ({ t: `${BOONS[k].name}: ${BOONS[k].desc}${run.boons[k] ? ` (have ${run.boons[k]})` : ""}`, go: null, act: () => { if (k === "breath") for (const id of G.members) { const h = G.party[id]; if (h.hp > 0) { h.hp = Math.min(h.maxHp, h.hp + Math.ceil(h.maxHp / 2)); h.sp = Math.min(h.maxSp, h.sp + Math.ceil(h.maxSp / 2)); } } else run.boons[k] = (run.boons[k] || 0) + 1; save(); setTimeout(deepNext, 250); } })),
+    D.__deepBoon = { who: null, text: `Floor ${run.floor} cleared: +${bonusC} coin${bonusX ? `, +${bonusX} experience` : ""}. The stair winds on down. Next: floor ${run.floor + 1}, ${biomeOf(run.floor + 1).name}. Choose a boon for the way (best: floor ${meta.deepBest}). ${hpNow}`,
+      choices: [...keys.map(k => ({ t: `${BOONS[k].rare ? "★ " : ""}${BOONS[k].name}: ${BOONS[k].desc}${run.boons[k] ? ` (have ${run.boons[k]})` : ""}`, go: null, act: () => { if (k === "breath") for (const id of G.members) { const h = G.party[id]; if (h.hp > 0) { h.hp = Math.min(h.maxHp, h.hp + Math.ceil(h.maxHp / 2)); h.sp = Math.min(h.maxSp, h.sp + Math.ceil(h.maxSp / 2)); } } else run.boons[k] = (run.boons[k] || 0) + 1; save(); setTimeout(deepNext, 250); } })),
         { t: `Climb out with your spoils (${run.coins} coin so far).`, go: null, act: () => setTimeout(() => deepEnd(false), 150) }] };
     const open = () => { if (!deepRun()) return; if (mode !== "play" || dlg) return setTimeout(open, 400); openDialog("__deepBoon"); };   // after any card or scene that got there first
     open();
@@ -12293,9 +12339,12 @@
       <div class="bar"><i style="width:${Math.round(meta.renown / need * 100)}%"></i></div>
       <ul>${PERKS.map(([r, n, d]) => `<li class="${perk(r) ? "" : "off"}">${perk(r) ? "✓" : "🔒"} <b>Rank ${r} · ${n}</b>: ${d}</li>`).join("")}</ul>
       <p class="dim" style="font-size:12px;margin:2px 0 0">Visiting streak: ${meta.streak} day${meta.streak === 1 ? "" : "s"} (best ${meta.bestStreak}). Come back tomorrow for a bigger gift.</p>
-      <h3>The Deep Stair</h3><p class="dim" style="font-size:12px;margin:0 0 6px">An endless descent under the salt. Harder every floor, an echo of a boss every fifth, a boon between floors. Your health carries from floor to floor. Best: floor ${meta.deepBest} · runs: ${meta.deepRuns}.${G.stage < 1 ? " Opens after the prologue." : ""}</p>
-      <div class="row2">${run ? `<button type="button" class="pbtn" data-road="deepgo" ${lock}>Go down to floor ${run.floor + 1}</button><button type="button" class="pbtn" data-road="deepout" ${lock}>Climb out (floor ${run.floor})</button>`
-        : `<button type="button" class="pbtn" data-road="deep" ${G.stage < 1 ? "disabled" : lock}>Descend the Deep Stair</button>`}</div>
+      <h3>The Deep Stair</h3><p class="dim" style="font-size:12px;margin:0 0 6px">An endless descent under the salt, through ${BIOMES.map(B => B.name.replace(/^The /, "")).join(", ")}, five floors each, then round again, deeper. An echo of a boss every fifth floor, a boon between floors, relics at floors 10, 20 and 30. Your health carries from floor to floor. Best: floor ${meta.deepBest} · runs: ${meta.deepRuns}.${G.stage < 1 ? " Opens after the prologue." : ""}</p>
+      <div class="row2">${run ? `<button type="button" class="pbtn" data-road="deepgo" ${lock}>Go down to floor ${run.floor + 1} (${biomeOf(run.floor + 1).name.replace(/^The /, "")})</button><button type="button" class="pbtn" data-road="deepout" ${lock}>Climb out (floor ${run.floor})</button>`
+        : `<button type="button" class="pbtn" data-road="deep" ${G.stage < 1 ? "disabled" : lock}>Descend the Deep Stair</button>${meta.dailyDeep && meta.dailyDeep.day === today()
+          ? `<button type="button" class="pbtn" disabled>Today's Descent: floor ${meta.dailyDeep.floor}. A new one tomorrow</button>`
+          : `<button type="button" class="pbtn" data-road="deepdaily" ${G.stage < 1 ? "disabled" : lock}>Today's Descent (one try a day)</button>`}`}</div>
+      ${(meta.deepLog || []).length ? `<p class="dim" style="font-size:12px;margin:6px 0 0">Recent runs: ${meta.deepLog.map(r => `${r.daily ? "★ " : ""}floor ${r.f} (${r.d.slice(5)})`).join(" · ")}${meta.dailyBest ? ` · best Daily Descent: floor ${meta.dailyBest}` : ""}</p>` : ""}
       <h3>Weekly Trial</h3>${P ? `<p class="dim" style="font-size:12px;margin:0 0 6px">This week: <b>${MONSTERS[P.boss].name.split(",")[0]}</b> at tier II, twist <b>${P.twist.name}</b>: ${P.twist.desc} ${wk && wk.cleared ? `Your best: ${wk.best} rounds.` : "First clear: 100 coin, a rare item and 60 renown."} A new trial every Monday.</p>
         <div class="row2"><button type="button" class="pbtn" data-road="weekly" ${lock}>Take the trial</button></div>` : `<p class="dim" style="font-size:12px;margin:0">Beat your first boss to open the Weekly Trial.</p>`}
       <h3>Hall of Echoes</h3><p class="dim" style="font-size:12px;margin:0 0 6px">Fight any boss you have beaten again, at three tiers. Echoes cleared: ${echoTotal()} of ${HALL.length * 3}. Relics at 3, 8 and 15.</p>
@@ -12307,7 +12356,8 @@
     const b = e.target.closest("button[data-road]"); if (!b || b.disabled) return;
     e.stopPropagation();
     const act = b.dataset.road, go = f => { resumeGame(); setTimeout(f, 80); };
-    if (act === "deep") go(deepStart);
+    if (act === "deep") go(() => deepStart(false));
+    if (act === "deepdaily") go(() => deepStart(true));
     if (act === "deepgo") go(deepNext);
     if (act === "deepout") go(() => deepEnd(false));
     if (act === "weekly") go(weeklyStart);
