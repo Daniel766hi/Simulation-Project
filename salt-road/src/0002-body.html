@@ -1,0 +1,111 @@
+</style>
+</head>
+<body>
+<div class="frame" id="frame">
+  <canvas id="game" aria-label="Game world"></canvas>
+
+  <div class="hud" id="hud">
+    <div>
+      <div class="party-mini" id="partyMini"></div>
+      <div class="row"><span class="coins" id="coins">◆ 0</span><span id="items"></span></div>
+    </div>
+    <div class="goal" id="goal"><b id="chapter">Goal</b><span id="goalText"></span></div>
+  </div>
+  <canvas id="minimap" width="72" height="54" aria-label="Minimap"></canvas>
+  <div class="corner" id="corner"><button id="partyBtn" type="button">Party (P)</button><button id="journalBtn" type="button">Journal (J)</button><button id="musicBtn" type="button">♪ Music on</button></div>
+  <button id="pauseBtn" type="button" aria-label="Pause (Esc)" hidden>❚❚</button>
+  <div class="overlay" id="pauseUI" hidden>
+    <div class="roster pause">
+      <div class="ptop"><h2 id="pauseTitle">Paused</h2><span id="pauseStats"></span></div>
+      <div id="pauseMain" class="pmenu">
+        <button type="button" data-a="resume">Resume <small>Esc</small></button>
+        <button type="button" data-a="map">World map</button>
+        <button type="button" data-a="party">Party <small>P</small></button>
+        <button type="button" data-a="journal">Journal <small>J</small></button>
+        <button type="button" data-a="slots">Save and load</button>
+        <button type="button" data-a="settings">Settings</button>
+        <button type="button" data-a="alchemy">Alchemy <small>Kest</small></button>
+        <button type="button" data-a="today">Today's tasks</button>
+        <button type="button" data-a="ach">Achievements</button>
+        <button type="button" data-a="chronicle">Chronicle</button>
+        <button type="button" data-a="fullscreen">Full screen</button>
+        <button type="button" data-a="controls">Controls</button>
+        <button type="button" data-a="quit">Quit to title</button>
+      </div>
+      <div id="pausePanel" hidden></div>
+    </div>
+  </div>
+  <div class="toast" id="toast" hidden></div>
+  <div class="fishui" id="fishUI" hidden><canvas id="fishCanvas" width="200" height="150"></canvas><div><b>Fishing</b><p id="fishMsg"></p><small class="dim">Hold E / Space (or press the bar) to lift the float. Esc to stop.</small></div></div>
+  <div class="splash" id="splash" hidden><small id="splashSub"></small><span id="splashName"></span></div>
+  <div class="banner" id="banner" hidden><small>Entering</small><span id="bannerText"></span></div>
+
+  <div id="battleUI" hidden>
+    <div class="battle-top"><div class="turnbar" id="turnbar"></div><div class="fury" id="fury"><span>Fury</span><div class="bar"><i id="furyFill"></i></div></div><div class="blog" id="blog"></div></div>
+    <div class="battle-bottom"><div class="cards" id="cards"></div><div class="menu" id="menu"></div></div>
+  </div>
+
+  <div class="overlay" id="rosterUI" hidden>
+    <div class="roster">
+      <h2>Party</h2>
+      <p>Choose up to four companions to fight. Everyone else follows and earns half the experience.</p>
+      <div class="list" id="rosterList"></div>
+      <button class="close" id="rosterClose" type="button">Done</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="journalUI" hidden>
+    <div class="roster journal">
+      <h2>Courier's Journal</h2>
+      <div id="journalBody"></div>
+      <button class="close" id="journalClose" type="button">Close (J)</button>
+    </div>
+  </div>
+
+  <div class="dialog" id="dialog" hidden>
+    <canvas id="portrait" width="48" height="48"></canvas>
+    <div>
+      <div class="who" id="who"></div>
+      <div class="line" id="line"></div>
+      <div class="opts" id="opts"></div>
+      <div class="next" id="next">E / Space to continue</div>
+    </div>
+  </div>
+
+  <div class="screen" id="title">
+    <h2>A dark adventure in twelve chapters</h2>
+    <h1>The Salt Road</h1>
+    <p>You are Sable: left on a rock in the salt as a child, raised by a village that had nothing to spare, and now its courier. You carry what you are given. You tell everyone you have never dropped a package. On the last dry day before the rains, the men who come for the Rain Bell will teach you what it costs to hold on.</p>
+    <div class="diff" id="diffRow" role="group" aria-label="Difficulty">
+      <button type="button" data-d="story">Story</button><button type="button" data-d="normal">Normal</button><button type="button" data-d="hard">Hard</button>
+    </div>
+    <p class="diffNote" id="diffNote"></p>
+    <p class="rotateTip">Tip: turn your phone sideways for a bigger screen.</p>
+    <button class="big" id="startBtn">Begin</button>
+    <button class="ghost" id="newBtn" hidden>Start over</button>
+  </div>
+  <div class="screen" id="card" hidden>
+    <canvas id="cardArt" width="240" height="100" hidden aria-hidden="true"></canvas>
+    <h2 id="cardKicker"></h2>
+    <h1 id="cardTitle"></h1>
+    <p id="cardText"></p>
+    <button class="big" id="cardBtn">Continue</button>
+  </div>
+</div>
+<div class="touch" id="touch">
+  <div class="stick" id="stick" aria-label="Move"><i id="knob"></i></div>
+  <div class="btns"><button id="bB" aria-label="Dash, hold to run">DASH</button><button class="a" id="bA" aria-label="Talk or confirm">ACT</button></div>
+</div>
+<div class="help" id="help">
+  <span><kbd>WASD</kbd> / <kbd>←↑↓→</kbd> move</span>
+  <span><kbd>Shift</kbd>/<kbd>K</kbd> dash (hold to run)</span>
+  <span><kbd>E</kbd> talk, rest, confirm</span>
+  <span><kbd>Q</kbd> back</span>
+  <span><kbd>P</kbd> party</span>
+  <span><kbd>J</kbd> journal</span>
+  <span><kbd>M</kbd> map</span>
+  <span><kbd>N</kbd> music</span>
+  <span><kbd>Esc</kbd> pause</span>
+</div>
+
+<script>
