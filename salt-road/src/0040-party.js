@@ -1,0 +1,61 @@
+  // ================================================================== PARTY
+  const HEROES = {
+    sable: { name: "Sable", role: "Courier", hp: 40, sp: 12, atk: 10, def: 3, spd: 8,
+      look: { robe: "#3b2f7a", hair: "#2b2350", skin: "#e8b48a", hero: true },
+      bio: "The last courier of the salt. Fast, precise, never drops a package.",
+      skills: [
+        { name: "Rending Cut", cost: 3, target: "enemy", power: 1.1, bleed: [3, 3], desc: "Cut deep. Target bleeds 3 a turn for 3 turns." },
+        { name: "Scarf Veil", cost: 2, target: "self", veil: true, desc: "Dodge the next attack aimed at you." },
+        { name: "Courier's Mark", cost: 2, target: "enemy", mark: true, desc: "The next hit on the target is critical." },
+        { name: "Last Delivery", cost: 6, lvl: 7, target: "enemy", power: 2.2, bleed: [4, 3], refund: 4, desc: "Ultimate. A courier's final strike: huge damage and bleeding. Refunds 4 SP if it kills." },
+      ] },
+    ilse: { name: "Ilse", role: "Smith", hp: 46, sp: 8, atk: 11, def: 5, spd: 4,
+      look: { robe: "#8a4b2e", hair: "#d24a2a", skin: "#f0c090", extra: "hammer" },
+      bio: "Kessa's smith. The Guild broke her hands once. She has not forgotten.",
+      skills: [
+        { name: "Hammerfall", cost: 4, target: "enemy", power: 1.6, stun: 0.45, desc: "Heavy blow. 45% chance to stun." },
+        { name: "Bulwark", cost: 3, target: "party", guardAll: true, desc: "The whole party takes half damage until Ilse's next turn." },
+        { name: "Anvil Breaker", cost: 6, lvl: 7, target: "allEnemies", power: 1.1, brkAll: 2, desc: "Ultimate. Slam the ground: damage to every enemy and break their armour for 2 turns." },
+      ] },
+    maru: { name: "Maru", role: "Storm-singer", hp: 28, sp: 16, atk: 6, def: 2, spd: 6,
+      look: { robe: "#2f6f8f", hair: "#bfb8d8", skin: "#a8744f", extra: "blind" },
+      bio: "Blind, and hears weather a day early. Her songs cut like lightning.",
+      skills: [
+        { name: "Storm Song", cost: 4, target: "allEnemies", power: 0.85, desc: "Lightning strikes every enemy." },
+        { name: "Mend", cost: 3, target: "ally", heal: 18, cure: true, desc: "Heal an ally by 18 and stop bleeding." },
+        { name: "Lantern Flare", cost: 3, target: "allEnemies", weak: 2, desc: "Blinding light. All enemies are weakened for 2 turns." },
+        { name: "Eye of the Storm", cost: 7, lvl: 7, target: "allEnemies", power: 1.2, stunAll: 0.3, desc: "Ultimate. A thunderhead breaks overhead: heavy damage to all, 30% chance to stun each." },
+      ] },
+    rook: { name: "Rook", role: "Deserter archer", hp: 34, sp: 12, atk: 11, def: 2, spd: 10,
+      look: { robe: "#4a5a3a", hair: "#1b1633", skin: "#c98d63", extra: "bow" },
+      bio: "Once Voss's best archer. Walked away the night Voss fed drivers to the jackals.",
+      skills: [
+        { name: "Pinning Shot", cost: 3, target: "enemy", power: 1.0, stun: 0.4, desc: "An arrow through the foot. 40% chance to stun." },
+        { name: "Volley", cost: 4, target: "random3", power: 0.6, desc: "Three arrows at random enemies." },
+        { name: "Hunter's Eye", cost: 3, target: "allEnemies", markAll: true, desc: "Mark every enemy: their next hit taken is critical." },
+        { name: "Heartseeker", cost: 5, lvl: 7, target: "enemy", power: 1.8, weakOne: 2, pierce: true, desc: "Ultimate. Never dodged, ignores guard. Critical on a marked target, and weakens it." },
+      ] },
+    ada: { name: "Ada", role: "Choir nun", hp: 32, sp: 18, atk: 7, def: 3, spd: 5,
+      look: { robe: "#d8d4e8", hair: "#2b2350", skin: "#f0c8a0", extra: "veil" },
+      bio: "Cast out of the Choir for refusing to sing the dead awake. Her hymns hold the living together.",
+      skills: [
+        { name: "Hymn of Iron", cost: 4, target: "party", strongAll: 3, desc: "The party deals 30% more damage for 3 turns." },
+        { name: "Sanctuary", cost: 5, target: "party", healAll: 12, desc: "Heal the whole party by 12 and stop all bleeding." },
+        { name: "Last Rites", cost: 4, target: "enemy", power: 0.9, execute: 2.4, desc: "A prayer that kills. Triple damage on an enemy below 40% health." },
+        { name: "Hymn of Return", cost: 8, lvl: 7, target: "party", reviveAll: 0.5, healAll: 8, desc: "Ultimate. Every fallen ally rises at half health; everyone heals 8." },
+      ] },
+    ren: { name: "Ren", role: "Captain of Oru", hp: 52, sp: 10, atk: 12, def: 6, spd: 5,
+      look: { robe: "#4a5a8a", hair: "#1b1633", skin: "#d9a070", extra: "spear" },
+      bio: "Captain of the Oru gate. Kept it shut for money once. Wants to open it for good.",
+      skills: [
+        { name: "Phalanx", cost: 3, target: "self", taunt: 2, desc: "Draw every attack to Ren for 2 turns, and guard." },
+        { name: "Impale", cost: 4, target: "enemy", power: 1.3, bleed: [3, 3], brk: 2, desc: "Spear through armour. Bleed, and the target's defence breaks for 2 turns." },
+        { name: "Oru's Wall", cost: 6, lvl: 7, target: "self", wall: true, desc: "Ultimate. Whole party guards, Ren taunts for 2 turns and heals himself 18." },
+      ] },
+  };
+  const ITEMS = {
+    salve: { name: "Salve", desc: "Heal an ally by 22.", target: "ally", heal: 22, price: 6 },
+    tonic: { name: "Bitter Tonic", desc: "Stop bleeding and restore 6 SP.", target: "ally", cure: true, sp: 6, price: 5 },
+    salts: { name: "Smelling Salts", desc: "Revive a fallen ally at 40% health.", target: "fallen", revive: 0.4, price: 10 },
+    fire: { name: "Oil Bomb", desc: "Burn every enemy for 14.", target: "allEnemiesItem", dmg: 14, price: 12 },
+  };

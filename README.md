@@ -348,7 +348,7 @@ The site is static HTML (Chart.js is vendored in `vendor/`), so any static host 
 
 # The Salt Road (`salt-road.html`)
 
-A single-file canvas RPG. It needs no build step, and everything, music and voices included, is synthesised live in the browser.
+A single-file canvas RPG. Everything, music and voices included, is synthesised live in the browser, and the page plays offline. It is built from ordered parts in `salt-road/src` with `node tools/salt-road-build.mjs` (no dependencies). `salt-road/README.md` explains the parts and the browser tests.
 
 - **Voices.** A formant speech synthesiser babbles each line in the speaker's own voice, with pitch, throat size, pace, breath, rasp, growl, choir, water, metal and echo. Settings has Voiced, Blips, Spoken (browser text-to-speech) or Off.
 - **Saves for every player.** The game saves in the browser as you play. Where storage is blocked, progress is kept with the tab and the title screen says so. Save codes and save files carry a game anywhere. There is no account or server. The title screen shows what Continue leads to (chapter, time played, party), and Start over asks before it erases a save. After an ending nothing more is saved, and the New Game+ offer waits on the title screen until it is used. Coming back after an hour or more opens with a short "Previously" card: the last page of Tobin's Chronicle and the current goal.
