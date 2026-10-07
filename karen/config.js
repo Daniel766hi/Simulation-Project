@@ -7,10 +7,13 @@ window.GIFT = {
   name: "Karen",
 
   // Who it's from: shown in the footer and on the reply button. Leave "" to keep it anonymous.
-  from: "",
+  from: "Daniel",
 
   // How the letter is signed. Leave "" to use the name above.
-  signature: "dengan bangga, dan peluk dari jauh 💖",
+  signature: "Daniel",
+
+  // Shown on the envelope and in the footer. Leave "" for "for <name>".
+  dedication: "for my beloved Karen",
 
   // Small line under the name. Leave "" to hide.
   date: "Sidang Kerja Praktik ✅",
@@ -41,13 +44,16 @@ window.GIFT = {
   stampMessage: "Sidang KP: selesai! You deserve it 🎉",
 
   // Background music. Leave "" for the built-in upbeat loop (music/loop.mp3).
+  // It pauses while the Spotify song plays.
   backgroundMusic: "",
 
   // A song played through Spotify's own player: the ID at the end of the link
   // (open.spotify.com/track/<ID>). Leave "" to hide the section.
-  spotifyTrack: "",
-  spotifyTitle: "",
-  spotifyNote: "",
+  // Now: "Semua Aku Dirayakan" by Nadin Amizah.
+  spotifyTrack: "4rcuS31IcZynp91dqvmhmA",
+  spotifyTitle: "Semua Aku Dirayakan — Nadin Amizah",
+  spotifyNote: "Putar ini sambil baca suratnya ya 💌",
+  vinylPhoto: "03-senyum-lega.jpg",   // the photo in the middle of the record
 
   // Hidden under the scratch card at the very end (scratch to reveal). Use \n for a new line.
   secretMessage: "Sidang KP: ✅\nSekarang tinggal istirahat, jajan, dan cerita-cerita lagi.\nYou deserve it, Karen! 💖",
@@ -60,6 +66,7 @@ window.GIFT = {
     { kicker: "status terbaru", big: "Sidang KP ✅", sub: "resmi selesai!", photo: "03-senyum-lega.jpg", bg: "linear-gradient(160deg,#2f8f6f,#7bc8a4)" },
     { kicker: "yang udah dilewatin", big: "laporan · revisi · begadang", sub: "dan semuanya terbayar hari ini", photo: "02-rapi-formal.jpg", bg: "linear-gradient(160deg,#3b2a6b,#8f5bd6)" },
     { kicker: "3 kata tentang kamu", big: "lucu · baik · banyak cerita", sub: "ceritanya nggak pernah abis 🗣️", photo: "04-banyak-cerita.jpg", bg: "linear-gradient(160deg,#c38fe0,#e8567a)" },
+    { kicker: "lagu buat kamu", big: "Semua Aku Dirayakan", sub: "Nadin Amizah 🎧", bg: "linear-gradient(160deg,#6fa8dc,#c38fe0)" },
     { kicker: "pesan hari ini", big: "You deserve it.", sub: "Selamat ya, Karen 💖", photo: "05-percaya-diri.jpg", bg: "linear-gradient(160deg,#e8567a,#ffb84d)" }
   ],
 
