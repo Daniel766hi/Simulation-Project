@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>🎓 Selamat sidang KP, Karen!</title>
-<meta name="description" content="Tap to open 🎁">
+<meta name="description" content="Ada kabar baik buat kamu 🎓">
 <meta property="og:title" content="Selamat sidang KP! Ada hadiah kecil buat kamu 🎓">
-<meta property="og:description" content="Tap to open">
+<meta property="og:description" content="Selamat sidang KP 🎓">
 <meta property="og:image" content="https://daniel766hi.github.io/Simulation-Project/karen/photos/03-senyum-lega.jpg">
 <meta name="theme-color" content="#ffe3ec">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -37,7 +37,7 @@
 
   /* ── Scroll progress ─────────────────────────── */
   #progress { position: fixed; top: 0; left: 0; height: 5px; width: 0; max-width: calc(100% - 14px); z-index: 44; background: linear-gradient(90deg, var(--accent), var(--accent-2), var(--mint), var(--sky), var(--lilac)); border-radius: 0 4px 4px 0; }
-  #progress::after { content: "🎈"; position: absolute; right: -12px; top: -4px; font-size: 18px; }
+  #progress::after { content: "🎓"; position: absolute; right: -12px; top: -4px; font-size: 18px; }
 
   /* ── Gift intro ─────────────────────────────── */
   #intro {
@@ -54,14 +54,15 @@
   .gift.shake { animation: shake .4s ease; }
   .gift.shake-2 { animation: shake .4s ease; scale: 1.08; }
   .gift:focus-visible { outline: 3px dashed var(--accent); outline-offset: 12px; border-radius: 8px; }
-  .gift .box, .gift .lid { position: absolute; left: 50%; transform: translateX(-50%); border-radius: 8px; }
-  .gift .box { bottom: 0; width: 136px; height: 104px; background: repeating-linear-gradient(45deg, var(--accent) 0 14px, #ef7194 14px 28px); }
-  .gift .lid { top: 24px; width: 158px; height: 34px; background: #d6456a; transition: transform .6s cubic-bezier(.5,-0.5,.5,1.5); }
-  .gift .ribbon-v { position: absolute; left: 50%; transform: translateX(-50%); bottom: 0; width: 24px; height: 134px; background: #ffd166; }
-  .gift .bow { position: absolute; top: 0; left: 50%; transform: translateX(-50%); font-size: 44px; line-height: 1; transition: transform .6s; }
-  .gift .eyes { position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); font-size: 22px; letter-spacing: 20px; margin-left: 10px; }
-  .gift.open .lid { transform: translate(-50%, -90px) rotate(-22deg); }
-  .gift.open .bow { transform: translate(-50%, -110px) rotate(-22deg); }
+  .gift > span { position: absolute; left: 50%; transform: translateX(-50%); }
+  .gift .box { bottom: 0; width: 150px; height: 112px; background: #e3a23c; border-radius: 4px 10px 10px 10px; z-index: 1; }
+  .gift .box::before { content: ""; position: absolute; left: 0; top: -14px; width: 58px; height: 18px; background: #e3a23c; border-radius: 6px 6px 0 0; }
+  .gift .sheet { bottom: 12px; width: 124px; height: 104px; z-index: 2; border-radius: 3px; background: repeating-linear-gradient(#fff 0 16px, #eadfd8 16px 17px); box-shadow: 0 2px 6px rgba(0,0,0,.12); transition: transform .6s cubic-bezier(.3,1.4,.5,1); }
+  .gift .lid { bottom: 0; width: 150px; height: 86px; z-index: 3; border-radius: 6px 6px 10px 10px; background: #f6c25a; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 8px; font: 700 .72rem Fredoka, sans-serif; letter-spacing: .14em; color: #8a5a12; }
+  .gift .eyes { bottom: 34px; z-index: 4; font-size: 22px; letter-spacing: 20px; margin-left: 10px; }
+  .gift .bow { top: -6px; z-index: 5; font-size: 46px; line-height: 1; transition: transform .6s; }
+  .gift.open .sheet { transform: translate(-50%, -70px) rotate(-4deg); }
+  .gift.open .bow { transform: translate(-50%, -120px) rotate(-18deg); }
   @keyframes wobble { 0%,100% { transform: rotate(0); } 10% { transform: rotate(-7deg); } 20% { transform: rotate(7deg); } 30% { transform: rotate(0); } }
   @keyframes shake { 0%,100% { transform: none; } 20% { transform: translateX(-10px) rotate(-8deg); } 40% { transform: translateX(10px) rotate(8deg); } 60% { transform: translateX(-8px) rotate(-5deg); } 80% { transform: translateX(6px) rotate(4deg); } }
 
@@ -75,7 +76,7 @@
     background-size: 400% 400%; animation: sky 18s ease infinite;
   }
   @keyframes sky { 0%,100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
-  header > *:not(.balloons):not(.stickers) { position: relative; z-index: 2; }
+  header > *:not(.floaties):not(.stickers) { position: relative; z-index: 2; }
   header .kicker { font-size: 2.2rem; color: var(--accent); }
   header h1 { font-size: clamp(3rem, 14vw, 6.5rem); line-height: 1.05; letter-spacing: .01em; }
   header h1 span { display: inline-block; animation: wave 2.6s ease-in-out infinite; animation-delay: calc(var(--i) * .1s); color: var(--c); text-shadow: 0 4px 0 rgba(0,0,0,.06); }
@@ -86,15 +87,12 @@
   .scroll-hint { margin-top: 28px; display: inline-flex; flex-direction: column; align-items: center; color: var(--muted); text-decoration: none; font-weight: 700; font-size: .9rem; animation: bounce 1.6s ease-in-out infinite; }
   .scroll-hint b { font-size: 1.6rem; line-height: 1; }
 
-  .balloons, .stickers { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
-  .balloon {
-    position: absolute; bottom: -140px; width: 58px; height: 72px; border-radius: 50% 50% 48% 48% / 55% 55% 45% 45%;
-    background: radial-gradient(circle at 32% 28%, rgba(255,255,255,.6) 0 8%, transparent 9%), var(--c);
-    pointer-events: auto; cursor: pointer; border: 0; padding: 0;
-    animation: rise var(--d) linear var(--delay) infinite;
+  .floaties, .stickers { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
+  .floaty {
+    position: absolute; bottom: -80px; font-size: 2.6rem; line-height: 1; background: none; border: 0; padding: 0;
+    pointer-events: auto; cursor: pointer; animation: rise var(--d) linear var(--delay) infinite;
   }
-  .balloon::after { content: ""; position: absolute; left: 50%; top: 100%; width: 1px; height: 60px; background: rgba(90,60,70,.35); }
-  .balloon.popped { visibility: hidden; }
+  .floaty.popped { visibility: hidden; }
   @keyframes rise { 0% { transform: translate(0, 0) rotate(-4deg); } 50% { transform: translate(18px, -60vh) rotate(4deg); } 100% { transform: translate(-10px, -125vh) rotate(-4deg); } }
   .sticker { position: absolute; font-size: 2rem; animation: float 5s ease-in-out infinite; animation-delay: var(--delay); opacity: .9; }
   @keyframes float { 50% { transform: translateY(-14px) rotate(10deg); } }
@@ -187,7 +185,7 @@
   .paper .sign { text-align: right; font-size: 1.85rem; color: var(--accent); margin: 0; }
 
   /* ── KP report + stamp ─────────────────────── */
-  #stamp-section { text-align: center; background: var(--bg-2); --sec: var(--bg-2); }
+  #stamp-section { text-align: center; background: var(--bg-2); --sec: var(--bg-2); overflow-x: clip; }
   .report { position: relative; width: min(290px, 100%); margin: 40px auto 24px; }
   .doc { position: relative; background: #fff; border-radius: 6px; box-shadow: var(--shadow); padding: 28px 22px 76px; text-align: left; rotate: -2deg; }
   .doc::before { content: ""; position: absolute; top: -11px; left: 50%; translate: -50% 0; width: 76px; height: 22px; background: #ffd166; opacity: .85; rotate: 3deg; }
@@ -200,8 +198,8 @@
   .checks li.on { color: var(--ink); }
   .checks li.on::before { background: var(--mint); border-color: var(--mint); }
   .checks li.on::after { content: "✓"; position: absolute; left: 5px; top: 50%; translate: 0 -50%; color: #fff; font-weight: 800; font-size: .85rem; }
-  .stamp { position: absolute; right: 16px; bottom: 16px; border: 4px solid var(--accent); color: var(--accent); border-radius: 10px; padding: 4px 12px; font: 700 1.5rem Fredoka, sans-serif; letter-spacing: .06em; rotate: -14deg; opacity: 0; transform: scale(2.4); pointer-events: none; background: rgba(255,255,255,.6); }
-  .report.stamped .stamp { opacity: .92; transform: none; animation: slam .45s cubic-bezier(.3,1.6,.5,1) both; }
+  .stamp { position: absolute; right: 16px; bottom: 16px; border: 4px solid var(--accent); color: var(--accent); border-radius: 10px; padding: 4px 12px; font: 700 1.5rem Fredoka, sans-serif; letter-spacing: .06em; rotate: -14deg; opacity: 0; visibility: hidden; pointer-events: none; background: rgba(255,255,255,.6); }
+  .report.stamped .stamp { opacity: .92; visibility: visible; animation: slam .45s cubic-bezier(.3,1.6,.5,1) both; }
   @keyframes slam { from { opacity: 0; transform: scale(2.4); } to { opacity: .92; transform: none; } }
   .report.stamped .doc { animation: thud .3s ease .3s; }
   @keyframes thud { 50% { transform: translateY(5px) scale(.985); } }
@@ -310,13 +308,13 @@
 <div id="progress"></div>
 
 <div id="intro">
-  <p class="hand">Psst… ada paket buat kamu!</p>
-  <button class="gift" id="gift" aria-label="Open your present">
+  <p class="hand">Psst… ada kabar baik buat kamu!</p>
+  <button class="gift" id="gift" aria-label="Buka laporannya">
     <span class="box"></span>
-    <span class="ribbon-v"></span>
+    <span class="sheet"></span>
+    <span class="lid">LAPORAN KP</span>
     <span class="eyes">👀</span>
-    <span class="lid"></span>
-    <span class="bow">🎀</span>
+    <span class="bow">🎓</span>
   </button>
   <p class="hand tap-hint" id="tap-hint">tap tap tap! 👆</p>
 </div>
@@ -324,14 +322,14 @@
 <canvas id="confetti"></canvas>
 
 <header>
-  <div class="balloons" id="balloons" aria-hidden="true"></div>
+  <div class="floaties" id="floaties" aria-hidden="true"></div>
   <div class="stickers" id="stickers" aria-hidden="true"></div>
   <div class="kicker hand">Selamat sidang KP,</div>
   <h1 id="name"></h1>
   <div class="date" id="date"></div>
   <p class="tagline" id="tagline"></p>
   <button class="btn hero-wrapped" id="wrapped-hero">▶ Tonton Wrapped</button>
-  <div class="pop-count" id="pop-count">psst, balonnya bisa dipecahin 🎈</div>
+  <div class="pop-count" id="pop-count">psst, yang melayang-layang bisa di-tap ✨</div>
   <a class="scroll-hint" href="#gallery"><span>scroll down</span><b>↓</b></a>
 </header>
 
@@ -456,9 +454,10 @@
   $("#date").textContent = C.date || "";
   $("#tagline").textContent = C.tagline || "";
   const fromName = (C.from || "").trim();
-  $("#footer").textContent = `made with 💖 for ${name}` + (fromName ? `, by ${fromName}` : "");
+  const forWho = C.dedication || `for ${name}`;
+  $("#footer").textContent = `made with 💖 ${forWho}` + (fromName ? `, by ${fromName}` : "");
   $("#seal").textContent = name.charAt(0).toUpperCase();
-  $("#envelope-to").textContent = `untuk ${name}`;
+  $("#envelope-to").textContent = forWho;
   $("#secret").textContent = C.secretMessage || "Selamat ya! 🎉";
 
   const paper = $("#paper");
@@ -494,7 +493,7 @@
     }
     if (bits.length) requestAnimationFrame(tick); else { running = false; cx.clearRect(0, 0, innerWidth, innerHeight); }
   }
-  const SPARKS = ["💖", "✨", "🎉", "🥳", "💕", "⭐", "🎈"];
+  const SPARKS = ["💖", "✨", "🎉", "🥳", "💕", "⭐", "🎓"];
   function sparkle(x, y, n = 6) {
     if (reduced) return;
     for (let k = 0; k < n; k++) {
@@ -523,13 +522,14 @@
 
   // ── Hero decorations ──
   let popped = 0;
+  const FLOATIES = ["🎓", "📄", "✅", "📚", "⭐", "💖", "📝", "🏆"];
   for (let k = 0; k < 8; k++) {
     const b = document.createElement("button");
-    b.className = "balloon";
+    b.className = "floaty";
+    b.textContent = FLOATIES[k % FLOATIES.length];
     b.tabIndex = -1;
     b.setAttribute("aria-hidden", "true");
     b.style.left = `${3 + k * 12 + Math.random() * 5}%`;
-    b.style.setProperty("--c", COLORS[k % COLORS.length]);
     b.style.setProperty("--d", `${11 + Math.random() * 7}s`);
     b.style.setProperty("--delay", `${-Math.random() * 16}s`);
     b.addEventListener("click", () => {
@@ -538,11 +538,11 @@
       sparkle(r.left + r.width / 2, r.top + r.height / 2, 4);
       b.classList.add("popped");
       popped++;
-      const lines = ["POP! 🎈", "2 down! 💥", "hattrick! 🎯", "balloon hunter 🏹", "okay you're good at this 😂", "chaotic energy detected ⚡", "semua balon takut sama kamu 😭", "legendary popper 👑"];
+      const lines = ["yay! ✨", "2! 💥", "hattrick! 🎯", "jago juga 😂", "nggak ada capeknya ya ⚡", "semua revisi takut sama kamu 😭", "legendary 👑"];
       $("#pop-count").textContent = lines[Math.min(popped, lines.length) - 1] + (popped > lines.length ? ` (${popped})` : "");
       setTimeout(() => b.classList.remove("popped"), 4000);
     });
-    $("#balloons").appendChild(b);
+    $("#floaties").appendChild(b);
   }
   [["🎓", 8, 16], ["✨", 84, 14], ["🥳", 12, 70], ["💖", 88, 62], ["📄", 70, 86], ["⭐", 22, 88]].forEach(([e, x, y], i) => {
     const s = document.createElement("span");
@@ -771,7 +771,8 @@
   else {
     $("#song-title").textContent = C.spotifyTitle || "";
     $("#song-note").textContent = C.spotifyNote || "";
-    $("#vinyl-label").style.backgroundImage = photos[0] ? `url("photos/${photos[0].file}")` : "";
+    const vinyl = C.vinylPhoto || (photos[0] && photos[0].file);
+    $("#vinyl-label").style.backgroundImage = vinyl ? `url("photos/${vinyl}")` : "";
     window.onSpotifyIframeApiReady = (API) => {
       const holder = document.createElement("div");
       $("#spotify").appendChild(holder);
