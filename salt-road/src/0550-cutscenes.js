@@ -9,7 +9,7 @@
   }
   function enterStep() {
     const st = scene.steps[scene.i]; if (!st) return endScene();
-    scene.t = 0;
+    scene.t = 0; scene.go = false;
     if (st.add) for (const [id, a] of Object.entries(st.add)) scene.actors[id] = { dir: "down", walking: false, ...a, px: a.x * TILE + 8, py: a.y * TILE + 8 };
     if (st.remove) for (const id of st.remove) delete scene.actors[id];
     if (st.cam) scene.cam = { x: st.cam[0] * TILE + 8, y: st.cam[1] * TILE + 8 };
@@ -39,10 +39,18 @@
     const tcx = clamp(tgt.x - VIEW_W / 2, 0, W * TILE - VIEW_W), tcy = clamp(tgt.y - VIEW_H / 2 - 8, 0, H * TILE - VIEW_H);
     camX += (tcx - camX) * Math.min(1, dt * 2.5); camY += (tcy - camY) * Math.min(1, dt * 2.5);
     scene.fade += (scene.fadeTo - scene.fade) * Math.min(1, dt * 2.5);
-    const need = st.wait !== undefined ? st.wait : st.line ? 2 + st.line[1].length * 0.04 : 0;
-    if (scene.t >= need && !(st.untilStill && moving)) { scene.i++; enterStep(); }
+    // a line waits to be read, as in the cinematics: for a key press, or on Auto long enough to read it
+    const need = st.wait !== undefined ? st.wait : st.line ? (SETTINGS.cutPace === "auto" ? Math.max(2 + st.line[1].length * 0.04, lineReadSecs(st.line[1])) : 0.4) : 0;
+    const held = st.line && st.wait === undefined && SETTINGS.cutPace !== "auto" && !scene.go;
+    banterEl.classList.toggle("waiting", !!held && scene.t >= need);
+    if (scene.t >= need && !held && !(st.untilStill && moving)) { banterEl.classList.remove("waiting"); scene.i++; enterStep(); }
   };
-  addEventListener("keydown", e => { if (!scene || mode !== "scene") return; const k = e.key.toLowerCase(); if (k === "escape" || k === "e" || k === "enter") { e.stopImmediatePropagation(); skipScene(); } }, true);
+  function sceneNext() { if (!scene) return; scene.go = true; scene.t = Math.max(scene.t, 1e6); }
+  addEventListener("keydown", e => {
+    if (!scene || mode !== "scene") return; const k = e.key.toLowerCase();
+    if (k === "escape") { e.stopImmediatePropagation(); skipScene(); }
+    else if (k === "e" || k === "enter" || k === " ") { e.stopImmediatePropagation(); e.preventDefault(); if (!e.repeat) sceneNext(); }
+  }, true);
   const _actorsC = act2ActorsB;
   act2ActorsB = function (actors, ox, oy) {
     _actorsC(actors, ox, oy);

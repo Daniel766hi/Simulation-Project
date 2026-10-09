@@ -70,7 +70,7 @@
     g.fillStyle = f.bite > 0 ? "rgba(255,255,255,.12)" : "rgba(107,255,154,.35)"; g.fillRect(bx, zy, bw, zh); g.strokeStyle = "#6bff9a"; g.strokeRect(bx + .5, zy + .5, bw - 1, zh - 1);
     if (f.bite <= 0) { const fy = top + (1 - f.fish) * (bh - 10); g.fillStyle = f.id === "oldmouth" ? "#c8b890" : "#9ef0f5"; g.fillRect(bx + 7, fy + 2, 12, 6); g.fillRect(bx + 3, fy + 3 + Math.sin(time * 12) * 1.5, 4, 4); g.fillStyle = "#0a1a2a"; g.fillRect(bx + 16, fy + 4, 1, 1); }
     g.fillStyle = "#2a1a10"; g.fillRect(bx + bw + 10, top, 8, bh); g.fillStyle = f.prog > 0.66 ? "#6bff9a" : f.prog > 0.33 ? "#ffcf4a" : "#ff5a5a"; g.fillRect(bx + bw + 10, top + bh * (1 - f.prog), 8, bh * f.prog);
-    g.fillStyle = "#e8e2d0"; g.font = "11px 'Pixelify Sans', 'Courier New', monospace"; g.fillText(f.bite > 0 ? "..." : "REEL", bx + bw + 24, top + 10);
+    g.fillStyle = "#e8e2d0"; g.font = canvasFont(11); g.fillText(f.bite > 0 ? "..." : "REEL", bx + bw + 24, top + 10);
     const k = species().length; g.fillStyle = "#8a90b8"; g.fillText(`${k}/${FISH_IDS.length} species`, bx + bw + 24, Hc - 12);
   }
   function endFishing(caught, quiet) {

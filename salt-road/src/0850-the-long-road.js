@@ -115,18 +115,19 @@
     staireye: { name: "Eye of the Deep", from: "_stair30", desc: "Floor 30 of the Deep Stair. +2 speed, +10% critical chance.", spd: 2, crit: 0.1 },
   });
   const deepRun = () => G.flags.deep && G.flags.deep.active ? G.flags.deep : null;
-  function deepGroup(floor) {
+  function deepGroup(floor) {   // on a daily run every roll here, the boss's echo included, comes from the day's seed
+    const run = deepRun();
+    return run && run.daily ? seeded(daySeed(run.daily, floor, 7), () => rollGroup(floor)) : rollGroup(floor);
+  }
+  function rollGroup(floor) {
     if (floor % 5 === 0) {   // an echo of a boss, the strongest one the party should be able to face
       const known = HALL.filter(bossKnown), band = known.filter(id => bossLevel(id) <= partyLevel() + floor / 5);
       const pickB = (band.length ? band : known.length ? known : HALL.slice(0, 2)); return { group: [pickB[Math.min(pickB.length - 1, Math.floor(floor / 5) - 1 + Math.floor(Math.random() * 2))] || pickB[0]], boss: true };
     }
-    const run = deepRun(), roll = () => {
-      const target = Math.max(10, partyLevel() * 5) + floor * 4, n = floor < 3 ? 2 : floor < 9 ? 3 : 3 + (Math.random() < 0.5 ? 1 : 0);
-      const pool = biomeOf(floor).pool.filter(id => MONSTERS[id]), from = pool.length >= 3 ? pool : DEEP_POOL;
-      const near = from.map(id => [id, Math.abs(MONSTERS[id].xp - target)]).sort((a, b) => a[1] - b[1]).slice(0, 4).map(x => x[0]);
-      return { group: Array.from({ length: n }, () => pick(near)), boss: false };
-    };
-    return run && run.daily ? seeded(daySeed(run.daily, floor, 7), roll) : roll();
+    const target = Math.max(10, partyLevel() * 5) + floor * 4, n = floor < 3 ? 2 : floor < 9 ? 3 : 3 + (Math.random() < 0.5 ? 1 : 0);
+    const pool = biomeOf(floor).pool.filter(id => MONSTERS[id]), from = pool.length >= 3 ? pool : DEEP_POOL;
+    const near = from.map(id => [id, Math.abs(MONSTERS[id].xp - target)]).sort((a, b) => a[1] - b[1]).slice(0, 4).map(x => x[0]);
+    return { group: Array.from({ length: n }, () => pick(near)), boss: false };
   }
   function deepStart(daily) {
     G.flags.deep = { active: true, floor: 0, boons: perk(6) ? { keen: 1 } : {}, coins: 0, xp: 0, daily: daily ? today() : null };

@@ -120,7 +120,7 @@
     m.fillStyle = "#c8102e"; for (const f of field) if (seen(f.px / TILE, f.py / TILE)) m.fillRect(Math.floor(f.px / TILE) * S, Math.floor(f.py / TILE) * S, S, S);
     m.fillStyle = "#9ef0f5"; for (const l of LORE) if (seen(l.x, l.y) && !(G.flags.lore || []).includes(l.id)) m.fillRect(l.x * S, l.y * S, S, S);
     m.fillStyle = "#fff"; for (const w of WARPS) if (seen(w.x, w.y) && (!w.req || w.req())) m.fillRect(w.x * S - 1, w.y * S - 1, S + 2, S + 2);
-    m.font = "11px 'Pixelify Sans', monospace"; m.textAlign = "center";
+    m.font = canvasFont(11); m.textAlign = "center";
     // place names never sit on each other, on you or on the goal ring: each takes the first free spot around its place
     const gl = goal(), pX = Math.floor(G.px / TILE) * S, pY = Math.floor(G.py / TILE) * S, taken = [{ x: pX - 5, y: pY - 5, w: 14, h: 14 }];
     if (gl.text) taken.push({ x: gl.x * S - 7, y: gl.y * S - 7, w: 18, h: 18 });

@@ -94,7 +94,7 @@
   function drawSay(f, a, k) {
     const u = f.unit; if (!battle || !battle.foes.includes(u)) return;
     const p = unitPos(u), shown = f.text.slice(0, Math.ceil(f.text.length * Math.min(1, a * 2.2)));
-    ctx.font = `${Math.round(7 * k)}px 'Pixelify Sans', 'Courier New', monospace`;
+    ctx.font = canvasFont(Math.round(7 * k));
     const lines = []; let line = ""; for (const wd of f.text.split(" ")) { const tryL = line ? line + " " + wd : wd; if (ctx.measureText(tryL).width > 150 * k && line) { lines.push(line); line = wd; } else line = tryL; } lines.push(line);
     const w = Math.max(...lines.map(l => ctx.measureText(l).width)) + 12 * k, bh = lines.length * 9 * k + 5 * k;
     const mx = VP.ox + (p.x + (u.boss ? 18 : 8)) * k, my = VP.oy + (p.y - (u.boss ? 92 : 44)) * k;   // beside the head, tail toward the mouth
