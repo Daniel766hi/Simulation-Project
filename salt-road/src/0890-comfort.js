@@ -83,7 +83,7 @@
       + `${c} .goal{font-size:${Math.round(14 * f)}px}${c} .roster p,${c} .roster button small,${c} .journal p,${c} .journal li{font-size:${Math.round(14 * f)}px}${c} .pmenu button,${c} .pbtn{font-size:${Math.round(15 * f)}px}${c} #cineBox,${c} #banter{font-size:${Math.round(15 * f)}px}`;
   }).join("") + ".keymap{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px;margin:4px 0}.keymap .pbtn{flex-direction:row;align-items:center;justify-content:space-between;gap:8px}.keymap .pbtn kbd{flex:none;font:600 12px var(--font);background:#231d45;border:1px solid var(--edge);border-radius:4px;padding:1px 7px}.keymap .pbtn.wait{border-color:var(--gold);color:var(--gold)}.help .padnote{color:var(--scarf)}";
   document.head.appendChild(comfortCss);
-  function applyComfort() { document.body.classList.toggle("text-1", SETTINGS.textSize === "large"); document.body.classList.toggle("text-2", SETTINGS.textSize === "larger"); }
+  function applyComfort() { document.body.classList.toggle("text-1", SETTINGS.textSize === "large"); document.body.classList.toggle("text-2", SETTINGS.textSize === "larger"); document.body.classList.toggle("font-pixel", SETTINGS.font === "pixel"); }
   const _flashC = flash;
   flash = function (a) { _flashC(SETTINGS.flashes === "soft" ? a * 0.3 : a); };
   const _saveSettingsC = saveSettings;
@@ -96,13 +96,16 @@
     const seg = (key, opts, cur) => `<div class="seg">${opts.map(([v, l]) => `<button type="button" data-set="${key}" data-v="${v}" class="${cur === v ? "on" : ""}">${l}</button>`).join("")}</div>`;
     const box = document.createElement("div");
     box.innerHTML = `<h3>Comfort</h3>`
+      + `<div class="setrow"><span>Font</span>${seg("font", [["read", "Easy to read"], ["pixel", "Pixel"]], SETTINGS.font === "pixel" ? "pixel" : "read")}<span></span></div>`
+      + `<div class="setrow"><span>Cutscene lines</span>${seg("cutPace", [["wait", "Wait for me"], ["auto", "Auto"]], SETTINGS.cutPace === "auto" ? "auto" : "wait")}<span></span></div>`
+      + `<p class="dim" style="font-size:12px;margin:0 0 6px">Wait for me: each cutscene line stays until you press ${keyName(boundKey("act"))} or tap. Auto: it moves on by itself, after time to read it.</p>`
       + `<div class="setrow"><span>Text size</span>${seg("textSize", [["normal", "Normal"], ["large", "Large"], ["larger", "Larger"]], SETTINGS.textSize || "normal")}<span></span></div>`
       + `<div class="setrow"><span>Battle flashes</span>${seg("flashes", [["full", "Full"], ["soft", "Soft"]], SETTINGS.flashes || "full")}<span></span></div>`
       + `<h3>Keys</h3><p class="dim" style="font-size:12px;margin:0 0 6px">Choose an action, then press the key you want for it. Arrow keys and Esc always work. A controller works too: A talks, B goes back, X dashes, Y opens the party, Start pauses.</p>`
       + `<div class="keymap">${ACTIONS.map(([id, label]) => `<button type="button" class="pbtn${rebinding === id ? " wait" : ""}" data-rebind="${id}">${label} <kbd>${rebinding === id ? "press a key…" : keyName(boundKey(id))}</kbd></button>`).join("")}</div>`
       + `<div class="savebar"><button type="button" class="pbtn" data-keyset="qwerty">Default keys (WASD)</button><button type="button" class="pbtn" data-keyset="azerty">AZERTY keyboard (ZQSD)</button></div>`;
     back.before(box);
-    if (focusKey === "textSize" || focusKey === "flashes") { const f = panel.querySelector(`[data-set="${focusKey}"].on`); if (f) f.focus({ preventScroll: true }); }
+    if (["textSize", "flashes", "font", "cutPace"].includes(focusKey)) { const f = panel.querySelector(`[data-set="${focusKey}"].on`); if (f) f.focus({ preventScroll: true }); }
   };
   $("pausePanel").addEventListener("click", e => {
     const b = e.target.closest("button[data-rebind], button[data-keyset]"); if (!b) return;
@@ -120,5 +123,5 @@
     if (back) back.insertAdjacentHTML("beforebegin", `<p class="dim" style="font-size:12px;margin-top:8px">These are the default keys${Object.keys(SETTINGS.keys || {}).length ? "; yours are changed" : ""}. Change any of them, or switch to an AZERTY layout, in Settings &gt; Keys. A controller works too: A talks, B goes back, X dashes, Y opens the party, Select the journal, LB the minimap, Start pauses.</p>`);
   };
   buildRemap(); applyComfort();
-  setTimeout(() => Object.assign(window.__saltRoad || (window.__saltRoad = {}), { remap: () => ({ ...remap }), padTest: () => { padOn = true; pollPads(); return { ...padHeld }; } }), 0);
+  setTimeout(() => Object.assign(window.__saltRoad || (window.__saltRoad = {}), { remap: () => ({ ...remap }), padTest: () => { padOn = true; pollPads(); return { ...padHeld }; }, furyFull: () => { if (!battle) return false; addFury(100); renderMenu(); return true; }, cineNext: () => cineNext(), sceneTest: () => playScene([{ line: ["Sable", "The first line of a test scene."] }, { line: [null, "The second line."] }], () => { window.__sceneDone = true; }) }), 0);
 

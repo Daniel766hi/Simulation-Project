@@ -15,7 +15,7 @@
     const k = canvas.width / VIEW_W; ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
     HI_LAST.length = 0;
     for (const [t, x, y, px, c] of HI) {
-      ctx.font = `${Math.round(px * k)}px 'Pixelify Sans', 'Courier New', monospace`;
+      ctx.font = canvasFont(Math.round(px * k));
       const tw = ctx.measureText(t).width / k; HI_LAST.push({ text: t, x: x - tw / 2, y: y - px * 0.8, w: tw, h: px });   // buffer units, for the layout audit
       ctx.fillStyle = "#1b1633"; ctx.fillText(t, Math.round(x * k + k * 0.75), Math.round(y * k + k * 0.75)); ctx.fillStyle = c; ctx.fillText(t, Math.round(x * k), Math.round(y * k));
     }
@@ -237,8 +237,8 @@
         const half = hiW(label, 7) / 2 + 6;
         extra.forEach(([t, c]) => { const w = hiW(t, 6) / 2; hiText(t, /BREAK|EXPOSED/.test(t) ? p.x - half - w : p.x + half + w, ly, 6, c); });
       } else extra.forEach(([t, c], i) => hiText(t, p.x, ly - 9 * (i + 1), 6, c));
-      const sts = Object.keys(f.st).filter(k => ["bleed", "stun", "weak", "guard", "mark", "brk"].includes(k));
-      sts.forEach((k, i) => { g.fillStyle = { bleed: "#c8102e", stun: "#ffcf4a", weak: "#b08aff", guard: "#6fc0d0", mark: "#ff9a3d", brk: "#aa5a5a" }[k]; g.fillRect(p.x + bw / 2 + 3 + i * 5, by, 4, 3); });
+      const sl = statusLine(f);   // what is on it, and for how many more turns, in words
+      if (sl) { if (f.boss) hiText(sl, p.x, ly + 9, 6, "#c9e8ff"); else hiText(sl, p.x, ly - 9 * (extra.length + 1), 6, "#c9e8ff"); }
       if (B.hoverTarget === f || B.current === f) { g.strokeStyle = B.current === f ? "#ff6b6b" : "#ffcf4a"; g.lineWidth = 1; const w2 = f.boss ? 60 : 34; g.strokeRect(p.x - w2 / 2 + .5, p.y - (f.boss ? 108 : 56) + .5, w2, f.boss ? 112 : 58); }
     }
     for (const h of B.heroes) {

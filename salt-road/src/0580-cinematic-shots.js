@@ -9,7 +9,7 @@
     mode = "cine"; sceneHud(true); enterShot();
   }
   function enterShot() {
-    const s = cine.shots[cine.i]; cine.t = 0;
+    const s = cine.shots[cine.i]; cine.t = 0; cine.read = 0; cine.go = false;
     if (s.flash) cine.flash = 1;
     if (s.sound) Music.sound(s.sound);
     if (s.shake) shake = Math.max(shake, s.shake);
@@ -22,10 +22,30 @@
   update = function (dt) {
     _updateCine(dt);
     if (!cine || mode !== "cine" || paused) return;
-    const s = cine.shots[cine.i]; cine.t += dt; cine.flash = Math.max(0, cine.flash - dt * 2.5);
+    const s = cine.shots[cine.i]; cine.t += dt; cine.read += dt; cine.flash = Math.max(0, cine.flash - dt * 2.5);
+    if (lineWaiting() && cine.t > holdAt(s)) cine.t = Math.max(0, holdAt(s));   // the picture holds until the line is read
     if (cine.t >= s.dur) { cine.i++; if (cine.i >= cine.shots.length) return endCine(); enterShot(); }
   };
-  addEventListener("keydown", e => { if (!cine || mode !== "cine") return; const k = e.key.toLowerCase(); if (k === "escape" || k === "e" || k === "enter" || k === " ") { e.stopImmediatePropagation(); e.preventDefault(); cine.i = cine.shots.length; endCine(); } }, true);
+  // A line is never taken away before it is read. By default it waits for a key press or a tap (Settings > Comfort >
+  // Cutscene lines: Wait for me); on Auto it stays long enough to read at an easy pace. E, Space, Enter, a tap or a
+  // click shows the whole line, then moves on to the next one; Esc skips the whole cutscene.
+  function lineReadSecs(text) { const slow = SETTINGS.text === "slow"; return (slow ? 1.4 : 1) * (1.8 + text.length * 0.06) + (SETTINGS.text === "instant" ? 0 : text.length / (slow ? 26 : 48)); }
+  const holdAt = s => s.fadeOut ? Math.max(0, s.dur - s.fadeOut) : s.dur - 0.0005;
+  function lineWaiting() {
+    const s = cine && cine.shots[cine.i]; if (!s || !s.line || cine.go) return false;
+    return SETTINGS.cutPace === "auto" ? cine.read < lineReadSecs(s.line[1]) : true;
+  }
+  function cineNext() {
+    if (!cine) return; const s = cine.shots[cine.i]; if (!s) return;
+    if (cbText && cbTyped < cbText.length) { cbTyped = cbText.length; cineBox.querySelector(".tx").textContent = cbText; return; }   // first the whole line
+    cine.go = true; cine.t = Math.max(cine.t, s.line ? holdAt(s) : s.dur);
+  }
+  canvas.addEventListener("pointerdown", () => { if (mode === "cine" && cine) cineNext(); else if (mode === "scene" && scene) sceneNext(); });
+  addEventListener("keydown", e => {
+    if (!cine || mode !== "cine") return; const k = e.key.toLowerCase();
+    if (k === "escape") { e.stopImmediatePropagation(); e.preventDefault(); cine.i = cine.shots.length; endCine(); }
+    else if (k === "e" || k === "enter" || k === " ") { e.stopImmediatePropagation(); e.preventDefault(); if (!e.repeat) cineNext(); }
+  }, true);
   const _renderCine = render;
   render = function () {
     if (!cine || battle) return _renderCine();

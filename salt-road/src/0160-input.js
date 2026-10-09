@@ -61,7 +61,7 @@
   const stickEnd = () => { stickId = null; stick.x = stick.y = 0; knob.style.transform = ""; };
   stickEl.addEventListener("pointerup", e => { if (e.pointerType !== "touch") stickEnd(); }); stickEl.addEventListener("pointercancel", e => { if (e.pointerType !== "touch") stickEnd(); });
   $("bA").addEventListener("pointerdown", e => {   // on touch, ACT moves a scene or cinematic on by one line, where E on a keyboard skips it
-     e.preventDefault(); Music.init(); if (mode === "scene" && scene) scene.t = 1e9; else if (mode === "cine" && cine) cine.t = cine.shots[cine.i].dur; else if (mode === "dialog") dialogAdvance(); else if (mode === "play") interact(); else if (mode === "title") startGame(); else if (mode === "card") $("cardBtn").click(); });
+     e.preventDefault(); Music.init(); if (mode === "scene" && scene) sceneNext(); else if (mode === "cine" && cine) cineNext(); else if (mode === "dialog") dialogAdvance(); else if (mode === "play") interact(); else if (mode === "title") startGame(); else if (mode === "card") $("cardBtn").click(); });
   $("dialog").addEventListener("pointerdown", e => { if (mode === "dialog" && !e.target.closest("button")) { e.preventDefault(); dialogAdvance(); } });
   // a held finger on the controls must stay a game input: no long-press menu, no text selection, no pinch zoom
   for (const el of [$("bA"), $("bB"), stickEl]) { el.addEventListener("contextmenu", e => e.preventDefault()); el.addEventListener("touchstart", e => e.preventDefault(), { passive: false }); }

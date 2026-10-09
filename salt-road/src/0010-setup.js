@@ -47,6 +47,8 @@
   const TILE = 16, W = 170, H = 140, OW = 72, OH = 54, VIEW_W = 320, VIEW_H = 192;
   const SETTINGS = { music: 0.8, sfx: 0.8, text: "normal", battle: "normal", shake: true };
   try { Object.assign(SETTINGS, JSON.parse(localStorage.getItem("salt-road-settings") || "{}")); } catch { /* storage unavailable */ }
+  // text drawn on the picture (intents, damage, names) follows Settings > Comfort > Font, like the panels
+  const canvasFont = (px, bold) => SETTINGS.font === "pixel" ? `${bold ? "700 " : ""}${px}px 'Pixelify Sans', 'Courier New', monospace` : `700 ${px}px 'Atkinson Hyperlegible', 'Segoe UI', Arial, sans-serif`;
   let paused = false;
   // Battle pacing waits while paused, and runs faster on the "fast" battle speed
   const wait = ms => new Promise(r => {

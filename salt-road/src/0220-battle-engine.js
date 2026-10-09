@@ -200,6 +200,7 @@
       b.innerHTML = `${it.label}${it.sub ? `<small>${it.sub}</small>` : ""}`;
       b.disabled = !!it.disabled;
       if (i === menuState.sel) b.classList.add("sel");
+      if (/Chain Assault/.test(it.label)) b.classList.add("chain");
       b.addEventListener("click", () => { if (!it.disabled) { Music.sound("click"); it.go(); renderMenu(); } });
       b.addEventListener("mouseenter", () => { if (menuState) { menuState.sel = i; highlightTarget(); } });
       el.appendChild(b);
@@ -223,7 +224,7 @@
   }
 
   // ---- resolving actions
-  function addFury(n) { if (!battle) return; battle.fury = Math.min(100, battle.fury + n); const el = $("fury"); $("furyFill").style.width = battle.fury + "%"; el.classList.toggle("full", battle.fury >= 100); }
+  function addFury(n) { if (!battle) return; battle.fury = Math.min(100, battle.fury + n); const el = $("fury"); $("furyFill").style.width = battle.fury + "%"; el.classList.toggle("full", battle.fury >= 100); $("furyPct").textContent = battle.fury >= 100 ? "Ready" : Math.floor(battle.fury) + "%"; el.title = battle.fury >= 100 ? "Fury is full: Chain Assault is in the menu" : "Fury fills as your party deals and takes damage"; }
   function damage(target, amount, o = {}) {
     let d = amount;
     if (target.st.guard) d = Math.ceil(d / 2);

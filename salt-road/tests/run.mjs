@@ -116,6 +116,7 @@ const SUITES = {
       const e = await p.errs(); await p.done(); return { floors, e };
     };
     const a = await runOnce(), b = await runOnce();
+    if (JSON.stringify(a.floors) !== JSON.stringify(b.floors)) console.log(JSON.stringify(a.floors), "\n", JSON.stringify(b.floors));
     ok(JSON.stringify(a.floors) === JSON.stringify(b.floors), "the Daily Descent gives everyone the same floors");
     ok(a.floors[5][1] === "marsh", "floor 6 is in the Drowned Galleries"); ok(!a.e.length && !b.e.length, "no page errors");
   },
@@ -130,6 +131,33 @@ const SUITES = {
     await p.keyboard.press("Escape"); await p.click("#pauseMain [data-a=settings]"); await p.waitForTimeout(200); await p.click("[data-keyset=azerty]"); await p.keyboard.press("Escape"); await p.keyboard.press("Escape"); await p.waitForTimeout(200);
     const y = await p.evaluate(() => window.__saltRoad.state().py); await p.keyboard.down("z"); await p.waitForTimeout(400); await p.keyboard.up("z");
     ok(await p.evaluate(y => window.__saltRoad.state().py < y - 8, y), "Z walks up on AZERTY");
+    await noErrors(p); await p.done();
+  },
+  async reading() {   // cutscene lines wait to be read, statuses say how long they last, the font setting
+    const p = await open(); await p.start();
+    const line = () => p.evaluate(() => document.querySelector("#cineBox .tx").textContent);
+    await p.evaluate(() => window.__saltRoad.cineTest("butcher")); await p.waitForTimeout(6000);
+    const first = await line();
+    ok(/butcher's apron/.test(first) && (await p.evaluate(() => window.__saltRoad.mode())) === "cine", "a cutscene line waits for the player (6 s on, still the first line)");
+    await p.keyboard.press("e"); await p.waitForTimeout(900);
+    ok((await line()) !== first && (await p.evaluate(() => window.__saltRoad.mode())) === "cine", "E moves on to the next line, without skipping the cutscene");
+    await p.keyboard.press("Escape"); await p.waitForTimeout(300);
+    ok((await p.evaluate(() => window.__saltRoad.mode())) !== "cine", "Esc skips the cutscene");
+    await p.evaluate(() => window.__saltRoad.sceneTest()); await p.waitForTimeout(3500);
+    ok(/first line/.test(await p.textContent("#banter")), "a scene line waits too");
+    await p.keyboard.press("e"); await p.waitForTimeout(400); ok(/second line/.test(await p.textContent("#banter")), "E moves the scene on");
+    await p.keyboard.press("e"); await p.waitForTimeout(400); ok(await p.evaluate(() => !!window.__sceneDone), "the scene ends after its last line");
+    await p.evaluate(() => { const R = window.__saltRoad; R.battle(["jackal", "ghoul"]); });
+    await p.waitForTimeout(1200);
+    await p.evaluate(() => window.__saltRoad.setStatus("hero", 0, { bleed: { dmg: 4, turns: 3 }, weak: 3 }));
+    const chips = await p.$$eval("#cards .card:first-child .chip", cs => cs.map(c => c.textContent + "|" + c.title));
+    ok(chips.some(c => /^Bleed3\|.*4 health.*3 more turns/.test(c)) && chips.some(c => /^Weak2\|/.test(c)), "hero statuses show turns left, with an explanation");
+    ok(await p.evaluate(() => window.__saltRoad.furyFull()) && await p.isVisible(".menu button.chain") && /Ready/.test(await p.textContent("#furyPct")), "full Fury reads Ready, with Chain Assault picked out in the menu");
+    await p.evaluate(() => window.__saltRoad.flee()); await p.waitForTimeout(400); await p.clear();
+    const fontOf = () => p.evaluate(() => getComputedStyle(document.querySelector(".help")).fontFamily);
+    ok(/Atkinson/.test(await fontOf()), "reading text uses the easy-to-read font");
+    await p.keyboard.press("Escape"); await p.click("#pauseMain [data-a=settings]"); await p.waitForTimeout(200); await p.click("[data-set=font][data-v=pixel]"); await p.waitForTimeout(200);
+    ok(/Pixelify/.test(await fontOf()), "Settings can switch it to the pixel font");
     await noErrors(p); await p.done();
   },
 };

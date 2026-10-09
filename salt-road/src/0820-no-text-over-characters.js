@@ -43,7 +43,7 @@
     const k = VP.k; ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
     HI_LAST.length = 0;
     for (const [t, x, y, px, c] of HI) {
-      ctx.font = `${Math.round(px * k)}px 'Pixelify Sans', 'Courier New', monospace`;
+      ctx.font = canvasFont(Math.round(px * k));
       const tw = ctx.measureText(t).width / k; HI_LAST.push({ text: t, x: x - tw / 2, y: y - px * 0.8, w: tw, h: px });
       const X = VP.ox + x * k, Y = VP.oy + y * k;
       ctx.fillStyle = "#1b1633"; ctx.fillText(t, Math.round(X + k * 0.75), Math.round(Y + k * 0.75)); ctx.fillStyle = c; ctx.fillText(t, Math.round(X), Math.round(Y));

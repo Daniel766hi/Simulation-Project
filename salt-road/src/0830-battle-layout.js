@@ -7,12 +7,12 @@
   blCss.textContent = ".battle-top{flex-direction:row;flex-wrap:nowrap;align-items:center}"
     + ".turnbar{flex-wrap:nowrap;overflow:hidden;max-width:none;flex:0 1 auto;min-width:0}.turnbar span{white-space:nowrap}.fury{flex:none}"
     + "@media (pointer:coarse),(max-width:700px),(max-height:500px){"
-    + ".battle-top{top:6px;left:6px;gap:4px}.turnbar{gap:3px}.turnbar span{font-size:9px;padding:1px 4px}.fury{font-size:9px;padding:2px 5px;gap:4px}.fury .bar{width:50px}"
-    + ".battle-bottom{grid-template-columns:1fr 196px;left:6px;right:6px;bottom:6px;gap:6px}"
+    + ".battle-top{top:6px;left:6px;gap:4px}.turnbar{gap:3px}.turnbar span{font-size:10px;padding:1px 5px}.cmd{gap:4px}.fury{font-size:10px;padding:3px 7px;gap:6px;border-width:1px}.fury .bar{height:7px}"
+    + ".battle-bottom{grid-template-columns:1fr 210px;left:6px;right:6px;bottom:6px;gap:6px}"
     + ".cards{flex-wrap:nowrap;gap:4px}.card{flex:1 1 0;min-width:0;max-width:none;padding:2px 4px;font-size:9px;border-width:1px;border-radius:5px}"
-    + ".card .nm{margin-bottom:1px}.card .nm small{display:none}.card .nums{font-size:8px}.card .bar{height:4px}.chips{min-height:0;margin-top:1px}.chip{font-size:8px}"
+    + ".card .nm{margin-bottom:1px}.card .nm small{display:none}.card .nums{font-size:10px;flex-direction:column}.card .bar{height:5px}.chips{min-height:0;margin-top:2px;gap:2px}.chip{font-size:9px;padding:0 4px}"
     + ".menu{display:grid;grid-template-columns:1fr 1fr;gap:3px;padding:4px;max-height:112px;border-width:1px}.menu .title{grid-column:1/-1;font-size:9px}"
-    + ".menu button{font-size:11px;padding:3px 6px}.menu button small,.menu button.sel small,.menu button:hover small{display:none}"
+    + ".menu button{font-size:13px;padding:5px 7px}.menu button small,.menu button.sel small,.menu button:hover small{display:none}"
     + "#battleUI>.blog{font-size:11px;padding:3px 8px}}";
   document.head.appendChild(blCss);
 
@@ -32,13 +32,13 @@
     if (A) return { x: p.x - Math.max(50, A.w / 2), y: p.y - A.h + 2, w: Math.max(100, A.w), h: A.h + 20 };
     return u.boss ? { x: p.x - 50, y: p.y - 108, w: 100, h: 130 } : { x: p.x - 30, y: p.y - 86, w: 60, h: 90 };
   }
-  function hiW(t, px) { ctx.font = `${Math.round(px * VP.k)}px 'Pixelify Sans', 'Courier New', monospace`; return ctx.measureText(t).width / VP.k; }
+  function hiW(t, px) { ctx.font = canvasFont(Math.round(px * VP.k)); return ctx.measureText(t).width / VP.k; }
   const overlapArea = (a, b) => Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x)) * Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y));
-  const BL_PANELS = ["#turnbar", "#fury", "#cards .card", "#menu", "#pauseBtn"];
+  const BL_PANELS = ["#turnbar", "#cards .card", "#cmd", "#pauseBtn"];
   const unionOf = rs => { if (!rs.length) return null; const x = Math.min(...rs.map(r => r.x)), y = Math.min(...rs.map(r => r.y)); return { x, y, w: Math.max(...rs.map(r => r.x + r.w)) - x, h: Math.max(...rs.map(r => r.y + r.h)) - y }; };
   function panelRects() {   // battle panels in canvas device pixels, one box per group (the cards row is one box)
     const cr = canvas.getBoundingClientRect(), dev = canvas.width / (cr.width || 1), out = [];
-    for (const group of [["#turnbar", "#fury"], ["#cards .card"], ["#menu"], ["#pauseBtn"]]) {
+    for (const group of [["#turnbar"], ["#cards .card"], ["#cmd"], ["#pauseBtn"]]) {
       const rs = [];
       for (const q of group) for (const el of document.querySelectorAll(q)) if (shown(el)) {
         const r = el.getBoundingClientRect(); if (r.width < 2) continue;
@@ -129,7 +129,7 @@
     const k = VP.k; ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
     const cssW = canvas.getBoundingClientRect().width || canvas.width, minPx = 9 * (canvas.width / cssW) / k;   // never under 9 screen pixels
     const solid = battle && mode === "battle" ? battleObstacles() : !battle && G && mode === "play" && !cine ? [...worldBufBoxes(), ...domInPicture([...FADE, "#pauseBtn", "#banner", "#toast"], true)] : [], placed = [];
-    const measure = (t, px) => { ctx.font = `${Math.round(px * k)}px 'Pixelify Sans', 'Courier New', monospace`; return ctx.measureText(t).width / k; };
+    const measure = (t, px) => { ctx.font = canvasFont(Math.round(px * k)); return ctx.measureText(t).width / k; };
     const boxOf = (t, x, y, px) => { px = Math.max(px, minPx); const w = measure(t, px); x = clamp(x, w / 2 + 1, VIEW_W - w / 2 - 1); return { t, x, y, px, b: { x: x - w / 2 - 0.5, y: y - px * 0.8, w: w + 1, h: px } }; };
     const score = c => { let s = 0; for (const o of solid) s += overlapArea(c.b, o); for (const o of placed) s += overlapArea(c.b, o) * 2; return s; };
     for (const [t0, x0, y0, px0, color, kind] of HI) {
@@ -150,7 +150,7 @@
       }
       placed.push(pick.b);
       const { t, x, y, px } = pick;
-      ctx.font = `${Math.round(px * k)}px 'Pixelify Sans', 'Courier New', monospace`;
+      ctx.font = canvasFont(Math.round(px * k));
       HI_LAST.push({ text: t, x: pick.b.x, y: pick.b.y, w: pick.b.w, h: pick.b.h, kind });
       const X = VP.ox + x * k, Y = VP.oy + y * k;
       ctx.fillStyle = "#1b1633"; ctx.fillText(t, Math.round(X + k * 0.75), Math.round(Y + k * 0.75)); ctx.fillStyle = color; ctx.fillText(t, Math.round(X), Math.round(Y));
@@ -175,7 +175,7 @@
     const foeLow = Math.max(0, ...battle.foes.filter(f => !f.dead).map(f => { const b = unitBlock(f); return b.y + b.h; }));
     const heroTop = Math.min(VIEW_H, ...battle.heroes.filter(x => alive(x)).map(x => spriteBox(x).y));
     const midY = cr.top + VP.oy * d + ((foeLow + heroTop) / 2) * s;
-    const topBar = Math.max(cr.top + 8, ...["#turnbar", "#fury", "#pauseBtn"].map(q => $(q.slice(1))).filter(shown).map(e => e.getBoundingClientRect().bottom)) + 4;
+    const topBar = Math.max(cr.top + 8, ...["#turnbar", "#pauseBtn"].map(q => $(q.slice(1))).filter(shown).map(e => e.getBoundingClientRect().bottom)) + 4;
     const cands = [[cr.left + cr.width / 2 - w / 2, midY - h / 2], [cr.left + 8, topBar], [cr.right - w - 8, topBar],
       [cr.left + 8, midY - h / 2], [cr.right - w - 8, midY - h / 2], [cr.left + cr.width / 2 - w / 2, topBar]];
     let best = cands[0], bestS = Infinity;

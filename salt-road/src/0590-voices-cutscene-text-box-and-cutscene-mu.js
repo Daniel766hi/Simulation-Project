@@ -330,9 +330,13 @@
   #cineBox .nm{position:absolute;top:-14px;left:14px;background:#3b2f7a;border:2px solid #0e0b1e;color:var(--gold);font:700 13px var(--font);padding:1px 8px;letter-spacing:.04em}
   #cineBox .tx{font:16px/1.4 var(--font);color:#f3efe6;min-height:2.8em}
   #cineBox .tx.narr{color:#d8d0e6;font-style:italic}
-  @media (max-width:700px){#cineBox .tx{font-size:12px}#cineBox{padding:8px 10px}}`;
+  #cineBox .hint{position:absolute;right:10px;bottom:-18px;font:12px var(--font);color:#b3aacb;background:#0e0b1e;border:2px solid #5e5680;padding:0 6px}
+  #cineBox.waiting .tx::after,#banter.waiting::after{content:" ▸";color:var(--gold);animation:cbNext 1s steps(2) infinite}
+  @keyframes cbNext{50%{opacity:.15}}
+  @media (prefers-reduced-motion:reduce){#cineBox.waiting .tx::after,#banter.waiting::after{animation:none}}
+  @media (max-width:700px){#cineBox .tx{font-size:14px}#cineBox{padding:8px 10px}}`;
   document.head.appendChild(cbStyle);
-  const cineBox = document.createElement("div"); cineBox.id = "cineBox"; cineBox.hidden = true; cineBox.innerHTML = `<div class="nm"></div><div class="tx"></div>`;
+  const cineBox = document.createElement("div"); cineBox.id = "cineBox"; cineBox.hidden = true; cineBox.innerHTML = `<div class="nm"></div><div class="tx"></div><div class="hint"></div>`;
   $("toast").parentNode.appendChild(cineBox);
   let cbText = "", cbWho = null, cbTyped = 0;
   function cineSay(who, text) {
@@ -354,6 +358,9 @@
     const now = Math.floor(cbTyped); for (let i = before; i < now; i++) blip(cbWho, cbText[i]);
     Voice.type(now, cbText.length);
     if (now !== before) cineBox.querySelector(".tx").textContent = cbText.slice(0, now);
+    // the line is all there and the picture is holding for it: a blinking arrow, and which key moves on
+    cineBox.classList.toggle("waiting", now >= cbText.length && SETTINGS.cutPace !== "auto");
+    const hint = `${typeof boundKey === "function" ? keyName(boundKey("act")) : "E"} or tap: next · Esc: skip`, hb = cineBox.querySelector(".hint"); if (hb.textContent !== hint) hb.textContent = hint;
   };
   // cutscene music: each cinematic can bring its own theme and hand the old one back afterwards
   const _playCineV = playCine;
