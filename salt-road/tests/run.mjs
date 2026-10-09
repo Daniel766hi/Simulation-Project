@@ -133,6 +133,29 @@ const SUITES = {
     ok(await p.evaluate(y => window.__saltRoad.state().py < y - 8, y), "Z walks up on AZERTY");
     await noErrors(p); await p.done();
   },
+  async rime() {   // Act III, part 1: the stair, Kelda, the Ice House, Saint Isolde and her choice
+    const p = await open(); await p.start(); await setup(p, 10, ["ilse", "maru", "rook"], 24); await p.clear();
+    await p.evaluate(() => { const R = window.__saltRoad; R.state().flags.rimeHint = true; R.tp(100, 135); R.clearField(); });
+    await p.waitForTimeout(300); await p.keyboard.down("s"); await p.waitForTimeout(1600); await p.keyboard.up("s"); await p.waitForTimeout(500);
+    ok(await p.evaluate(() => window.__saltRoad.state().py / 16 >= 141) && /white sky/.test(await p.evaluate(() => (window.__saltRoad.dlg() || {}).text || "")), "the stair from the Dry Sea leads down into the Rime");
+    await p.clear();
+    await p.evaluate(() => { window.__saltRoad.tp(73, 157); window.__saltRoad.open(window.__saltRoad.talkTo("hild")); }); await p.waitForTimeout(400);
+    for (let i = 0; i < 14 && await p.isVisible("#dialog"); i++) { await p.keyboard.press("e"); await p.waitForTimeout(200); if (await p.isVisible("#opts button")) { await p.keyboard.press("1"); await p.waitForTimeout(200); } }
+    ok(await p.evaluate(() => window.__saltRoad.rime().flags.gate && window.__saltRoad.tile(140, 175) !== 36), "Mother Hild's lullaby opens the Ice House");
+    await p.evaluate(() => window.__saltRoad.tp(140, 161)); await p.waitForTimeout(500); await p.clear(); await p.keyboard.press("e"); await p.waitForTimeout(300);
+    for (let i = 0; i < 10 && (await p.evaluate(() => window.__saltRoad.mode())) !== "battle"; i++) { await p.keyboard.press("e"); await p.waitForTimeout(250); if (await p.isVisible("#opts button")) { await p.keyboard.press("1"); await p.waitForTimeout(250); } }
+    ok(/Saint Isolde/.test(await p.evaluate(() => window.__saltRoad.battleState() || "")), "Saint Isolde waits on her throne");
+    const ph = await p.evaluate(() => window.__saltRoad.bossPhaseTest()); ok(ph && ph.after.phase2, "she becomes the Thaw at half health");
+    await p.evaluate(() => window.__saltRoad.forceWin()); await p.waitForTimeout(400); await p.evaluate(() => window.__saltRoad.cont()); await p.waitForTimeout(700);
+    for (let i = 0; i < 8 && !(await p.isVisible("#opts button")); i++) { await p.keyboard.press("e"); await p.waitForTimeout(250); }
+    await p.keyboard.press("2"); await p.waitForTimeout(300); for (let i = 0; i < 4; i++) { await p.keyboard.press("e"); await p.waitForTimeout(250); }
+    const r = await p.evaluate(() => ({ f: window.__saltRoad.rime().flags, relics: window.__saltRoad.state().relics || [] }));
+    ok(r.f.done && r.f.choice === "keep" && r.relics.includes("rimeheart"), "the choice is kept, with Isolde's relic");
+    await p.clear(); ok(!(await p.evaluate(() => window.__saltRoad.reach())).length, "every story spot is still reachable");
+    await p.reload(); await p.waitForTimeout(700); await p.start();
+    ok(await p.evaluate(() => window.__saltRoad.rime().flags.done), "the Rime's ending survives a reload");
+    await noErrors(p); await p.done();
+  },
   async reading() {   // cutscene lines wait to be read, statuses say how long they last, the font setting
     const p = await open(); await p.start();
     const line = () => p.evaluate(() => document.querySelector("#cineBox .tx").textContent);

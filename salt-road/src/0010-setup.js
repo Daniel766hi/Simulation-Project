@@ -44,7 +44,7 @@
   })();
   const $ = id => document.getElementById(id);
   const REDUCED = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const TILE = 16, W = 170, H = 140, OW = 72, OH = 54, VIEW_W = 320, VIEW_H = 192;
+  const TILE = 16, W = 170, H = 190, OW = 72, OH = 54, VIEW_W = 320, VIEW_H = 192;
   const SETTINGS = { music: 0.8, sfx: 0.8, text: "normal", battle: "normal", shake: true };
   try { Object.assign(SETTINGS, JSON.parse(localStorage.getItem("salt-road-settings") || "{}")); } catch { /* storage unavailable */ }
   // text drawn on the picture (intents, damage, names) follows Settings > Comfort > Font, like the panels
