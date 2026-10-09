@@ -22,7 +22,7 @@ const PLAN = [
   ['choirmaster', 4, ['choirmaster', 'choir'], ['sable', 'ilse', 'maru', 'rook']], ['voss', 5, ['voss'], ['sable', 'ilse', 'maru', 'rook', 'ada']],
   ['hollis', 6, ['hollis', 'drowned'], ['sable', 'ilse', 'maru', 'rook', 'ada', 'ren']], ['quill', 7, ['quill', 'clerk'], ['sable', 'ilse', 'maru', 'rook', 'ada', 'ren', 'kest']],
   ['gulp', 8, ['gulp', 'toad'], ['sable', 'ilse', 'maru', 'rook', 'ada', 'ren', 'kest']], ['maw', 9, ['maw', 'sailor'], ['sable', 'ilse', 'maru', 'rook', 'ada', 'ren', 'kest', 'warden']],
-  ['vela', 11, ['vela', 'singer'], ['sable', 'ilse', 'maru', 'rook', 'ada', 'ren', 'kest', 'warden', 'nell']], ['king', 12, ['king'], ['sable', 'ilse', 'maru', 'rook', 'ada', 'ren', 'kest', 'warden', 'nell']],
+  ['isolde', 11, ['isolde'], ['sable', 'ilse', 'maru', 'rook', 'ada', 'ren', 'kest', 'warden', 'nell']], ['vela', 11, ['vela', 'singer'], ['sable', 'ilse', 'maru', 'rook', 'ada', 'ren', 'kest', 'warden', 'nell']], ['king', 12, ['king'], ['sable', 'ilse', 'maru', 'rook', 'ada', 'ren', 'kest', 'warden', 'nell']],
 ];
   const b = await chromium.launch(); const ctx = await b.newContext({ viewport: { width: 1280, height: 800 }, reducedMotion: 'reduce' });
   await ctx.addInitScript(() => { const st = window.setTimeout; window.setTimeout = (f, ms, ...a) => st(f, Math.min(ms || 0, 2), ...a); });

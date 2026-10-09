@@ -388,6 +388,7 @@ A single-file canvas RPG. Everything, music and voices included, is synthesised 
 
   Finishing everything brings a "Home Again" card and an achievement, and the endings remember what was built.
 - **Phones held upright.** The party, coin and goal panels sit under the picture with the dialogue and battle menus, so the road stays clear. The pause menu, party screen and journal use the whole screen.
+- **Act III, part 1: The Rime.** From Chapter X, a stair at the south rim of the Dry Sea leads down to a frozen salt shelf. Four generations ago the village of Kelda froze its rain in the Ice House so the Guild could never sell it, and Saint Isolde froze with it to keep it. Now the Bell rings and the ice wants to be water again; let go all at once, it would drown the caravan road. The region has a walled village with a healer and a hearth, a frozen lake, the cutters' quarry, three salt tablets, four new monsters (Rime Wolf, Frost Wight, Ice Thrall, Hoarfrost Moth) and a two-phase boss, Saint Isolde, who becomes the Thaw. The player chooses how she lets go, and the journal, the Chronicle and the endings remember it. The world map grew by fifty rows for it; older saves are padded to match.
 - **The Long Road** (Pause menu):
   - a Courier Rank and perks kept across playthroughs
   - a daily welcome-back gift with a visiting streak
