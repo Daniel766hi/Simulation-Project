@@ -308,3 +308,192 @@
     ["rank10", "A Name on Every Road", "Reach Courier Rank 10.", () => meta.rank >= 10],
     ["weekly", "Seven Days' Work", "Win a Weekly Trial.", () => !!(meta.weekly && meta.weekly.cleared)]);
 
+  // ================================================================== MONSTER STRENGTH: MONSTERS KEEP UP WITH THE PARTY
+  // Heroes grow every level and with gear, forge, temper and talents; a monster's numbers were fixed, so from the
+  // fourth chapter on fights ended in a round or two. Each kind of monster now grows with the party level expected
+  // where it lives (its first chapter on the map; the five Act I kinds are placed by hand), one step per chapter, so the
+  // first monsters are unchanged and going back to an early road stays easy. The steps were fitted with the
+  // balance simulation below: ordinary fights take about three rounds, bosses six to nine, and a party that never shops
+  // can still win. The King is tuned on his own (THE LAST TIDE).
+  const STRENGTH = {   // by home chapter 0..12: regular health and attack; each main boss its own; other bosses by chapter
+    hp: [1.0, 2.03, 1.2, 1.97, 2.67, 2.72, 4.48, 3.5, 3.32, 2.83, 4.4, 2.94, 2.94],
+    atk: [1.0, 1.43, 1.83, 1.77, 2.22, 2.89, 3.55, 3.61, 3.31, 2.04, 1.78, 2.84, 3.62],
+    bossHp: [1.0, 1.74, 1.73, 1.75, 2.35, 2.57, 2.45, 3.34, 2.46, 2.53, 2.77, 3.13, 3.41],
+    bossAtk: [1.0, 0.96, 0.97, 1.1, 1.31, 1.22, 1.14, 1.81, 1.41, 1.49, 1.6, 1.4, 1.17],
+    boss: { butcher: [1.59, 0.92], mother: [1.58, 1.21], choirmaster: [2.5, 1.31], voss: [3.06, 1.2], hollis: [2.12, 0.85], quill: [3.58, 1.81], gulp: [2.02, 1.28], colossus: [2.32, 1.96], maw: [3.02, 1.79], vela: [3.21, 1.45], corvin: [3.12, 1.47],
+      wyrm: [1.54, 0.96], tollkeeper: [1.81, 1.08], ledgertree: [1.63, 1.0] },   // optional bosses: already strong by nature, so a gentler step
+  };
+
+  const ELITES = new Set(["rotfang", "widow", "pincer"]);   // bounty elites are strong by nature too: a smaller step than their chapter's
+
+  const EXPECT_LV = [2, 4, 5, 7, 8, 10, 12, 14, 15, 17, 19, 21, 22];   // party level a typical player has, chapter by chapter
+  const HOME = { jackal: 0, ghoul: 1, leech: 2, spawn: 2, choir: 3 };
+  for (const f of FIELD) if (f.minStage) for (const id of f.group) if (HOME[id] === undefined || HOME[id] > f.minStage) HOME[id] = f.minStage;
+  const BOSS_HOME = { butcher: 2, mother: 3, wyrm: 4, choirmaster: 4, voss: 5, hollis: 6, moonmother: 6, quill: 7, tollkeeper: 7, gulp: 8, ledgertree: 9, oldmouth: 9, colossus: 10, maw: 10, vela: 11, corvin: 12, king: 12 };
+  function strengthOf(id, boss) {
+    const S = (typeof SIM !== "undefined" && SIM.strength) || STRENGTH;
+    const h = Math.max(0, Math.min(12, (boss ? BOSS_HOME[id] : undefined) ?? HOME[id] ?? (G.stage || 0)));
+    if (boss) return (S.boss && S.boss[id]) || [S.bossHp[h], S.bossAtk[h]];
+    return ELITES.has(id) ? [1 + (S.hp[h] - 1) * 0.7, 1 + (S.atk[h] - 1) * 0.6] : [S.hp[h], S.atk[h]];
+  }
+  const strHome = (id, boss) => Math.max(0, Math.min(12, (boss ? BOSS_HOME[id] : undefined) ?? HOME[id] ?? 6));
+  const _unitFromMonsterS = unitFromMonster;
+  unitFromMonster = function (id, i, n) {
+    const u = _unitFromMonsterS(id, i, n);
+    if (G.stage === 0 && !(G.ng > 0)) return u;   // the prologue keeps its hand-tuned tutorial numbers
+    const [hk, ak] = strengthOf(id, u.boss);
+    u.maxHp = u.hp = Math.max(1, Math.round(u.maxHp * hk)); u.atk = Math.max(1, Math.round(u.atk * ak));
+    return u;
+  };
+
+  // ================================================================== BALANCE SIMULATION (tests only)
+  // window.__saltRoad.sim(...) fights battles with no waiting and an automatic player, with a party built the way a
+  // typical player would have it at a given chapter (who has joined, level, gear, forge, temper, talents), and
+  // reports rounds, wins and health left. Nothing here runs in normal play.
+  const SIM_JOIN = { sable: 0, ilse: 1, maru: 3, rook: 4, ada: 5, ren: 6, kest: 7, warden: 9, nell: 10 };
+  const SIM_BOSS_STAGE = { butcher: 2, mother: 3, wyrm: 4, choirmaster: 4, voss: 5, hollis: 6, moonmother: 6, quill: 7, tollkeeper: 7, gulp: 8, ledgertree: 9, oldmouth: 9, colossus: 10, maw: 10, vela: 11, corvin: 12, king: 12 };
+  let simAuto = false;
+  function simAct(u) {
+    const h = u.ref, foes = battle.foes.filter(f => !f.dead), allies = battle.heroes.filter(alive), fallen = battle.heroes.filter(x => !alive(x));
+    const skills = HEROES[u.id].skills.filter(s => (!s.lvl || h.level >= s.lvl) && h.sp >= s.cost);
+    const weakest = foes.slice().sort((a, b) => a.hp - b.hp)[0];
+    if (!weakest) return { kind: "guard" };
+    if (battle.fury >= 100) return { kind: "chain", unit: weakest };
+    if (fallen.length) {
+      const s = skills.find(x => x.reviveAll || x.target === "fallen"); if (s) return { kind: "skill", skill: s, unit: s.target === "fallen" ? fallen[0] : u };
+      if ((G.items.salts || 0) > 0) return { kind: "item", item: "salts", unit: fallen[0] };
+    }
+    const low = allies.filter(a => a.ref.hp < a.ref.maxHp * 0.45).sort((a, b) => a.ref.hp / a.ref.maxHp - b.ref.hp / b.ref.maxHp);
+    if (low.length) {
+      const heal = (low.length >= 2 && skills.find(x => x.healAll && !x.power)) || skills.find(x => x.heal && x.target === "ally") || skills.find(x => x.healAll && !x.power);
+      if (heal) return { kind: "skill", skill: heal, unit: heal.target === "ally" ? low[0] : u };
+      if (low[0].ref.hp < low[0].ref.maxHp * 0.25 && (G.items.salve || 0) > 0) return { kind: "item", item: "salve", unit: low[0] };
+    }
+    const dmg = skills.filter(x => x.power && ["enemy", "allEnemies", "random3", "random5"].includes(x.target));
+    const healer = HEROES[u.id].skills.some(x => x.heal || x.healAll), reserve = healer ? 4 : 0;   // a healer keeps a little SP back
+    const usable = dmg.filter(x => h.sp - x.cost >= reserve);
+    if (usable.length) {
+      const aoe = usable.filter(x => x.target !== "enemy").sort((a, b) => b.power - a.power), one = usable.filter(x => x.target === "enemy").sort((a, b) => b.power - a.power);
+      const s = foes.length >= 2 && aoe.length ? aoe[0] : one[0] || aoe[0];
+      return { kind: "skill", skill: s, unit: s.target === "enemy" ? weakest : u };
+    }
+    return { kind: "attack", unit: weakest };
+  }
+  const _heroChooseSim = heroChoose;
+  heroChoose = function (u) { if (!simAuto || !battle) return _heroChooseSim(u); return Promise.resolve(simAct(u)); };
+  // expected party level at a chapter: XP from most of the map's fights (each is fought once) plus the main bosses,
+  // for a player who does some but not all of the optional regions
+  const simLevelAt = st => EXPECT_LV[Math.max(0, Math.min(12, st))];
+  function simParty(st, P) {
+    G.stage = st; G.party = {}; G.members = []; G.gear = {}; G.temper = {}; G.talents = {}; G.equip = {}; G.forge = {};
+    const L = Math.max(1, (P.level || simLevelAt(st)) + (P.levelDelta || 0));
+    for (const id of Object.keys(SIM_JOIN)) if (SIM_JOIN[id] <= st && HEROES[id]) { const h = makeHero(id); for (let i = 1; i < L; i++) levelUp(h); G.party[id] = h; G.members.push(id); }
+    G.active = (P.team || ["sable", "ilse", "maru", "rook", "ada", "ren", "kest", "nell", "warden"]).filter(id => G.members.includes(id)).slice(0, 4);
+    const ft = P.forge === false ? 0 : Math.min(4, st >= 10 ? 4 : st >= 7 ? 3 : st >= 5 ? 2 : st >= 3 ? 1 : 0);
+    G.forge = { atk: ft, def: ft }; for (const id of G.members) for (const k of ["atk", "def"]) applyForge(G.party[id], k, ft);
+    if (P.gear !== false) for (const id of G.active) for (const slot of ["weapon", "armor"]) {
+      const t = Math.max(1, shopTier() - (P.gearLag || 0)), key = `${slot === "weapon" ? "w" : "a"}_${slot === "weapon" ? WCLASS[id] : ACLASS[id]}_${t}`;
+      if (GEAR[key]) { applyGear(G.party[id], key, 1); (G.gear[id] = G.gear[id] || {})[slot] = key; }
+    }
+    if (P.temper) for (const id of G.active) for (const slot of ["weapon", "armor"]) { const lv = Math.min(shopTier(), P.temper); if (lv > 0) { applyTemper(id, G.party[id], slot, lv); (G.temper[id] = G.temper[id] || {})[slot] = lv; } }
+    if (P.talents !== false) G.members.forEach((id, i) => { G.talents[id] = {}; TALENTS.forEach((T, tier) => { if (L >= T.lvl) G.talents[id][tier] = Object.keys(T.opts)[(i + tier) % 2]; }); });
+    for (const id of G.members) { const h = G.party[id]; h.hp = h.maxHp; h.sp = h.maxSp; }
+    G.items = { salve: 3, tonic: 1, salts: 1, fire: 0 };
+    return L;
+  }
+  const simEnd = () => { battle = null; menuState = null; resolveChoice = null; $("battleUI").hidden = true; mode = "play"; };
+  async function simFight(group, opts, st, P) {
+    const keep = JSON.stringify(G), dk = difficulty;
+    try {
+      if (P.difficulty) difficulty = P.difficulty;
+      const L = simParty(st, P);
+      startBattle(group, { ...opts });
+      const B = battle; if (!B) return null;
+      const t0 = performance.now();
+      while (battle === B && !B.waitingContinue && performance.now() - t0 < 20000) await new Promise(r => setTimeout(r, 0));
+      const heroes = B.heroes, alive2 = heroes.filter(alive);
+      const res = { win: B.foes.every(f => f.dead), rounds: B.round, hp: alive2.reduce((a, x) => a + x.ref.hp / x.ref.maxHp, 0) / heroes.length, ko: heroes.length - alive2.length, level: L, champs: B.foes.filter(f => f.champ).length, timeout: !B.waitingContinue };
+      simEnd(); return res;
+    } catch (e) { simEnd(); return { error: String(e && e.message || e) }; }
+    finally { const saved = JSON.parse(keep); for (const k of Object.keys(G)) if (!(k in saved)) delete G[k]; Object.assign(G, saved); difficulty = dk; }
+  }
+  async function simRun(spec) {   // spec: { fights: [{ group, opts, stage }], n, profile }
+    SIM.fast = true; simAuto = true; SIM.noChamp = !!(spec.profile || {}).noChamp; SIM.strength = (spec.profile || {}).strength || null; SIM.kingTide = (spec.profile || {}).kingTide || null; SIM.kingDuel = (spec.profile || {}).kingDuel || null; const out = [];
+    try {
+      for (const f of spec.fights) {
+        const rs = []; for (let i = 0; i < (spec.n || 10); i++) rs.push(await simFight(f.group, f.opts || {}, f.stage, spec.profile || {}));
+        const ok = rs.filter(r => r && !r.error), avg = k => ok.length ? ok.reduce((a, r) => a + r[k], 0) / ok.length : null;
+        out.push({ label: f.label || f.group.join("+"), stage: f.stage, level: ok[0] && ok[0].level, n: ok.length, win: avg("win"), rounds: avg("rounds"), hp: avg("hp"), ko: avg("ko"), timeouts: ok.filter(r => r.timeout).length, errors: rs.filter(r => r && r.error).map(r => r.error).slice(0, 2) });
+      }
+    } finally { SIM.fast = false; simAuto = false; SIM.noChamp = false; SIM.strength = null; SIM.kingTide = null; SIM.kingDuel = null; }
+    return out;
+  }
+  setTimeout(() => Object.assign(window.__saltRoad || (window.__saltRoad = {}), {
+    simRun: spec => simRun(spec),
+    strHome: (ids, boss) => ids.map(id => strHome(id, boss)),
+    strength: () => JSON.parse(JSON.stringify(STRENGTH)),
+    simLevels: () => Object.fromEntries([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(s => [s, simLevelAt(s)])),
+    simData: () => ({ bosses: Object.fromEntries(Object.keys(SIM_BOSS_STAGE).filter(id => MONSTERS[id]).map(id => [id, { stage: SIM_BOSS_STAGE[id], xp: MONSTERS[id].xp, hp: MONSTERS[id].hp, atk: MONSTERS[id].atk, def: MONSTERS[id].def }])),
+      field: FIELD.map(f => ({ id: f.id, group: f.group, minStage: f.minStage || 0, elite: !!f.elite, xp: f.group.reduce((a, id) => a + (MONSTERS[id] ? MONSTERS[id].xp : 0), 0), area: f.area || null })) }),
+  }), 0);
+
+  // ================================================================== BATTLE EVENTS: ONE PLACE FOR RULES TO HOOK IN
+  // Newer battle rules (champion powers, runes, talents) used to each wrap damage() and attackRoll() again, so every
+  // rule sat inside every other one and one rule's mistake could break a fight. They now register handlers here:
+  //   attack (ctx)     before a blow is rolled: ctx.att, ctx.target, ctx.power (may be changed), ctx.o
+  //   hit (ctx, r)     after it: r is attackRoll's result
+  //   damage (ctx)     before damage lands: ctx.target, ctx.amount (may be changed); set ctx.cancel to a number to stop it
+  //   damaged (ctx, d) after it lands, d is what was dealt
+  //   turn (u)         a hero's turn begins;   acted (u, act) a hero's action is over
+  //   round (f)        a foe picks its move at the start of a round
+  //   won (B)          a battle is won (after the usual rewards)
+  // A handler that throws is logged and skipped, and a turn that throws ends that turn only: the fight goes on.
+  const htmlEsc = t => String(t).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);   // for the later modules' pages
+  const BEV = { attack: [], hit: [], damage: [], damaged: [], turn: [], acted: [], round: [], won: [] };
+  const onBattle = (ev, fn) => { BEV[ev].push(fn); };
+  function battleError(e, where) {
+    const msg = `${where}: ${(e && e.message) || e}`, list = window.__saltRoadErrors;
+    if (list && !list.includes(msg)) list.push(msg);
+    console.error("Salt Road battle rule failed (the fight goes on):", where, e);
+  }
+  function fireB(ev, ...a) { for (const fn of BEV[ev]) { try { fn(...a); } catch (e) { battleError(e, ev); } } }
+  const _attackRollE = attackRoll;
+  attackRoll = function (att, target, power, o = {}) {
+    if (!battle || !att || !target) return _attackRollE(att, target, power, o);
+    const ctx = { att, target, power: power || 1, o };
+    fireB("attack", ctx);
+    const r = _attackRollE(att, target, ctx.power, o);
+    fireB("hit", ctx, r);
+    return r;
+  };
+  const _damageE = damage;
+  damage = function (target, amount, o = {}) {
+    if (!battle || !target) return _damageE(target, amount, o);
+    const ctx = { target, amount, o, cancel: null };
+    fireB("damage", ctx);
+    if (ctx.cancel !== null) return ctx.cancel;
+    const d = _damageE(target, ctx.amount, o);
+    fireB("damaged", ctx, d);
+    return d;
+  };
+  const _heroChooseE = heroChoose;
+  heroChoose = function (u) { if (battle && u) fireB("turn", u); return _heroChooseE(u); };
+  const _chooseIntentE = chooseIntent;
+  chooseIntent = function (f) { if (battle && f) fireB("round", f); return _chooseIntentE(f); };
+  const _victoryE = victory;
+  victory = function () { const B = battle; const r = _victoryE(); if (B && battle === B) fireB("won", B); return r; };
+  const _doHeroE = doHero;
+  doHero = async function (u, act) {
+    try { return await _doHeroE(u, act); }
+    catch (e) { battleError(e, `${u && u.name}'s turn`); }
+    finally { if (battle && u) fireB("acted", u, act); }
+  };
+  const _doFoeE = doFoe;
+  doFoe = async function (f) {
+    try { return await _doFoeE(f); }
+    catch (e) { battleError(e, `${f && f.name}'s turn`); }
+  };
+  setTimeout(() => Object.assign(window.__saltRoad || (window.__saltRoad = {}), {
+    ruleFault: () => { onBattle("hit", () => { throw new Error("test fault in a rule"); }); return BEV.hit.length; },   // for the resilience test
+  }), 0);
+

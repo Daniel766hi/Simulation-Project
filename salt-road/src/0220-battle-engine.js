@@ -381,8 +381,8 @@
   function clearGuardFrom(id) { for (const h of battle.heroes) if (h.st.guardSource === id) { delete h.st.guard; delete h.st.guardSource; } }
   function checkEnd() {
     if (!battle) return true;   // the battle already ended while this turn was still playing out
-    if (battle.foes.every(f => f.dead)) { battle.over = true; setTimeout(() => victory(), 700); return true; }
-    if (battle.heroes.every(h => !alive(h))) { battle.over = true; setTimeout(() => defeat(), 900); return true; }
+    if (battle.foes.every(f => f.dead)) { battle.over = true; setTimeout(() => victory(), SIM.fast ? 0 : 700); return true; }
+    if (battle.heroes.every(h => !alive(h))) { battle.over = true; setTimeout(() => defeat(), SIM.fast ? 0 : 900); return true; }
     return false;
   }
   function victory() {
