@@ -29,50 +29,44 @@
   const talState = u => { const T = battle.tal || (battle.tal = {}); return T[u.id] || (T[u.id] = {}); };
   const talFx = (u, text, col = "#ffcf4a") => { popupText(u, text, col); chRing(u, col); };
   // ---- what they do
-  const _attackRollT = attackRoll;
-  attackRoll = function (att, target, power, o = {}) {
-    if (!battle || !att || att.side !== "hero" || !target || target.side !== "foe" || !G.talents || !G.talents[att.id]) return _attackRollT(att, target, power, o);
+  onBattle("attack", ctx => {
+    const { att, target } = ctx;
+    if (att.side !== "hero" || target.side !== "foe" || !G.talents || !G.talents[att.id]) return;
     const me = talState(att); let mult = 1, word = "";
     if (hasTalent(att.id, "opener") && !me.opened) { mult *= 1.5; word = "First Blood"; }
     if (hasTalent(att.id, "bloodletter") && (target.st.bleed || target.st.brk)) { mult *= 1.3; word = word || "Open Wounds"; }
     if (hasTalent(att.id, "executioner") && !target.dead && target.hp < target.maxHp / 3) { mult *= 1.4; word = "Executioner"; }
-    let lent = false; if (hasTalent(att.id, "stormheart") && !target.st.mark && Math.random() < 0.08) { target.st.mark = true; lent = true; }
-    const wasUp = !target.dead;
-    const r = _attackRollT(att, target, (power || 1) * mult, o);
-    if (lent && target.st.mark) delete target.st.mark;   // a dodge leaves the borrowed mark unused
+    if (hasTalent(att.id, "stormheart") && !target.st.mark && Math.random() < 0.08) { target.st.mark = true; ctx.lentMark = true; }
+    ctx.power *= mult; ctx.talWord = word; ctx.wasUp = !target.dead; ctx.tal = true;
+  });
+  onBattle("hit", (ctx, r) => {
+    if (!ctx.tal) return;
+    const { att, target } = ctx, me = talState(att);
+    if (ctx.lentMark && target.st.mark) delete target.st.mark;   // a dodge leaves the borrowed mark unused
     me.struck = true;
-    if (!r || r.dodged) return r;
-    if (word && !me.said) { me.said = word; talFx(att, word); setTimeout(() => { if (battle) delete talState(att).said; }, 500); }
+    if (!r || r.dodged) return;
+    if (ctx.talWord && !me.said) { me.said = ctx.talWord; talFx(att, ctx.talWord); setTimeout(() => { if (battle) delete talState(att).said; }, 500); }
     if (r.crit && hasTalent(att.id, "stormheart") && !target.dead) { const extra = Math.round(r.dmg * 0.375); if (extra > 0) { damage(target, extra, { noFury: true }); talFx(target, "Storm Heart", "#8ec8ff"); } }
-    if (hasTalent(att.id, "momentum") && wasUp && target.dead) { att.ref.sp = Math.min(att.ref.maxSp, att.ref.sp + 4); addFury(12); talFx(att, "Momentum +4 SP", "#6f8cff"); }
-    return r;
-  };
-  const _doHeroT = doHero;
-  doHero = async function (u, act) {
-    try { return await _doHeroT(u, act); }
-    finally {
-      if (battle && u && u.side === "hero") {
-        const me = talState(u); if (me.struck) me.opened = true;
-        if (act && act.kind === "guard" && hasTalent(u.id, "bulwark") && alive(u)) {
-          const h = Math.max(2, Math.round(u.ref.maxHp * 0.1)); u.ref.hp = Math.min(u.ref.maxHp, u.ref.hp + h); u.ref.sp = Math.min(u.ref.maxSp, u.ref.sp + 2);
-          talFx(u, `Bulwark +${h}`, "#6fc0d0"); renderCards();
-        }
-      }
+    if (hasTalent(att.id, "momentum") && ctx.wasUp && target.dead) { att.ref.sp = Math.min(att.ref.maxSp, att.ref.sp + 4); addFury(12); talFx(att, "Momentum +4 SP", "#6f8cff"); }
+  });
+  onBattle("acted", (u, act) => {
+    if (u.side !== "hero") return;
+    const me = talState(u); if (me.struck) me.opened = true;
+    if (act && act.kind === "guard" && hasTalent(u.id, "bulwark") && alive(u)) {
+      const h = Math.max(2, Math.round(u.ref.maxHp * 0.1)); u.ref.hp = Math.min(u.ref.maxHp, u.ref.hp + h); u.ref.sp = Math.min(u.ref.maxSp, u.ref.sp + 2);
+      talFx(u, `Bulwark +${h}`, "#6fc0d0"); renderCards();
     }
-  };
-  const _damageT = damage;
-  damage = function (target, amount, o = {}) {
-    const r = _damageT(target, amount, o);
-    if (battle && target && target.side === "hero" && G.talents && G.talents[target.id]) {
-      const me = talState(target), h = target.ref;
-      if (h.hp <= 0 && hasTalent(target.id, "laststand") && !me.stand) { me.stand = true; h.hp = 1; talFx(target, "LAST STAND"); shake = Math.max(shake, 8); Music.sound("crit"); }
-      if (h.hp > 0 && h.hp < h.maxHp * 0.3 && hasTalent(target.id, "secondwind") && !me.wind) {
-        me.wind = true; const heal = Math.round(h.maxHp * 0.25); h.hp = Math.min(h.maxHp, h.hp + heal);
-        setTimeout(() => { if (battle) talFx(target, `Second Wind +${heal}`, "#6bff9a"); }, 200);
-      }
+  });
+  onBattle("damaged", ctx => {
+    const target = ctx.target;
+    if (target.side !== "hero" || !G.talents || !G.talents[target.id]) return;
+    const me = talState(target), h = target.ref;
+    if (h.hp <= 0 && hasTalent(target.id, "laststand") && !me.stand) { me.stand = true; h.hp = 1; talFx(target, "LAST STAND"); shake = Math.max(shake, 8); Music.sound("crit"); }
+    if (h.hp > 0 && h.hp < h.maxHp * 0.3 && hasTalent(target.id, "secondwind") && !me.wind) {
+      me.wind = true; const heal = Math.round(h.maxHp * 0.25); h.hp = Math.min(h.maxHp, h.hp + heal);
+      setTimeout(() => { if (battle) talFx(target, `Second Wind +${heal}`, "#6bff9a"); }, 200);
     }
-    return r;
-  };
+  });
   // ---- choosing: after a battle, or on the Party screen
   D.talent_0 = { who: null, text: "", choices: [] };
   function talentDialog(id) {

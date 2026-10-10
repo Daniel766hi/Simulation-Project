@@ -18,7 +18,7 @@
   const champHas = (u, k) => !!(u && u.champ && u.champ.includes(k));
   const spoils = () => (G.spoils = G.spoils || { shards: 0, cores: 0, champs: 0 });
   function champChance(o) {
-    if (!G || (G.stage === 0 && !(G.ng > 0))) return 0;   // the prologue stays a tutorial
+    if (!G || SIM.noChamp || (G.stage < 2 && !(G.ng > 0))) return 0;   // the first chapters stay simple: champions start in Chapter II
     if (o.boss || o.echo || o.weekly || o.apology) return 0;
     if (o.deep) return Math.min(0.45, 0.12 + 0.02 * o.deep);
     return Math.min(0.2, 0.04 + 0.01 * G.stage + 0.04 * (G.ng || 0));
@@ -97,40 +97,33 @@
   // ---- the rules each power adds
   const _foeAtkC = foeAtk;
   foeAtk = function (f) { return _foeAtkC(f) * (1 + 0.08 * (f.frenzy || 0)); };
-  const _chooseIntentC = chooseIntent;
-  chooseIntent = function (f) {
-    if (battle && champHas(f, "warded") && battle.round > 1 && battle.round % 3 === 1 && f.ward < f.wardMax && !f.dead) { f.ward = f.wardMax; popupText(f, "ward returns", AFFIX.warded.col); }
-    return _chooseIntentC(f);
-  };
+  onBattle("round", f => { if (champHas(f, "warded") && battle.round > 1 && battle.round % 3 === 1 && f.ward < f.wardMax && !f.dead) { f.ward = f.wardMax; popupText(f, "ward returns", AFFIX.warded.col); } });
   const CH_FX = [];   // rings where a power or a rune fires
   const chRing = (u, col) => { const p = unitPos(u); CH_FX.push({ x: p.x, y: p.y - unitTop(u) * 0.45, col, t0: time }); };
-  const _damageC = damage;
-  damage = function (target, amount, o = {}) {
-    if (!battle || !target) return _damageC(target, amount, o);
-    let amt = amount;
-    if (target.side === "foe" && target.champ && amt > 0) {
-      if (champHas(target, "ironhide")) amt = Math.max(1, Math.round(amt * 0.8));
+  onBattle("damage", ctx => {
+    const { target, o } = ctx;
+    if (target.side === "foe" && target.champ && ctx.amount > 0) {
+      if (champHas(target, "ironhide")) ctx.amount = Math.max(1, Math.round(ctx.amount * 0.8));
       if (target.ward > 0) {
-        const soak = Math.min(target.ward, amt); target.ward -= soak; amt -= soak;
+        const soak = Math.min(target.ward, ctx.amount); target.ward -= soak; ctx.amount -= soak;
         popupText(target, target.ward > 0 ? `ward -${soak}` : "WARD BROKEN", AFFIX.warded.col); chRing(target, AFFIX.warded.col);
         if (target.ward <= 0) { shake = Math.max(shake, 5); Music.sound("crit"); }
-        if (amt <= 0) { target.hurt = 0.2; return 0; }
+        if (ctx.amount <= 0) { target.hurt = 0.2; ctx.cancel = 0; }
       }
     }
-    if (target.side === "hero" && amt > 0 && !o.silent && runeOf(target.id, "armor") === "wall") {
+    if (target.side === "hero" && ctx.amount > 0 && !o.silent && runeOf(target.id, "armor") === "wall") {
       battle.wallUsed = battle.wallUsed || {};
-      if (!battle.wallUsed[target.id]) { battle.wallUsed[target.id] = true; amt = Math.max(1, Math.ceil(amt / 2)); popupText(target, "the Wall holds", RUNES.wall.col); chRing(target, RUNES.wall.col); }
+      if (!battle.wallUsed[target.id]) { battle.wallUsed[target.id] = true; ctx.amount = Math.max(1, Math.ceil(ctx.amount / 2)); popupText(target, "the Wall holds", RUNES.wall.col); chRing(target, RUNES.wall.col); }
     }
-    const r = _damageC(target, amt, o);
-    if (target.side === "foe" && target.champ) {
-      if (champHas(target, "frenzied") && r > 0 && !target.dead && (target.frenzy || 0) < 6) { target.frenzy = (target.frenzy || 0) + 1; if (target.frenzy % 2 === 0) popupText(target, `frenzy +${target.frenzy * 8}%`, AFFIX.frenzied.col); }
-      if (target.dead && champHas(target, "undying") && !target.rose) {
-        target.rose = true; target.dead = false; target.deathT = 0; target.hp = Math.round(target.maxHp * 0.3); target.st = {};
-        setTimeout(() => { if (!battle || target.dead) return; popupText(target, "RISES AGAIN", AFFIX.undying.col); chRing(target, AFFIX.undying.col); const p = unitPos(target); burst(p.x, p.y - 20, AFFIX.undying.col, 30, 80); Music.sound("boss"); shake = Math.max(shake, 8); blog(`${target.name} will not stay down. It rises again!`); }, 250);
-      }
+  });
+  onBattle("damaged", (ctx, r) => {
+    const target = ctx.target; if (target.side !== "foe" || !target.champ) return;
+    if (champHas(target, "frenzied") && r > 0 && !target.dead && (target.frenzy || 0) < 6) { target.frenzy = (target.frenzy || 0) + 1; if (target.frenzy % 2 === 0) popupText(target, `frenzy +${target.frenzy * 8}%`, AFFIX.frenzied.col); }
+    if (target.dead && champHas(target, "undying") && !target.rose) {
+      target.rose = true; target.dead = false; target.deathT = 0; target.hp = Math.round(target.maxHp * 0.3); target.st = {};
+      setTimeout(() => { if (!battle || target.dead) return; popupText(target, "RISES AGAIN", AFFIX.undying.col); chRing(target, AFFIX.undying.col); const p = unitPos(target); burst(p.x, p.y - 20, AFFIX.undying.col, 30, 80); Music.sound("boss"); shake = Math.max(shake, 8); blog(`${target.name} will not stay down. It rises again!`); }, 250);
     }
-    return r;
-  };
+  });
   // ---- runes, and what champions do when they hit or are hit
   const RUNES = {
     hooks: { slot: "weapon", name: "Rune of Hooks", col: "#ff4a5a", desc: "3 in 10 hits open a wound (bleed 3 for 3 turns)" },
@@ -144,10 +137,9 @@
   const temperRec = id => ((G.temper = G.temper || {})[id] = G.temper[id] || {});
   const temperOf = (id, slot) => ((G.temper || {})[id] || {})[slot] || 0;
   const runeOf = (id, slot) => ((G.temper || {})[id] || {})[slot === "weapon" ? "rw" : "ra"] || null;
-  const _attackRollC = attackRoll;
-  attackRoll = function (att, target, power, o = {}) {
-    const r = _attackRollC(att, target, power, o);
-    if (!battle || !att || !target || !r || r.dodged || !(r.dmg > 0)) return r;
+  onBattle("hit", (ctx, r) => {
+    const { att, target, power } = ctx;
+    if (!r || r.dodged || !(r.dmg > 0)) return;
     if (att.side === "foe" && target.side === "hero") {
       if (champHas(att, "vampiric") && !att.dead) { const h = Math.max(1, Math.round(r.dmg * 0.35)); att.hp = Math.min(att.maxHp, att.hp + h); popupText(att, `+${h}`, AFFIX.vampiric.col); chRing(att, AFFIX.vampiric.col); }
       if (champHas(att, "swift") && !att.dead && alive(target) && att.swiftRound !== battle.round && Math.random() < 0.4) {
@@ -171,38 +163,33 @@
       }
       if (wr === "salt" && !target.dead && Math.random() < 0.25) { target.st.brk = Math.max(target.st.brk || 0, 3); popupText(target, "armour cracks", R.col); chRing(target, R.col); }
     }
-    return r;
-  };
-  const _heroChooseC = heroChoose;
-  heroChoose = function (u) {
-    if (battle && u && runeOf(u.id, "armor") === "wells" && alive(u) && u.ref.hp < u.ref.maxHp) {
+  });
+  onBattle("turn", u => {
+    if (runeOf(u.id, "armor") === "wells" && alive(u) && u.ref.hp < u.ref.maxHp) {
       const h = Math.max(2, Math.round(u.ref.maxHp * 0.06)); u.ref.hp = Math.min(u.ref.maxHp, u.ref.hp + h); popupText(u, `+${h}`, RUNES.wells.col); chRing(u, RUNES.wells.col);
     }
-    return _heroChooseC(u);
-  };
+  });
   // the champion's powers, on the line above it
   const _breakInfoC = breakInfo;
   breakInfo = function (f) {
     const b = _breakInfoC(f); if (!f.champ) return b;
-    const tag = "★" + f.champ.map(k => AFFIX[k].name.toUpperCase()).join(" ") + (f.ward > 0 ? ` ${f.ward}` : "") + (f.frenzy ? ` +${f.frenzy * 8}%` : "");
+    const SHORT = { vampiric: "VAMPIRE", ironhide: "IRON", swift: "SWIFT", thorned: "THORNS", frenzied: "FRENZY", warded: "WARD", undying: "UNDYING" };   // short, so the line stays over its own monster
+    const tag = "★" + f.champ.map(k => k === "warded" ? (f.ward > 0 ? `WARD ${f.ward}` : "") : k === "frenzied" && f.frenzy ? `FRENZY +${f.frenzy * 8}%` : k === "undying" && f.rose ? "" : SHORT[k]).filter(Boolean).join(" ");
     return b ? `${b} · ${tag}` : tag;
   };
   // ---- spoils
-  const _victoryC = victory;
-  victory = function () {
-    const B = battle; let shards = 0, cores = 0, champs = 0, purse = 0;
-    if (B) for (const f of B.foes) {
+  onBattle("won", B => {
+    let shards = 0, cores = 0, champs = 0, purse = 0;
+    for (const f of B.foes) {
       if (f.summoned) continue;
       shards += 1 + (Math.random() < 0.35 ? 1 : 0);
       if (f.champ) { champs++; cores++; shards += 3; purse += Math.round(rand(...MONSTERS[f.id].coin) * (1 + f.champ.length * 0.5)); }
       if (f.boss) { shards += 5; cores++; }
     }
-    _victoryC();
-    if (!B || battle !== B) return;
     const S = spoils(); S.shards += shards; S.cores += cores; S.champs += champs; G.coins += purse;
     blog(`${battle.log} Spoils: +${shards} salt shard${shards === 1 ? "" : "s"}${cores ? `, +${cores} champion core${cores === 1 ? "" : "s"}` : ""}${purse ? `, +${purse} coin from the champion's hoard` : ""}.`);
     save(); updateHud();
-  };
+  });
   // ---- the anvil: tempering and runes
   const TEMPER_MAX = 5;
   const temperCost = L => ({ shards: 2 * L + 1, coin: 15 * L });   // for going up to level L
@@ -293,7 +280,7 @@
   extraJournalHtml = function () {
     const S = G.spoils; if (!S && !G.temper) return _extraJournalCh();
     const rows = G.members.filter(id => temperOf(id, "weapon") || temperOf(id, "armor") || runeOf(id, "weapon") || runeOf(id, "armor"))
-      .map(id => `<li><b>${esc(G.party[id].name)}</b>: weapon +${temperOf(id, "weapon")}, armour +${temperOf(id, "armor")}${[runeOf(id, "weapon"), runeOf(id, "armor")].filter(Boolean).map(k => ` · ${RUNES[k].name} (${RUNES[k].desc})`).join("")}</li>`).join("");
+      .map(id => `<li><b>${htmlEsc(G.party[id].name)}</b>: weapon +${temperOf(id, "weapon")}, armour +${temperOf(id, "armor")}${[runeOf(id, "weapon"), runeOf(id, "armor")].filter(Boolean).map(k => ` · ${RUNES[k].name} (${RUNES[k].desc})`).join("")}</li>`).join("");
     return _extraJournalCh() + `<h3>Spoils and the anvil</h3><ul><li>${(S || {}).shards || 0} salt shards, ${(S || {}).cores || 0} champion cores. Champions defeated: ${(S || {}).champs || 0}.</li>${rows}</ul>`;
   };
   ACHIEVEMENTS.push(

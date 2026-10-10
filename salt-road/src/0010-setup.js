@@ -50,9 +50,10 @@
   // text drawn on the picture (intents, damage, names) follows Settings > Comfort > Font, like the panels
   const canvasFont = (px, bold) => SETTINGS.font === "pixel" ? `${bold ? "700 " : ""}${px}px 'Pixelify Sans', 'Courier New', monospace` : `700 ${px}px 'Atkinson Hyperlegible', 'Segoe UI', Arial, sans-serif`;
   let paused = false;
+  const SIM = { fast: false };   // the balance simulation (tests only) runs battles with no waiting
   // Battle pacing waits while paused, and runs faster on the "fast" battle speed
   const wait = ms => new Promise(r => {
-    const go = () => { if (paused) { setTimeout(go, 100); return; } setTimeout(r, REDUCED ? Math.min(ms, 120) : SETTINGS.battle === "fast" ? ms * 0.45 : ms); };
+    const go = () => { if (paused) { setTimeout(go, 100); return; } setTimeout(r, SIM.fast ? 0 : REDUCED ? Math.min(ms, 120) : SETTINGS.battle === "fast" ? ms * 0.45 : ms); };
     go();
   });
   const rand = (a, b) => a + Math.random() * (b - a);

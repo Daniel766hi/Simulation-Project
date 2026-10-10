@@ -28,7 +28,7 @@
     const dt = Math.min(0.05, (now - last) / 1000); last = now;
     try {
       if (!paused) { update(dt); if (G && mode !== "title") { G.stats = G.stats || {}; G.stats.time = (G.stats.time || 0) + dt; } }
-      render(); paintScene();
+      if (!SIM.fast) { render(); paintScene(); }   // the balance simulation needs no pictures
     } catch (err) {
       const msg = String(err && err.message || err);
       if (!loopErrors.includes(msg)) { loopErrors.push(msg); console.error("Salt Road frame error:", err); showErrorNote(msg, "frame"); }
