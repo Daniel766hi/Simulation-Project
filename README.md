@@ -348,10 +348,10 @@ The site is static HTML (Chart.js is vendored in `vendor/`), so any static host 
 
 # The Salt Road (`salt-road.html`)
 
-A single-file canvas RPG. It needs no build step, and everything, music and voices included, is synthesised live in the browser.
+A single-file canvas RPG. Everything, music and voices included, is synthesised live in the browser, and the page plays offline. It is built from ordered parts in `salt-road/src` with `node tools/salt-road-build.mjs` (no dependencies). `salt-road/README.md` explains the parts and the browser tests.
 
 - **Voices.** A formant speech synthesiser babbles each line in the speaker's own voice, with pitch, throat size, pace, breath, rasp, growl, choir, water, metal and echo. Settings has Voiced, Blips, Spoken (browser text-to-speech) or Off.
-- **Saves for every player.** The game saves in the browser as you play. Where storage is blocked, progress is kept with the tab and the title screen says so. Save codes and save files carry a game anywhere. There is no account or server.
+- **Saves for every player.** The game saves in the browser as you play. Where storage is blocked, progress is kept with the tab and the title screen says so. Save codes and save files carry a game anywhere. There is no account or server. The title screen shows what Continue leads to (chapter, time played, party), and Start over asks before it erases a save. After an ending nothing more is saved, and the New Game+ offer waits on the title screen until it is used. Coming back after an hour or more opens with a short "Previously" card: the last page of Tobin's Chronicle and the current goal.
 - **Arms and armour.** Each hero has a weapon and an armour slot beside the relic, with five tiers per weapon kind. The smiths sell them: Odo in Kessa, Dov in Oru and Qasim on the Dry Sea, with better stock as the story opens up. Buying fits the gear at once and trades the old piece in for half. The metal, glow and trim show on the battle figures. Because gear can be bought, every monster has a quarter more health and attack.
 - **Champions, spoils and the anvil.** Any ordinary monster can turn up as a champion, with more health and one or two powers that change the fight:
   - Vampiric: heals from every wound it deals.
@@ -395,11 +395,27 @@ A single-file canvas RPG. It needs no build step, and everything, music and voic
   A party three levels behind still wins most fights. Each defeat by the same boss makes it a little weaker next time, up to three defeats, and Story difficulty stays the gentle option.
 - **How it works** (pause menu): a guide to every system, in plain words. Each topic appears once you have met that system, marked "new". Champions now start in Chapter II.
 - **Clearer battles.** Floating words over a fighter go up one after another instead of on top of each other, and champion tags are shorter. Champion powers, runes, talents and the King's rules share one set of battle hooks; a rule that fails is logged and skipped, and the fight goes on.
-- **Boss phases.** At half health every boss transforms into a second form with its own design: the Butcher unbound, the Brood Queen, the Dead Conductor, Voss as the Bell Incarnate, Hollis as one great maw, the Ledger Made Flesh, a bloated Gulp, Maw fused with his ship, the Screaming Choir, Vela as the storm itself, Aurel as the Deep's Crown, Corvin as the Golden Debt, the Burning Ledger Tree, the Toll Engine, the Abyss Mouth and the three-headed Crystal Dragon. The change plays out on screen (a white flicker, bursting shards, a title splash). The boss then speaks, flares with an aura, hits harder, moves faster and readies its worst move next.
+- **Boss phases.** At half health every boss transforms into a second form with its own design: the Butcher unbound, the Brood Queen, the Dead Conductor, Voss as the Bell Incarnate, Hollis as one great maw, the Ledger Made Flesh, a bloated Gulp, Maw fused with his ship, the Screaming Choir, Vela as the storm itself, Aurel as the Deep's Crown, Corvin as the Golden Debt, the Burning Ledger Tree, the Toll Engine, the Abyss Mouth and the three-headed Crystal Dragon. The change plays out on screen (a white flicker, bursting shards, a title splash). The boss then speaks, flares with an aura, hits harder, moves faster and readies its worst move next. Hollis keeps his own three phases instead (the drowned at 60%, the Tide at 30%), so he transforms without the extra strength.
+- **Comfort.** A controller works everywhere: A talks, B goes back, X dashes (hold to run), Y opens the party, Select the journal, LB the minimap, Start pauses, and the D-pad or left stick moves. Settings > Keys rebinds any action, with an AZERTY (ZQSD) preset, and the key hints follow. Settings > Comfort has three text sizes and softer battle flashes. Reading text is set in Atkinson Hyperlegible (letters such as e, o and c, or l, I and 1, are drawn to be told apart); the pixel face stays for titles and banners, and Font: Pixel puts it everywhere. Cutscene lines wait for a key press or a tap (or, on Auto, stay long enough to read); E moves on one line and Esc skips. In battle, the Fury gauge sits right above the commands at the bottom right and reads Ready when full, and every condition shows its turns left, on the hero cards and above each enemy.
+- **Rebuilding Kessa.** From Chapter I, Elder Nadia's board by the well lists six places to rebuild with coin and salt shards. Each has two levels, the builders finish by the next dawn (sleep at night to get there sooner), and the new building appears on its lot:
+
+  | Place | Level 1 | Level 2 |
+  |---|---|---|
+  | Herb Garden | Salves heal 30 | Salves heal 40, Tonics restore 10 SP |
+  | Salt Bed Inn | Benched companions earn 75% XP | They earn full XP |
+  | Market Hall | Two Salves to collect each day | Plus a Tonic and a rarer remedy |
+  | Village Forge | Arms and armour 10% cheaper | 20% cheaper |
+  | Training Yard | Battles start with 15 Fury | 30 Fury |
+  | Courier Post | Battles pay 15% more coin | 30% more |
+
+  Finishing everything brings a "Home Again" card and an achievement, and the endings remember what was built.
+- **Phones held upright.** The party, coin and goal panels sit under the picture with the dialogue and battle menus, so the road stays clear. The pause menu, party screen and journal use the whole screen.
+- **Act III, part 1: The Rime.** From Chapter X, a stair at the south rim of the Dry Sea leads down to a frozen salt shelf. Four generations ago the village of Kelda froze its rain in the Ice House so the Guild could never sell it, and Saint Isolde froze with it to keep it. Now the Bell rings and the ice wants to be water again; let go all at once, it would drown the caravan road. The region has a walled village with a healer and a hearth, a frozen lake, the cutters' quarry, three salt tablets, four new monsters (Rime Wolf, Frost Wight, Ice Thrall, Hoarfrost Moth) and a two-phase boss, Saint Isolde, who becomes the Thaw. The player chooses how she lets go, and the journal, the Chronicle and the endings remember it. The world map grew by fifty rows for it; older saves are padded to match.
 - **The Long Road** (Pause menu):
   - a Courier Rank and perks kept across playthroughs
   - a daily welcome-back gift with a visiting streak
-  - the Deep Stair, an endless descent with boons between floors
+  - the Deep Stair, an endless descent through five biomes (Salt Steps, Drowned Galleries, Counting Vaults, Storm Shaft, Sunken Choir), each with its own monsters, backdrop and twist. There are twelve boons between floors, one of them rare, and relics at floors 10, 20 and 30
+  - the Daily Descent, one Stair run a day with the same floors, champions and boon offers for every player, plus a record of recent runs
   - the Hall of Echoes, boss rematches at three tiers
   - a Weekly Trial
 

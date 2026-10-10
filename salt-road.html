@@ -7,7 +7,7 @@
 <title>The Salt Road</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Pixelify+Sans:wght@400;500;700&display=swap">
 <style>
   /* One deliberate look: pixel art at dusk on the salt flats, blood-red for danger.
      The palette is fixed so it reads the same on any host theme. */
@@ -23,12 +23,17 @@
     --gold: #ffcf4a;
     --blood: #c8102e;
     --sp: #6f8cff;
-    --font: "Pixelify Sans", "Courier New", monospace;
+    /* reading text is set in Atkinson Hyperlegible, drawn so that e, o, c and Q, or l, I and 1, can't be mistaken;
+       the pixel face stays for titles, banners and names on show. Settings > Comfort > Font can make it all pixel. */
+    --font-pixel: "Pixelify Sans", "Courier New", monospace;
+    --font-read: "Atkinson Hyperlegible", "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
+    --font: var(--font-read);
   }
+  body.font-pixel { --font: var(--font-pixel); letter-spacing: .03em; }
   html, body { height: 100%; }
   [hidden] { display: none !important; }
   body {
-    margin: 0; background: var(--night); color: var(--text); font-family: var(--font);
+    margin: 0; background: var(--night); color: var(--text); font-family: var(--font); font-variant-ligatures: none;
     display: flex; flex-direction: column; align-items: center; padding-inline: 16px; padding-block: 12px;
     overflow-x: hidden; -webkit-user-select: none; user-select: none;
     -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; touch-action: manipulation;   /* a held button never opens a callout, a double tap never zooms */
@@ -70,38 +75,45 @@
   .toast { position: absolute; left: 50%; top: 24%; transform: translateX(-50%); background: var(--panel); border: 1px solid var(--edge); border-radius: 8px; padding: 8px 14px; font-size: 16px; text-align: center; max-width: 80%; pointer-events: none; z-index: 6; }
   .banner { position: absolute; left: 50%; top: 13%; transform: translateX(-50%); text-align: center; pointer-events: none; animation: banner 2.8s ease forwards; }
   .banner small { display: block; font-size: 12px; letter-spacing: .3em; color: var(--scarf); text-transform: uppercase; }
+  .banner small, .banner span, .splash small, .splash span, .screen h1, .screen h2 { font-family: var(--font-pixel); }
   .banner span { font-size: clamp(20px, 3.4vw, 30px); font-weight: 700; letter-spacing: .08em; text-shadow: 0 3px 0 #2b2350, 0 0 18px rgba(0,0,0,.6); }
   @keyframes banner { 0% { opacity: 0; transform: translate(-50%, 8px); } 15%, 75% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; } }
 
   .battle-top { position: absolute; left: 10px; right: 10px; top: 10px; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; pointer-events: none; }
   .turnbar { display: flex; gap: 4px; flex-wrap: wrap; max-width: 64%; }
-  .turnbar span { font-size: 11px; padding: 2px 7px; border-radius: 4px; background: var(--panel); border: 1px solid var(--edge); }
+  .turnbar span { font-size: 12px; padding: 3px 8px; border-radius: 4px; background: var(--panel); border: 1px solid var(--edge); }
   .turnbar span.now { border-color: var(--gold); color: var(--gold); }
   .turnbar span.foe { color: #ff8a8a; }
-  .fury { display: flex; align-items: center; gap: 6px; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: #ffb14a; background: var(--panel); border: 1px solid var(--edge); border-radius: 6px; padding: 3px 8px; }
-  .fury .bar { width: 110px; height: 7px; }
+  /* everything a turn needs sits together at the bottom right: the Fury gauge right above the commands */
+  .cmd { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+  .fury { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: #ffb14a; background: var(--panel); border: 2px solid var(--edge); border-radius: 8px; padding: 6px 10px; }
+  .fury .bar { flex: 1; width: auto; height: 12px; }
   .fury .bar i { background: linear-gradient(90deg, #c8102e, #ffb14a); transition: width .25s; }
-  .fury.full { border-color: #ffb14a; box-shadow: 0 0 12px rgba(255,177,74,.5); animation: furyPulse 1s ease-in-out infinite; }
+  .fury b { min-width: 3.6em; text-align: right; font-variant-numeric: tabular-nums; letter-spacing: .04em; }
+  .fury.full { border-color: #ffb14a; color: #ffe08a; background: rgba(60,30,8,.92); box-shadow: 0 0 14px rgba(255,177,74,.55); animation: furyPulse 1s ease-in-out infinite; }
   @keyframes furyPulse { 50% { box-shadow: 0 0 20px rgba(255,177,74,.8); } }
   @media (prefers-reduced-motion: reduce) { .fury.full { animation: none; } }
   .blog { font-size: 14px; background: var(--panel); border: 1px solid var(--edge); border-radius: 6px; padding: 5px 10px; max-width: 34%; min-height: 1.6em; line-height: 1.3; }
-  .battle-bottom { position: absolute; left: 10px; right: 10px; bottom: 10px; display: grid; grid-template-columns: 1fr 250px; gap: 10px; align-items: end; }
+  .battle-bottom { position: absolute; left: 10px; right: 10px; bottom: 10px; display: grid; grid-template-columns: 1fr 300px; gap: 10px; align-items: end; }
   .cards { display: flex; gap: 6px; flex-wrap: wrap; }
-  .card { flex: 1 1 120px; max-width: 190px; background: var(--panel); border: 2px solid var(--edge); border-radius: 8px; padding: 6px 8px; font-size: 12px; }
+  .card { flex: 1 1 130px; max-width: 220px; background: var(--panel); border: 2px solid var(--edge); border-radius: 8px; padding: 7px 10px; font-size: 14px; }
   .card.active { border-color: var(--gold); box-shadow: 0 0 12px rgba(255,207,74,.35); }
   .card.ko { opacity: .45; }
   .card.pick { cursor: pointer; border-color: var(--scarf); }
   .card .nm { display: flex; justify-content: space-between; font-weight: 700; margin-bottom: 3px; }
   .card .nm small { font-weight: 500; color: var(--muted); }
-  .card .bar { height: 6px; margin-top: 2px; }
-  .card .nums { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); margin-top: 1px; font-variant-numeric: tabular-nums; }
-  .chips { display: flex; gap: 3px; flex-wrap: wrap; margin-top: 3px; min-height: 13px; }
-  .chip { font-size: 9px; padding: 0 4px; border-radius: 3px; background: #2b2350; }
+  .card .bar { height: 8px; margin-top: 3px; }
+  .card .nums span { white-space: nowrap; }
+  .card .nums { display: flex; flex-wrap: wrap; column-gap: 8px; justify-content: space-between; font-size: 12px; color: var(--muted); margin-top: 1px; font-variant-numeric: tabular-nums; }
+  .chips { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; min-height: 16px; }
+  .chip { font-size: 11px; padding: 1px 6px; border-radius: 4px; background: #2b2350; white-space: nowrap; }
+  .chip i { font-style: normal; opacity: .75; margin-left: 3px; font-variant-numeric: tabular-nums; }
   .chip.bleed { background: #6b0f1d; color: #ffd0d6; } .chip.stun { background: #6b5a10; } .chip.weak { background: #3d2b5a; } .chip.guard { background: #1f4a5a; } .chip.veil { background: #1b5f63; } .chip.strong { background: #6b3a10; } .chip.brk { background: #5a2a2a; } .chip.taunt { background: #2a4a2a; }
-  .menu { background: var(--panel); border: 2px solid var(--edge); border-radius: 8px; padding: 7px; display: flex; flex-direction: column; gap: 4px; max-height: 230px; overflow-y: auto; }
-  .menu .title { font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--scarf); }
-  .menu button { padding: 5px 9px; }
-  .menu button small { display: none; font-size: 11px; color: var(--muted); }
+  .menu { background: var(--panel); border: 2px solid var(--edge); border-radius: 8px; padding: 8px; display: flex; flex-direction: column; gap: 6px; max-height: 380px; overflow-y: auto; }
+  .menu .title { font-size: 13px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--scarf); }
+  .menu button { padding: 8px 12px; font-size: 16px; }
+  .menu button.chain { border-color: var(--gold); color: var(--gold); background: rgba(255,207,74,.12); font-weight: 700; }
+  .menu button small { display: none; font-size: 12px; color: var(--muted); }
   .menu button.sel small, .menu button:hover small { display: block; }
 
   .overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(10,8,22,.8); border-radius: 10px; z-index: 7; padding: 16px; }
@@ -224,6 +236,17 @@
     .dialog, #cineBox, #banter { top: calc(100% + 8px) !important; bottom: auto !important; }
     .battle-bottom { top: calc(100% + 8px) !important; bottom: auto !important; grid-template-columns: 1fr !important; }
     .battle-bottom .menu { max-height: none !important; }
+    /* the party, coin and goal panels sit there too, so the short picture stays clear for the road */
+    .hud { inset: calc(100% + 8px) 0 auto 0; gap: 8px; }
+    .hud > div:first-child, .hud .goal { flex: 1 1 0; min-width: 0; max-width: none; margin: 0; }
+    .hud .goal { font-size: 12px; padding: 6px 9px; } .hud .goal b { font-size: 10px; }
+    .pm { grid-template-columns: minmax(0, 1fr) 72px; font-size: 12px; } .row { font-size: 11px; max-width: none; }
+    /* menus and the party and journal screens take the whole screen, like the story cards */
+    .overlay { position: fixed; inset: 0; z-index: 50; border-radius: 0; align-items: flex-start; padding: max(12px, env(safe-area-inset-top)) 10px max(12px, env(safe-area-inset-bottom)); }
+    .overlay .roster { max-height: 100%; }
+    .pmenu { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; } .pmenu button { padding: 8px 6px; }
+    .toast { font-size: 13px; padding: 6px 10px; }
+    .frame:has(#card:not([hidden])) .hud { visibility: hidden; }   /* a story card is read on its own */
   }
   .rotateTip { display: none; font-size: 13px; color: var(--gold); margin: 4px 0 0; }
 </style>
@@ -269,8 +292,8 @@
   <div class="banner" id="banner" hidden><small>Entering</small><span id="bannerText"></span></div>
 
   <div id="battleUI" hidden>
-    <div class="battle-top"><div class="turnbar" id="turnbar"></div><div class="fury" id="fury"><span>Fury</span><div class="bar"><i id="furyFill"></i></div></div><div class="blog" id="blog"></div></div>
-    <div class="battle-bottom"><div class="cards" id="cards"></div><div class="menu" id="menu"></div></div>
+    <div class="battle-top"><div class="turnbar" id="turnbar"></div><div class="blog" id="blog"></div></div>
+    <div class="battle-bottom"><div class="cards" id="cards"></div><div class="cmd" id="cmd"><div class="fury" id="fury"><span class="fl">Fury</span><div class="bar"><i id="furyFill"></i></div><b id="furyPct">0%</b></div><div class="menu" id="menu"></div></div></div>
   </div>
 
   <div class="overlay" id="rosterUI" hidden>
@@ -383,9 +406,11 @@
   })();
   const $ = id => document.getElementById(id);
   const REDUCED = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const TILE = 16, W = 170, H = 140, OW = 72, OH = 54, VIEW_W = 320, VIEW_H = 192;
+  const TILE = 16, W = 170, H = 190, OW = 72, OH = 54, VIEW_W = 320, VIEW_H = 192;
   const SETTINGS = { music: 0.8, sfx: 0.8, text: "normal", battle: "normal", shake: true };
   try { Object.assign(SETTINGS, JSON.parse(localStorage.getItem("salt-road-settings") || "{}")); } catch { /* storage unavailable */ }
+  // text drawn on the picture (intents, damage, names) follows Settings > Comfort > Font, like the panels
+  const canvasFont = (px, bold) => SETTINGS.font === "pixel" ? `${bold ? "700 " : ""}${px}px 'Pixelify Sans', 'Courier New', monospace` : `700 ${px}px 'Atkinson Hyperlegible', 'Segoe UI', Arial, sans-serif`;
   let paused = false;
   const SIM = { fast: false };   // the balance simulation (tests only) runs battles with no waiting
   // Battle pacing waits while paused, and runs faster on the "fast" battle speed
@@ -1502,7 +1527,7 @@
   const stickEnd = () => { stickId = null; stick.x = stick.y = 0; knob.style.transform = ""; };
   stickEl.addEventListener("pointerup", e => { if (e.pointerType !== "touch") stickEnd(); }); stickEl.addEventListener("pointercancel", e => { if (e.pointerType !== "touch") stickEnd(); });
   $("bA").addEventListener("pointerdown", e => {   // on touch, ACT moves a scene or cinematic on by one line, where E on a keyboard skips it
-     e.preventDefault(); Music.init(); if (mode === "scene" && scene) scene.t = 1e9; else if (mode === "cine" && cine) cine.t = cine.shots[cine.i].dur; else if (mode === "dialog") dialogAdvance(); else if (mode === "play") interact(); else if (mode === "title") startGame(); else if (mode === "card") $("cardBtn").click(); });
+     e.preventDefault(); Music.init(); if (mode === "scene" && scene) sceneNext(); else if (mode === "cine" && cine) cineNext(); else if (mode === "dialog") dialogAdvance(); else if (mode === "play") interact(); else if (mode === "title") startGame(); else if (mode === "card") $("cardBtn").click(); });
   $("dialog").addEventListener("pointerdown", e => { if (mode === "dialog" && !e.target.closest("button")) { e.preventDefault(); dialogAdvance(); } });
   // a held finger on the controls must stay a game input: no long-press menu, no text selection, no pinch zoom
   for (const el of [$("bA"), $("bB"), stickEl]) { el.addEventListener("contextmenu", e => e.preventDefault()); el.addEventListener("touchstart", e => e.preventDefault(), { passive: false }); }
@@ -1917,6 +1942,7 @@
       b.innerHTML = `${it.label}${it.sub ? `<small>${it.sub}</small>` : ""}`;
       b.disabled = !!it.disabled;
       if (i === menuState.sel) b.classList.add("sel");
+      if (/Chain Assault/.test(it.label)) b.classList.add("chain");
       b.addEventListener("click", () => { if (!it.disabled) { Music.sound("click"); it.go(); renderMenu(); } });
       b.addEventListener("mouseenter", () => { if (menuState) { menuState.sel = i; highlightTarget(); } });
       el.appendChild(b);
@@ -1940,7 +1966,7 @@
   }
 
   // ---- resolving actions
-  function addFury(n) { if (!battle) return; battle.fury = Math.min(100, battle.fury + n); const el = $("fury"); $("furyFill").style.width = battle.fury + "%"; el.classList.toggle("full", battle.fury >= 100); }
+  function addFury(n) { if (!battle) return; battle.fury = Math.min(100, battle.fury + n); const el = $("fury"); $("furyFill").style.width = battle.fury + "%"; el.classList.toggle("full", battle.fury >= 100); $("furyPct").textContent = battle.fury >= 100 ? "Ready" : Math.floor(battle.fury) + "%"; el.title = battle.fury >= 100 ? "Fury is full: Chain Assault is in the menu" : "Fury fills as your party deals and takes damage"; }
   function damage(target, amount, o = {}) {
     let d = amount;
     if (target.st.guard) d = Math.ceil(d / 2);
@@ -2762,7 +2788,7 @@
     const k = canvas.width / VIEW_W; ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
     HI_LAST.length = 0;
     for (const [t, x, y, px, c] of HI) {
-      ctx.font = `${Math.round(px * k)}px 'Pixelify Sans', 'Courier New', monospace`;
+      ctx.font = canvasFont(Math.round(px * k));
       const tw = ctx.measureText(t).width / k; HI_LAST.push({ text: t, x: x - tw / 2, y: y - px * 0.8, w: tw, h: px });   // buffer units, for the layout audit
       ctx.fillStyle = "#1b1633"; ctx.fillText(t, Math.round(x * k + k * 0.75), Math.round(y * k + k * 0.75)); ctx.fillStyle = c; ctx.fillText(t, Math.round(x * k), Math.round(y * k));
     }
@@ -2984,8 +3010,8 @@
         const half = hiW(label, 7) / 2 + 6;
         extra.forEach(([t, c]) => { const w = hiW(t, 6) / 2; hiText(t, /BREAK|EXPOSED/.test(t) ? p.x - half - w : p.x + half + w, ly, 6, c); });
       } else extra.forEach(([t, c], i) => hiText(t, p.x, ly - 9 * (i + 1), 6, c));
-      const sts = Object.keys(f.st).filter(k => ["bleed", "stun", "weak", "guard", "mark", "brk"].includes(k));
-      sts.forEach((k, i) => { g.fillStyle = { bleed: "#c8102e", stun: "#ffcf4a", weak: "#b08aff", guard: "#6fc0d0", mark: "#ff9a3d", brk: "#aa5a5a" }[k]; g.fillRect(p.x + bw / 2 + 3 + i * 5, by, 4, 3); });
+      const sl = statusLine(f);   // what is on it, and for how many more turns, in words
+      if (sl) { if (f.boss) hiText(sl, p.x, ly + 9, 6, "#c9e8ff"); else hiText(sl, p.x, ly - 9 * (extra.length + 1), 6, "#c9e8ff"); }
       if (B.hoverTarget === f || B.current === f) { g.strokeStyle = B.current === f ? "#ff6b6b" : "#ffcf4a"; g.lineWidth = 1; const w2 = f.boss ? 60 : 34; g.strokeRect(p.x - w2 / 2 + .5, p.y - (f.boss ? 108 : 56) + .5, w2, f.boss ? 112 : 58); }
     }
     for (const h of B.heroes) {
@@ -3188,11 +3214,29 @@
     $("coins").textContent = `◆ ${G.coins}`;
     const talkReady = typeof bondAvailable === "function" && G.members.some(id => bondAvailable(id));
     $("partyBtn").classList.toggle("glow", talkReady); $("partyBtn").textContent = talkReady ? "Party (P) ★ talk" : "Party (P)";
-    $("items").textContent = Object.entries(G.items).filter(([, n]) => n > 0).map(([k, n]) => `${ITEMS[k].name.split(" ").pop()} ×${n}`).join(" · ");
+    // short names, unless two would read the same (a Salve and a Greater Salve)
+    const held = Object.entries(G.items).filter(([, n]) => n > 0), short = k => ITEMS[k].name.split(" ").pop();
+    $("items").textContent = held.map(([k, n]) => `${held.filter(([j]) => short(j) === short(k)).length > 1 ? ITEMS[k].name : short(k)} ×${n}`).join(" · ");
     const t = goal();
     $("goalText").textContent = t.text; $("chapter").textContent = t.ch || "Goal";
     $("goal").hidden = !t.text;
   }
+  // conditions with what is left of them. Counted ones tick down as their holder's turn starts, so a Weak of 2 lasts
+  // one more of its turns; Bleed hurts once per turn for as many turns as it shows.
+  function statusTags(u) {
+    const st = (u && u.st) || {}, out = [], left = v => Math.max(1, (Number(v) || 1) - 1), s = n => n === 1 ? "" : "s";
+    if (st.bleed) out.push({ k: "bleed", name: "Bleed", n: st.bleed.turns, tip: `Bleeding: loses ${st.bleed.dmg} health at the start of each turn, for ${st.bleed.turns} more turn${s(st.bleed.turns)}.` });
+    if (st.stun) out.push({ k: "stun", name: "Stun", tip: "Stunned: loses its next turn." });
+    if (st.weak) out.push({ k: "weak", name: "Weak", n: left(st.weak), tip: `Weakened: hits 30% softer for ${left(st.weak)} more turn${s(left(st.weak))}.` });
+    if (st.strong) out.push({ k: "strong", name: "Strong", n: left(st.strong), tip: `Strengthened: hits 30% harder for ${left(st.strong)} more turn${s(left(st.strong))}.` });
+    if (st.brk) out.push({ k: "brk", name: "Broken", n: left(st.brk), tip: `Armour broken: its defence counts for almost nothing, for ${left(st.brk)} more turn${s(left(st.brk))}.` });
+    if (st.taunt) out.push({ k: "taunt", name: "Taunt", n: left(st.taunt), tip: `Drawing the enemies' attacks for ${left(st.taunt)} more turn${s(left(st.taunt))}.` });
+    if (st.guard) out.push({ k: "guard", name: "Guard", tip: "Guarded: takes half damage until the guard's next turn." });
+    if (st.veil) out.push({ k: "veil", name: "Veil", tip: "Veiled: the next blow misses." });
+    if (st.mark) out.push({ k: "mark", name: "Marked", tip: "Marked: the next hit on it is critical." });
+    return out;
+  }
+  const statusLine = u => statusTags(u).map(t => t.name + (t.n ? " " + t.n : "")).join(" · ");
   function renderCards() {
     if (!battle) return;
     const picking = menuState && menuState.page === "target" ? menuState.options.map(o => o.unit) : [];
@@ -3200,7 +3244,7 @@
     for (const h of battle.heroes) {
       const r = h.ref, el = document.createElement("div");
       el.className = "card" + (battle.current === h ? " active" : "") + (!alive(h) ? " ko" : "") + (picking.includes(h) ? " pick" : "");
-      const chips = Object.keys(h.st).filter(k => ["bleed", "stun", "weak", "guard", "veil", "strong", "taunt"].includes(k)).map(k => `<span class="chip ${k}">${k}${k === "bleed" ? " " + h.st.bleed.dmg : ""}</span>`).join("");
+      const chips = statusTags(h).map(t => `<span class="chip ${t.k}" title="${t.tip}">${t.name}${t.n ? `<i>${t.n}</i>` : ""}</span>`).join("");
       el.innerHTML = `<div class="nm">${r.name}<small>Lv ${r.level}</small></div>
         <div class="bar hp"><i style="width:${r.hp / r.maxHp * 100}%"></i></div><div class="nums"><span>HP ${r.hp}/${r.maxHp}</span><span>SP ${r.sp}/${r.maxSp}</span></div>
         <div class="bar sp"><i style="width:${r.sp / r.maxSp * 100}%"></i></div>
@@ -3296,7 +3340,13 @@
   for (const b of $("diffRow").children) b.addEventListener("click", () => { difficulty = b.dataset.d; try { localStorage.setItem("salt-road-diff", difficulty); } catch { /* storage unavailable */ } renderDiff(); });
   renderDiff();
   $("startBtn").addEventListener("click", startGame);
-  $("newBtn").addEventListener("click", () => { newGame(); startGame(); });
+  // "Start over" erases the saved game, so it asks once before it does
+  let newArmed = 0;
+  $("newBtn").addEventListener("click", () => {
+    const b = $("newBtn");
+    if (Date.now() - newArmed > 5000) { newArmed = Date.now(); b.dataset.label = b.dataset.label || b.textContent; b.textContent = "Erase your saved game and start over? Press again"; b.classList.add("armed"); setTimeout(() => { if (Date.now() - newArmed >= 5000) { b.textContent = b.dataset.label; b.classList.remove("armed"); } }, 5000); return; }
+    newArmed = 0; b.textContent = b.dataset.label; b.classList.remove("armed"); newGame(); startGame();
+  });
 
   // ================================================================== ACT II · THE RAINS
   // Chapters VII-XII. Everything here plugs into the engine through the *Act2 / *2 hooks.
@@ -4849,7 +4899,7 @@
     m.fillStyle = "#c8102e"; for (const f of field) if (seen(f.px / TILE, f.py / TILE)) m.fillRect(Math.floor(f.px / TILE) * S, Math.floor(f.py / TILE) * S, S, S);
     m.fillStyle = "#9ef0f5"; for (const l of LORE) if (seen(l.x, l.y) && !(G.flags.lore || []).includes(l.id)) m.fillRect(l.x * S, l.y * S, S, S);
     m.fillStyle = "#fff"; for (const w of WARPS) if (seen(w.x, w.y) && (!w.req || w.req())) m.fillRect(w.x * S - 1, w.y * S - 1, S + 2, S + 2);
-    m.font = "11px 'Pixelify Sans', monospace"; m.textAlign = "center";
+    m.font = canvasFont(11); m.textAlign = "center";
     // place names never sit on each other, on you or on the goal ring: each takes the first free spot around its place
     const gl = goal(), pX = Math.floor(G.px / TILE) * S, pY = Math.floor(G.py / TILE) * S, taken = [{ x: pX - 5, y: pY - 5, w: 14, h: 14 }];
     if (gl.text) taken.push({ x: gl.x * S - 7, y: gl.y * S - 7, w: 18, h: 18 });
@@ -5299,16 +5349,24 @@
   }
 
   // ================================================================== NEW GAME+
+  // what a finished game hands on is kept in storage too, so closing the tab on the ending card doesn't lose it:
+  // the title screen offers it until it is used
+  const NG_KEY = "salt-road-ngplus";
+  function readNGPlus() { try { const c = JSON.parse(localStorage.getItem(NG_KEY)); return c && c.sable && c.ng ? c : null; } catch { return null; } }
+  function startNGPlus(carry) {
+    newGame(); Object.assign(G, { coins: carry.coins, relics: carry.relics, items: carry.items, forge: carry.forge, ng: carry.ng }); G.party.sable = carry.sable; G.party.sable.hp = G.party.sable.maxHp; G.flags.kills = carry.kills;
+    save(); startGame(); toast(`New Game+ ${carry.ng}. The salt remembers you. So do the monsters.`);
+  }
   function showNGPlus() {
     let b2 = $("cardBtn2");
     if (!b2) { b2 = document.createElement("button"); b2.id = "cardBtn2"; b2.className = "ghost"; $("card").appendChild(b2); }
     const carry = { sable: JSON.parse(JSON.stringify(G.party.sable)), coins: G.coins, relics: G.relics || [], items: { ...G.items }, forge: { ...(G.forge || {}) }, kills: { ...(G.flags.kills || {}) }, ng: (G.ng || 0) + 1 };
+    try { localStorage.setItem(NG_KEY, JSON.stringify(carry)); } catch { /* storage unavailable */ }
     b2.textContent = `New Game+ ${carry.ng}: keep Sable's level, relics, items, coin and forge; monsters grow stronger`;
     b2.hidden = false;
     b2.onclick = () => {
       b2.hidden = true; delete $("cardBtn").dataset.ending; $("cardBtn").onclick = null; $("cardBtn").textContent = "Continue"; $("card").hidden = true;
-      newGame(); Object.assign(G, { coins: carry.coins, relics: carry.relics, items: carry.items, forge: carry.forge, ng: carry.ng }); G.party.sable = carry.sable; G.party.sable.hp = G.party.sable.maxHp; G.flags.kills = carry.kills;
-      save(); startGame(); toast(`New Game+ ${carry.ng}. The salt remembers you. So do the monsters.`);
+      startNGPlus(carry);
     };
   }
   const _showNextCard = showNextCard;
@@ -5411,7 +5469,7 @@
     g.fillStyle = f.bite > 0 ? "rgba(255,255,255,.12)" : "rgba(107,255,154,.35)"; g.fillRect(bx, zy, bw, zh); g.strokeStyle = "#6bff9a"; g.strokeRect(bx + .5, zy + .5, bw - 1, zh - 1);
     if (f.bite <= 0) { const fy = top + (1 - f.fish) * (bh - 10); g.fillStyle = f.id === "oldmouth" ? "#c8b890" : "#9ef0f5"; g.fillRect(bx + 7, fy + 2, 12, 6); g.fillRect(bx + 3, fy + 3 + Math.sin(time * 12) * 1.5, 4, 4); g.fillStyle = "#0a1a2a"; g.fillRect(bx + 16, fy + 4, 1, 1); }
     g.fillStyle = "#2a1a10"; g.fillRect(bx + bw + 10, top, 8, bh); g.fillStyle = f.prog > 0.66 ? "#6bff9a" : f.prog > 0.33 ? "#ffcf4a" : "#ff5a5a"; g.fillRect(bx + bw + 10, top + bh * (1 - f.prog), 8, bh * f.prog);
-    g.fillStyle = "#e8e2d0"; g.font = "11px 'Pixelify Sans', 'Courier New', monospace"; g.fillText(f.bite > 0 ? "..." : "REEL", bx + bw + 24, top + 10);
+    g.fillStyle = "#e8e2d0"; g.font = canvasFont(11); g.fillText(f.bite > 0 ? "..." : "REEL", bx + bw + 24, top + 10);
     const k = species().length; g.fillStyle = "#8a90b8"; g.fillText(`${k}/${FISH_IDS.length} species`, bx + bw + 24, Hc - 12);
   }
   function endFishing(caught, quiet) {
@@ -6404,7 +6462,7 @@
   }
   function enterStep() {
     const st = scene.steps[scene.i]; if (!st) return endScene();
-    scene.t = 0;
+    scene.t = 0; scene.go = false;
     if (st.add) for (const [id, a] of Object.entries(st.add)) scene.actors[id] = { dir: "down", walking: false, ...a, px: a.x * TILE + 8, py: a.y * TILE + 8 };
     if (st.remove) for (const id of st.remove) delete scene.actors[id];
     if (st.cam) scene.cam = { x: st.cam[0] * TILE + 8, y: st.cam[1] * TILE + 8 };
@@ -6434,10 +6492,18 @@
     const tcx = clamp(tgt.x - VIEW_W / 2, 0, W * TILE - VIEW_W), tcy = clamp(tgt.y - VIEW_H / 2 - 8, 0, H * TILE - VIEW_H);
     camX += (tcx - camX) * Math.min(1, dt * 2.5); camY += (tcy - camY) * Math.min(1, dt * 2.5);
     scene.fade += (scene.fadeTo - scene.fade) * Math.min(1, dt * 2.5);
-    const need = st.wait !== undefined ? st.wait : st.line ? 2 + st.line[1].length * 0.04 : 0;
-    if (scene.t >= need && !(st.untilStill && moving)) { scene.i++; enterStep(); }
+    // a line waits to be read, as in the cinematics: for a key press, or on Auto long enough to read it
+    const need = st.wait !== undefined ? st.wait : st.line ? (SETTINGS.cutPace === "auto" ? Math.max(2 + st.line[1].length * 0.04, lineReadSecs(st.line[1])) : 0.4) : 0;
+    const held = st.line && st.wait === undefined && SETTINGS.cutPace !== "auto" && !scene.go;
+    banterEl.classList.toggle("waiting", !!held && scene.t >= need);
+    if (scene.t >= need && !held && !(st.untilStill && moving)) { banterEl.classList.remove("waiting"); scene.i++; enterStep(); }
   };
-  addEventListener("keydown", e => { if (!scene || mode !== "scene") return; const k = e.key.toLowerCase(); if (k === "escape" || k === "e" || k === "enter") { e.stopImmediatePropagation(); skipScene(); } }, true);
+  function sceneNext() { if (!scene) return; scene.go = true; scene.t = Math.max(scene.t, 1e6); }
+  addEventListener("keydown", e => {
+    if (!scene || mode !== "scene") return; const k = e.key.toLowerCase();
+    if (k === "escape") { e.stopImmediatePropagation(); skipScene(); }
+    else if (k === "e" || k === "enter" || k === " ") { e.stopImmediatePropagation(); e.preventDefault(); if (!e.repeat) sceneNext(); }
+  }, true);
   const _actorsC = act2ActorsB;
   act2ActorsB = function (actors, ox, oy) {
     _actorsC(actors, ox, oy);
@@ -6754,7 +6820,7 @@
     mode = "cine"; sceneHud(true); enterShot();
   }
   function enterShot() {
-    const s = cine.shots[cine.i]; cine.t = 0;
+    const s = cine.shots[cine.i]; cine.t = 0; cine.read = 0; cine.go = false;
     if (s.flash) cine.flash = 1;
     if (s.sound) Music.sound(s.sound);
     if (s.shake) shake = Math.max(shake, s.shake);
@@ -6767,10 +6833,30 @@
   update = function (dt) {
     _updateCine(dt);
     if (!cine || mode !== "cine" || paused) return;
-    const s = cine.shots[cine.i]; cine.t += dt; cine.flash = Math.max(0, cine.flash - dt * 2.5);
+    const s = cine.shots[cine.i]; cine.t += dt; cine.read += dt; cine.flash = Math.max(0, cine.flash - dt * 2.5);
+    if (lineWaiting() && cine.t > holdAt(s)) cine.t = Math.max(0, holdAt(s));   // the picture holds until the line is read
     if (cine.t >= s.dur) { cine.i++; if (cine.i >= cine.shots.length) return endCine(); enterShot(); }
   };
-  addEventListener("keydown", e => { if (!cine || mode !== "cine") return; const k = e.key.toLowerCase(); if (k === "escape" || k === "e" || k === "enter" || k === " ") { e.stopImmediatePropagation(); e.preventDefault(); cine.i = cine.shots.length; endCine(); } }, true);
+  // A line is never taken away before it is read. By default it waits for a key press or a tap (Settings > Comfort >
+  // Cutscene lines: Wait for me); on Auto it stays long enough to read at an easy pace. E, Space, Enter, a tap or a
+  // click shows the whole line, then moves on to the next one; Esc skips the whole cutscene.
+  function lineReadSecs(text) { const slow = SETTINGS.text === "slow"; return (slow ? 1.4 : 1) * (1.8 + text.length * 0.06) + (SETTINGS.text === "instant" ? 0 : text.length / (slow ? 26 : 48)); }
+  const holdAt = s => s.fadeOut ? Math.max(0, s.dur - s.fadeOut) : s.dur - 0.0005;
+  function lineWaiting() {
+    const s = cine && cine.shots[cine.i]; if (!s || !s.line || cine.go) return false;
+    return SETTINGS.cutPace === "auto" ? cine.read < lineReadSecs(s.line[1]) : true;
+  }
+  function cineNext() {
+    if (!cine) return; const s = cine.shots[cine.i]; if (!s) return;
+    if (cbText && cbTyped < cbText.length) { cbTyped = cbText.length; cineBox.querySelector(".tx").textContent = cbText; return; }   // first the whole line
+    cine.go = true; cine.t = Math.max(cine.t, s.line ? holdAt(s) : s.dur);
+  }
+  canvas.addEventListener("pointerdown", () => { if (mode === "cine" && cine) cineNext(); else if (mode === "scene" && scene) sceneNext(); });
+  addEventListener("keydown", e => {
+    if (!cine || mode !== "cine") return; const k = e.key.toLowerCase();
+    if (k === "escape") { e.stopImmediatePropagation(); e.preventDefault(); cine.i = cine.shots.length; endCine(); }
+    else if (k === "e" || k === "enter" || k === " ") { e.stopImmediatePropagation(); e.preventDefault(); if (!e.repeat) cineNext(); }
+  }, true);
   const _renderCine = render;
   render = function () {
     if (!cine || battle) return _renderCine();
@@ -7347,9 +7433,13 @@
   #cineBox .nm{position:absolute;top:-14px;left:14px;background:#3b2f7a;border:2px solid #0e0b1e;color:var(--gold);font:700 13px var(--font);padding:1px 8px;letter-spacing:.04em}
   #cineBox .tx{font:16px/1.4 var(--font);color:#f3efe6;min-height:2.8em}
   #cineBox .tx.narr{color:#d8d0e6;font-style:italic}
-  @media (max-width:700px){#cineBox .tx{font-size:12px}#cineBox{padding:8px 10px}}`;
+  #cineBox .hint{position:absolute;right:10px;bottom:-18px;font:12px var(--font);color:#b3aacb;background:#0e0b1e;border:2px solid #5e5680;padding:0 6px}
+  #cineBox.waiting .tx::after,#banter.waiting::after{content:" ▸";color:var(--gold);animation:cbNext 1s steps(2) infinite}
+  @keyframes cbNext{50%{opacity:.15}}
+  @media (prefers-reduced-motion:reduce){#cineBox.waiting .tx::after,#banter.waiting::after{animation:none}}
+  @media (max-width:700px){#cineBox .tx{font-size:14px}#cineBox{padding:8px 10px}}`;
   document.head.appendChild(cbStyle);
-  const cineBox = document.createElement("div"); cineBox.id = "cineBox"; cineBox.hidden = true; cineBox.innerHTML = `<div class="nm"></div><div class="tx"></div>`;
+  const cineBox = document.createElement("div"); cineBox.id = "cineBox"; cineBox.hidden = true; cineBox.innerHTML = `<div class="nm"></div><div class="tx"></div><div class="hint"></div>`;
   $("toast").parentNode.appendChild(cineBox);
   let cbText = "", cbWho = null, cbTyped = 0;
   function cineSay(who, text) {
@@ -7371,6 +7461,9 @@
     const now = Math.floor(cbTyped); for (let i = before; i < now; i++) blip(cbWho, cbText[i]);
     Voice.type(now, cbText.length);
     if (now !== before) cineBox.querySelector(".tx").textContent = cbText.slice(0, now);
+    // the line is all there and the picture is holding for it: a blinking arrow, and which key moves on
+    cineBox.classList.toggle("waiting", now >= cbText.length && SETTINGS.cutPace !== "auto");
+    const hint = `${typeof boundKey === "function" ? keyName(boundKey("act")) : "E"} or tap: next · Esc: skip`, hb = cineBox.querySelector(".hint"); if (hb.textContent !== hint) hb.textContent = hint;
   };
   // cutscene music: each cinematic can bring its own theme and hand the old one back afterwards
   const _playCineV = playCine;
@@ -10919,7 +11012,7 @@
   function drawSay(f, a, k) {
     const u = f.unit; if (!battle || !battle.foes.includes(u)) return;
     const p = unitPos(u), shown = f.text.slice(0, Math.ceil(f.text.length * Math.min(1, a * 2.2)));
-    ctx.font = `${Math.round(7 * k)}px 'Pixelify Sans', 'Courier New', monospace`;
+    ctx.font = canvasFont(Math.round(7 * k));
     const lines = []; let line = ""; for (const wd of f.text.split(" ")) { const tryL = line ? line + " " + wd : wd; if (ctx.measureText(tryL).width > 150 * k && line) { lines.push(line); line = wd; } else line = tryL; } lines.push(line);
     const w = Math.max(...lines.map(l => ctx.measureText(l).width)) + 12 * k, bh = lines.length * 9 * k + 5 * k;
     const mx = VP.ox + (p.x + (u.boss ? 18 : 8)) * k, my = VP.oy + (p.y - (u.boss ? 92 : 44)) * k;   // beside the head, tail toward the mouth
@@ -11124,9 +11217,12 @@
     colossus: ["We scream. We scream.", "#9ef0f5"], vela: ["Hear the storm. Hear it end you.", "#c8d8ff"], king: ["Then drown with us. All of you.", "#9ef0f5"], corvin: ["Every debt. Every name. Paid.", "#ffcf4a"],
     ledgertree: ["The interest is due.", "#ff2d2d"], tollkeeper: ["Final audit. No appeals.", "#ffcf4a"], oldmouth: ["Hunger.", "#3ee0e8"], wyrm: ["Hhhsssss!", "#e8ecf8"],
   };
+  const OWN_PHASES = new Set(["hollis"]);
   function enterPhase2(f) {
     const [line] = PHASE2[f.id]; f.phase2 = time;
-    f.atk = Math.round(f.atk * 1.2); f.def += 2; f.spd += 2;
+    // Hollis was built with phases of his own (the drowned at 60%, the Tide at 30%, which hits a quarter harder):
+    // he still transforms, but without the extra strength on top, which made him harder than the Drowned King
+    if (!OWN_PHASES.has(f.id)) { f.atk = Math.round(f.atk * 1.2); f.def += 2; f.spd += 2; }
     const M = MONSTERS[f.id]; if (M && M.moves.some(m => m.charge) && !f.charged) f.charged = true;   // its worst move comes next
     shake = Math.max(shake, 14); flash(1); Music.sound("boss");
     blog(`${f.name.split(",")[0]} changes. The second phase begins.`);
@@ -11476,7 +11572,7 @@
     const k = VP.k; ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
     HI_LAST.length = 0;
     for (const [t, x, y, px, c] of HI) {
-      ctx.font = `${Math.round(px * k)}px 'Pixelify Sans', 'Courier New', monospace`;
+      ctx.font = canvasFont(Math.round(px * k));
       const tw = ctx.measureText(t).width / k; HI_LAST.push({ text: t, x: x - tw / 2, y: y - px * 0.8, w: tw, h: px });
       const X = VP.ox + x * k, Y = VP.oy + y * k;
       ctx.fillStyle = "#1b1633"; ctx.fillText(t, Math.round(X + k * 0.75), Math.round(Y + k * 0.75)); ctx.fillStyle = c; ctx.fillText(t, Math.round(X), Math.round(Y));
@@ -11525,8 +11621,11 @@
         if (y + h > cr.bottom - 4) continue;
         cands.push({ x, y, d: Math.abs(fy - home) * 3 + Math.abs(fx - 0.5) });
       }
+      // taller than the picture (a long toast on an upright phone): it sits at the top, over whatever is there
+      const tall = !cands.length;
+      if (tall) cands.push({ x: clamp(cr.left + cr.width / 2 - w / 2, cr.left + 6, Math.max(cr.left + 6, cr.right - w - 6)), y: cr.top + 4, d: 0 });
       cands.sort((a, b) => a.d - b.d);
-      const free = cands.find(c => !others.some(o => hitRect({ x: c.x, y: c.y, w, h }, o)));
+      const free = tall ? cands[0] : cands.find(c => !others.some(o => hitRect({ x: c.x, y: c.y, w, h }, o)));
       const pick = free || cands[0];
       // nowhere clear (a crowded dialogue on a phone): the toast waits out of sight, and its clock waits with it
       el.style.visibility = free ? "" : "hidden";
@@ -11547,12 +11646,12 @@
   blCss.textContent = ".battle-top{flex-direction:row;flex-wrap:nowrap;align-items:center}"
     + ".turnbar{flex-wrap:nowrap;overflow:hidden;max-width:none;flex:0 1 auto;min-width:0}.turnbar span{white-space:nowrap}.fury{flex:none}"
     + "@media (pointer:coarse),(max-width:700px),(max-height:500px){"
-    + ".battle-top{top:6px;left:6px;gap:4px}.turnbar{gap:3px}.turnbar span{font-size:9px;padding:1px 4px}.fury{font-size:9px;padding:2px 5px;gap:4px}.fury .bar{width:50px}"
-    + ".battle-bottom{grid-template-columns:1fr 196px;left:6px;right:6px;bottom:6px;gap:6px}"
+    + ".battle-top{top:6px;left:6px;gap:4px}.turnbar{gap:3px}.turnbar span{font-size:10px;padding:1px 5px}.cmd{gap:4px}.fury{font-size:10px;padding:3px 7px;gap:6px;border-width:1px}.fury .bar{height:7px}"
+    + ".battle-bottom{grid-template-columns:1fr 210px;left:6px;right:6px;bottom:6px;gap:6px}"
     + ".cards{flex-wrap:nowrap;gap:4px}.card{flex:1 1 0;min-width:0;max-width:none;padding:2px 4px;font-size:9px;border-width:1px;border-radius:5px}"
-    + ".card .nm{margin-bottom:1px}.card .nm small{display:none}.card .nums{font-size:8px}.card .bar{height:4px}.chips{min-height:0;margin-top:1px}.chip{font-size:8px}"
+    + ".card .nm{margin-bottom:1px}.card .nm small{display:none}.card .nums{font-size:10px;flex-direction:column}.card .bar{height:5px}.chips{min-height:0;margin-top:2px;gap:2px}.chip{font-size:9px;padding:0 4px}"
     + ".menu{display:grid;grid-template-columns:1fr 1fr;gap:3px;padding:4px;max-height:112px;border-width:1px}.menu .title{grid-column:1/-1;font-size:9px}"
-    + ".menu button{font-size:11px;padding:3px 6px}.menu button small,.menu button.sel small,.menu button:hover small{display:none}"
+    + ".menu button{font-size:13px;padding:5px 7px}.menu button small,.menu button.sel small,.menu button:hover small{display:none}"
     + "#battleUI>.blog{font-size:11px;padding:3px 8px}}";
   document.head.appendChild(blCss);
 
@@ -11572,13 +11671,13 @@
     if (A) return { x: p.x - Math.max(50, A.w / 2), y: p.y - A.h + 2, w: Math.max(100, A.w), h: A.h + 20 };
     return u.boss ? { x: p.x - 50, y: p.y - 108, w: 100, h: 130 } : { x: p.x - 30, y: p.y - 86, w: 60, h: 90 };
   }
-  function hiW(t, px) { ctx.font = `${Math.round(px * VP.k)}px 'Pixelify Sans', 'Courier New', monospace`; return ctx.measureText(t).width / VP.k; }
+  function hiW(t, px) { ctx.font = canvasFont(Math.round(px * VP.k)); return ctx.measureText(t).width / VP.k; }
   const overlapArea = (a, b) => Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x)) * Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y));
-  const BL_PANELS = ["#turnbar", "#fury", "#cards .card", "#menu", "#pauseBtn"];
+  const BL_PANELS = ["#turnbar", "#cards .card", "#cmd", "#pauseBtn"];
   const unionOf = rs => { if (!rs.length) return null; const x = Math.min(...rs.map(r => r.x)), y = Math.min(...rs.map(r => r.y)); return { x, y, w: Math.max(...rs.map(r => r.x + r.w)) - x, h: Math.max(...rs.map(r => r.y + r.h)) - y }; };
   function panelRects() {   // battle panels in canvas device pixels, one box per group (the cards row is one box)
     const cr = canvas.getBoundingClientRect(), dev = canvas.width / (cr.width || 1), out = [];
-    for (const group of [["#turnbar", "#fury"], ["#cards .card"], ["#menu"], ["#pauseBtn"]]) {
+    for (const group of [["#turnbar"], ["#cards .card"], ["#cmd"], ["#pauseBtn"]]) {
       const rs = [];
       for (const q of group) for (const el of document.querySelectorAll(q)) if (shown(el)) {
         const r = el.getBoundingClientRect(); if (r.width < 2) continue;
@@ -11669,7 +11768,7 @@
     const k = VP.k; ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
     const cssW = canvas.getBoundingClientRect().width || canvas.width, minPx = 9 * (canvas.width / cssW) / k;   // never under 9 screen pixels
     const solid = battle && mode === "battle" ? battleObstacles() : !battle && G && mode === "play" && !cine ? [...worldBufBoxes(), ...domInPicture([...FADE, "#pauseBtn", "#banner", "#toast"], true)] : [], placed = [];
-    const measure = (t, px) => { ctx.font = `${Math.round(px * k)}px 'Pixelify Sans', 'Courier New', monospace`; return ctx.measureText(t).width / k; };
+    const measure = (t, px) => { ctx.font = canvasFont(Math.round(px * k)); return ctx.measureText(t).width / k; };
     const boxOf = (t, x, y, px) => { px = Math.max(px, minPx); const w = measure(t, px); x = clamp(x, w / 2 + 1, VIEW_W - w / 2 - 1); return { t, x, y, px, b: { x: x - w / 2 - 0.5, y: y - px * 0.8, w: w + 1, h: px } }; };
     const score = c => { let s = 0; for (const o of solid) s += overlapArea(c.b, o); for (const o of placed) s += overlapArea(c.b, o) * 2; return s; };
     for (const [t0, x0, y0, px0, color, kind] of HI) {
@@ -11690,7 +11789,7 @@
       }
       placed.push(pick.b);
       const { t, x, y, px } = pick;
-      ctx.font = `${Math.round(px * k)}px 'Pixelify Sans', 'Courier New', monospace`;
+      ctx.font = canvasFont(Math.round(px * k));
       HI_LAST.push({ text: t, x: pick.b.x, y: pick.b.y, w: pick.b.w, h: pick.b.h, kind });
       const X = VP.ox + x * k, Y = VP.oy + y * k;
       ctx.fillStyle = "#1b1633"; ctx.fillText(t, Math.round(X + k * 0.75), Math.round(Y + k * 0.75)); ctx.fillStyle = color; ctx.fillText(t, Math.round(X), Math.round(Y));
@@ -11715,7 +11814,7 @@
     const foeLow = Math.max(0, ...battle.foes.filter(f => !f.dead).map(f => { const b = unitBlock(f); return b.y + b.h; }));
     const heroTop = Math.min(VIEW_H, ...battle.heroes.filter(x => alive(x)).map(x => spriteBox(x).y));
     const midY = cr.top + VP.oy * d + ((foeLow + heroTop) / 2) * s;
-    const topBar = Math.max(cr.top + 8, ...["#turnbar", "#fury", "#pauseBtn"].map(q => $(q.slice(1))).filter(shown).map(e => e.getBoundingClientRect().bottom)) + 4;
+    const topBar = Math.max(cr.top + 8, ...["#turnbar", "#pauseBtn"].map(q => $(q.slice(1))).filter(shown).map(e => e.getBoundingClientRect().bottom)) + 4;
     const cands = [[cr.left + cr.width / 2 - w / 2, midY - h / 2], [cr.left + 8, topBar], [cr.right - w - 8, topBar],
       [cr.left + 8, midY - h / 2], [cr.right - w - 8, midY - h / 2], [cr.left + cr.width / 2 - w / 2, topBar]];
     let best = cands[0], bestS = Infinity;
@@ -12129,40 +12228,82 @@
     gild: { name: "Gilded Road", desc: "+50% coin at the end of every floor (stacks)." },
     scholar: { name: "Scholar's Lamp", desc: "+40% bonus experience after every floor (stacks)." },
     slow: { name: "Heavy Air", desc: "Monsters on the Stair lose 1 speed (stacks)." },
+    ember: { name: "Kindling", desc: "Every fight on the Stair starts with 20 Fury (stacks)." },
+    bleed: { name: "Salt Wounds", desc: "Monsters start every fight bleeding." },
+    crack: { name: "Cracked Shells", desc: "Monsters start every fight with broken armour." },
+    mend: { name: "Mending Song", desc: "After each floor the party recovers a fifth of its health (stacks)." },
+    shard: { name: "Shard Seam", desc: "+2 salt shards after each floor, for the anvil or Kessa's builders (stacks)." },
+    glass: { name: "Glass Pact", desc: "Monsters have 30% less health but hit 20% harder (stacks).", rare: true },
   };
+  // the Stair goes down through five places, five floors each, then round again, deeper and harder
+  const BIOMES = [
+    { name: "The Salt Steps", area: "deep", pool: ["jackal", "ghoul", "choir", "wraith", "crawler", "mirage", "scorpion", "dunewraith", "saltworm"], note: "" },
+    { name: "The Drowned Galleries", area: "marsh", pool: ["leech", "drowned", "bogghoul", "toad", "dvillager", "eel", "crab", "angler"], note: "Monsters here have a fifth more health.", mod: () => scaleFoes(1.2, 1) },
+    { name: "The Counting Vaults", area: "oru", pool: ["clerk", "thug", "ledgercrow", "sluicer", "minerghoul", "saltworm"], note: "Monsters here have +2 defence.", mod: () => { for (const f of battle.foes) f.def += 2; } },
+    { name: "The Storm Shaft", area: "spire", pool: ["harpy", "spark", "singer", "wraith", "ledgercrow"], note: "Monsters here are faster: +2 speed.", mod: () => { for (const f of battle.foes) f.spd += 2; } },
+    { name: "The Sunken Choir", area: "cathedral", pool: ["priest", "choir", "singer", "angler", "wraith", "sailor"], note: "Monsters here hit a tenth harder.", mod: () => scaleFoes(1, 1.1) },
+  ];
+  const biomeOf = floor => BIOMES[Math.floor((floor - 1) / 5) % BIOMES.length];
+  // the Daily Descent: one run a day whose floors and boon offers are the same for everyone that day
+  const seeded = (seed, fn) => {
+    const keep = Math.random; let a = Math.floor(seed * 4294967296) >>> 0 || 1;
+    Math.random = () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+    try { return fn(); } finally { Math.random = keep; }
+  };
+  const daySeed = (day, floor, salt) => hash(Number(String(day).replace(/-/g, "")) % 1000003, floor * 31 + salt);
+  Object.assign(RELICS, {
+    stairlamp: { name: "Stair Lantern", from: "_stair10", desc: "Floor 10 of the Deep Stair. +1 SP each turn, +5% critical chance.", spRegen: 1, crit: 0.05 },
+    stairheart: { name: "Heart of the Galleries", from: "_stair20", desc: "Floor 20 of the Deep Stair. +2 defence, +2 health each turn.", def: 2, regen: 2 },
+    staireye: { name: "Eye of the Deep", from: "_stair30", desc: "Floor 30 of the Deep Stair. +2 speed, +10% critical chance.", spd: 2, crit: 0.1 },
+  });
   const deepRun = () => G.flags.deep && G.flags.deep.active ? G.flags.deep : null;
-  function deepGroup(floor) {
+  function deepGroup(floor) {   // on a daily run every roll here, the boss's echo included, comes from the day's seed
+    const run = deepRun();
+    return run && run.daily ? seeded(daySeed(run.daily, floor, 7), () => rollGroup(floor)) : rollGroup(floor);
+  }
+  function rollGroup(floor) {
     if (floor % 5 === 0) {   // an echo of a boss, the strongest one the party should be able to face
       const known = HALL.filter(bossKnown), band = known.filter(id => bossLevel(id) <= partyLevel() + floor / 5);
       const pickB = (band.length ? band : known.length ? known : HALL.slice(0, 2)); return { group: [pickB[Math.min(pickB.length - 1, Math.floor(floor / 5) - 1 + Math.floor(Math.random() * 2))] || pickB[0]], boss: true };
     }
     const target = Math.max(10, partyLevel() * 5) + floor * 4, n = floor < 3 ? 2 : floor < 9 ? 3 : 3 + (Math.random() < 0.5 ? 1 : 0);
-    const near = DEEP_POOL.map(id => [id, Math.abs(MONSTERS[id].xp - target)]).sort((a, b) => a[1] - b[1]).slice(0, 6).map(x => x[0]);
+    const pool = biomeOf(floor).pool.filter(id => MONSTERS[id]), from = pool.length >= 3 ? pool : DEEP_POOL;
+    const near = from.map(id => [id, Math.abs(MONSTERS[id].xp - target)]).sort((a, b) => a[1] - b[1]).slice(0, 4).map(x => x[0]);
     return { group: Array.from({ length: n }, () => pick(near)), boss: false };
   }
-  function deepStart() {
-    G.flags.deep = { active: true, floor: 0, boons: perk(6) ? { keen: 1 } : {}, coins: 0, xp: 0 };
+  function deepStart(daily) {
+    G.flags.deep = { active: true, floor: 0, boons: perk(6) ? { keen: 1 } : {}, coins: 0, xp: 0, daily: daily ? today() : null };
+    if (daily) { meta.dailyDeep = { day: today(), floor: 0 }; saveMeta(); }
     meta.deepRuns++; saveMeta(); save(); deepNext();
   }
   function deepNext() {
     const run = deepRun(); if (!run) return;
     run.floor++; save();
-    const { group, boss } = deepGroup(run.floor), b = run.boons;
-    startBattle(group, { deep: run.floor, area: "deep", boss: boss ? group[0] : undefined });
+    const { group, boss } = deepGroup(run.floor), b = run.boons, B = biomeOf(run.floor);
+    const begin = () => startBattle(group, { deep: run.floor, area: B.area, boss: boss ? group[0] : undefined });
+    if (run.daily) seeded(daySeed(run.daily, run.floor, 19), begin); else begin();   // champions too are the same for everyone on a daily run
     if (!battle) return;
     const extra = Math.max(0, run.floor - 8) * 0.07, [ch, ca] = boss ? catchUp(group[0]) : [1, 1];
-    scaleFoes((1 + extra) * ch * Math.pow(0.88, b.keen || 0), (1 + extra * 0.6) * ca * Math.pow(0.9, b.ward || 0), Math.floor(run.floor / 6));
+    scaleFoes((1 + extra) * ch * Math.pow(0.88, b.keen || 0) * Math.pow(0.7, b.glass || 0), (1 + extra * 0.6) * ca * Math.pow(0.9, b.ward || 0) * Math.pow(1.2, b.glass || 0), Math.floor(run.floor / 6));
+    if (B.mod) B.mod();
     if (b.slow) for (const f of battle.foes) f.spd = Math.max(1, f.spd - b.slow);
-    blog(`The Deep Stair, floor ${run.floor}${boss ? ": an echo waits on the landing" : ""}.`);
+    if (b.ember) addFury(20 * b.ember);
+    if (b.bleed) for (const f of battle.foes) f.st.bleed = { dmg: 3 + Math.floor(run.floor / 3), turns: 3 };
+    if (b.crack) for (const f of battle.foes) f.st.brk = 3;
+    blog(`${run.daily ? "Today's Descent" : "The Deep Stair"}, floor ${run.floor}: ${B.name}${boss ? ". An echo waits on the landing" : ""}.`);
+    if (run.floor % 5 === 1) setTimeout(() => toast(`${B.name}${B.note ? `. ${B.note}` : ""}`), 900);
   }
   function deepEnd(fell) {
     const run = deepRun(); if (!run) return;
     const cleared = fell ? run.floor - 1 : run.floor;
-    run.active = false; const best = cleared > meta.deepBest; meta.deepBest = Math.max(meta.deepBest, cleared); saveMeta();
+    run.active = false; const best = cleared > meta.deepBest; meta.deepBest = Math.max(meta.deepBest, cleared);
+    meta.deepLog = [{ d: today(), f: cleared, daily: !!run.daily }, ...(meta.deepLog || [])].slice(0, 6);
+    if (run.daily) { meta.dailyDeep = { day: run.daily, floor: cleared }; meta.dailyBest = Math.max(meta.dailyBest || 0, cleared); }
+    saveMeta();
     if (fell) for (const id of G.members) { const h = G.party[id]; h.hp = Math.max(h.hp, Math.ceil(h.maxHp * 0.5)); h.sp = Math.max(h.sp, Math.ceil(h.maxSp * 0.5)); }
     save(); updateHud();
     card("The Deep Stair", fell ? `Carried back up from floor ${run.floor}` : `You climb out from floor ${run.floor}`,
-      `${cleared} floor${cleared === 1 ? "" : "s"} cleared this run${best ? ", a new best" : ""} (best: ${meta.deepBest}). Spoils kept: ${run.coins} coin and ${run.xp} bonus experience from boons, plus everything the fights paid.${fell ? " Someone always comes down for you." : ""}`);
+      `${run.daily ? "Today's Descent: " : ""}${cleared} floor${cleared === 1 ? "" : "s"} cleared this run${best ? ", a new best" : ""} (best: ${meta.deepBest}). Spoils kept: ${run.coins} coin and ${run.xp} bonus experience from boons, plus everything the fights paid.${fell ? " Someone always comes down for you." : ""}`);
   }
   function deepBoon() {
     const run = deepRun(); if (!run) return;
@@ -12171,11 +12312,16 @@
     if (bonusX) { run.xp += bonusX; for (const id of G.members) { const h = G.party[id]; h.xp += bonusX; while (h.xp >= xpNeed(h.level)) { h.xp -= xpNeed(h.level); levelUp(h); toast(`${h.name} reaches level ${h.level}`); } } }
     renown(3 * run.floor, run.floor % 5 === 0 ? "an echo on the Stair" : "");
     if (run.floor > meta.deepBest) { meta.deepBest = run.floor; saveMeta(); }
+    if (run.daily && meta.dailyDeep && meta.dailyDeep.day === run.daily) { meta.dailyDeep.floor = Math.max(meta.dailyDeep.floor, run.floor); saveMeta(); }
+    if (run.boons.mend) for (const id of G.members) { const h = G.party[id]; if (h.hp > 0) h.hp = Math.min(h.maxHp, h.hp + Math.ceil(h.maxHp * 0.2 * run.boons.mend)); }
+    if (run.boons.shard) spoils().shards += 2 * run.boons.shard;
+    for (const [n, r] of [[10, "stairlamp"], [20, "stairheart"], [30, "staireye"]]) if (run.floor >= n && !(G.relics || []).includes(r)) setTimeout(() => giveRelic(r), 1800);
     save(); updateHud();
-    const keys = Object.keys(BOONS).sort(() => Math.random() - 0.5).slice(0, perk(15) ? 4 : 3);
+    const offer = () => Object.keys(BOONS).filter(k => !BOONS[k].rare || Math.random() < 0.2).sort(() => Math.random() - 0.5).slice(0, perk(15) ? 4 : 3);
+    const keys = run.daily ? seeded(daySeed(run.daily, run.floor, 13), offer) : offer();
     const hpNow = G.members.map(id => `${G.party[id].name} ${G.party[id].hp}/${G.party[id].maxHp}`).join(" · ");
-    D.__deepBoon = { who: null, text: `Floor ${run.floor} cleared: +${bonusC} coin${bonusX ? `, +${bonusX} experience` : ""}. The stair winds on down. Choose a boon for the way (best: floor ${meta.deepBest}). ${hpNow}`,
-      choices: [...keys.map(k => ({ t: `${BOONS[k].name}: ${BOONS[k].desc}${run.boons[k] ? ` (have ${run.boons[k]})` : ""}`, go: null, act: () => { if (k === "breath") for (const id of G.members) { const h = G.party[id]; if (h.hp > 0) { h.hp = Math.min(h.maxHp, h.hp + Math.ceil(h.maxHp / 2)); h.sp = Math.min(h.maxSp, h.sp + Math.ceil(h.maxSp / 2)); } } else run.boons[k] = (run.boons[k] || 0) + 1; save(); setTimeout(deepNext, 250); } })),
+    D.__deepBoon = { who: null, text: `Floor ${run.floor} cleared: +${bonusC} coin${bonusX ? `, +${bonusX} experience` : ""}. The stair winds on down. Next: floor ${run.floor + 1}, ${biomeOf(run.floor + 1).name}. Choose a boon for the way (best: floor ${meta.deepBest}). ${hpNow}`,
+      choices: [...keys.map(k => ({ t: `${BOONS[k].rare ? "★ " : ""}${BOONS[k].name}: ${BOONS[k].desc}${run.boons[k] ? ` (have ${run.boons[k]})` : ""}`, go: null, act: () => { if (k === "breath") for (const id of G.members) { const h = G.party[id]; if (h.hp > 0) { h.hp = Math.min(h.maxHp, h.hp + Math.ceil(h.maxHp / 2)); h.sp = Math.min(h.maxSp, h.sp + Math.ceil(h.maxSp / 2)); } } else run.boons[k] = (run.boons[k] || 0) + 1; save(); setTimeout(deepNext, 250); } })),
         { t: `Climb out with your spoils (${run.coins} coin so far).`, go: null, act: () => setTimeout(() => deepEnd(false), 150) }] };
     const open = () => { if (!deepRun()) return; if (mode !== "play" || dlg) return setTimeout(open, 400); openDialog("__deepBoon"); };   // after any card or scene that got there first
     open();
@@ -12261,9 +12407,12 @@
       <div class="bar"><i style="width:${Math.round(meta.renown / need * 100)}%"></i></div>
       <ul>${PERKS.map(([r, n, d]) => `<li class="${perk(r) ? "" : "off"}">${perk(r) ? "✓" : "🔒"} <b>Rank ${r} · ${n}</b>: ${d}</li>`).join("")}</ul>
       <p class="dim" style="font-size:12px;margin:2px 0 0">Visiting streak: ${meta.streak} day${meta.streak === 1 ? "" : "s"} (best ${meta.bestStreak}). Come back tomorrow for a bigger gift.</p>
-      <h3>The Deep Stair</h3><p class="dim" style="font-size:12px;margin:0 0 6px">An endless descent under the salt. Harder every floor, an echo of a boss every fifth, a boon between floors. Your health carries from floor to floor. Best: floor ${meta.deepBest} · runs: ${meta.deepRuns}.${G.stage < 1 ? " Opens after the prologue." : ""}</p>
-      <div class="row2">${run ? `<button type="button" class="pbtn" data-road="deepgo" ${lock}>Go down to floor ${run.floor + 1}</button><button type="button" class="pbtn" data-road="deepout" ${lock}>Climb out (floor ${run.floor})</button>`
-        : `<button type="button" class="pbtn" data-road="deep" ${G.stage < 1 ? "disabled" : lock}>Descend the Deep Stair</button>`}</div>
+      <h3>The Deep Stair</h3><p class="dim" style="font-size:12px;margin:0 0 6px">An endless descent under the salt, through ${BIOMES.map(B => B.name.replace(/^The /, "")).join(", ")}, five floors each, then round again, deeper. An echo of a boss every fifth floor, a boon between floors, relics at floors 10, 20 and 30. Your health carries from floor to floor. Best: floor ${meta.deepBest} · runs: ${meta.deepRuns}.${G.stage < 1 ? " Opens after the prologue." : ""}</p>
+      <div class="row2">${run ? `<button type="button" class="pbtn" data-road="deepgo" ${lock}>Go down to floor ${run.floor + 1} (${biomeOf(run.floor + 1).name.replace(/^The /, "")})</button><button type="button" class="pbtn" data-road="deepout" ${lock}>Climb out (floor ${run.floor})</button>`
+        : `<button type="button" class="pbtn" data-road="deep" ${G.stage < 1 ? "disabled" : lock}>Descend the Deep Stair</button>${meta.dailyDeep && meta.dailyDeep.day === today()
+          ? `<button type="button" class="pbtn" disabled>Today's Descent: floor ${meta.dailyDeep.floor}. A new one tomorrow</button>`
+          : `<button type="button" class="pbtn" data-road="deepdaily" ${G.stage < 1 ? "disabled" : lock}>Today's Descent (one try a day)</button>`}`}</div>
+      ${(meta.deepLog || []).length ? `<p class="dim" style="font-size:12px;margin:6px 0 0">Recent runs: ${meta.deepLog.map(r => `${r.daily ? "★ " : ""}floor ${r.f} (${r.d.slice(5)})`).join(" · ")}${meta.dailyBest ? ` · best Daily Descent: floor ${meta.dailyBest}` : ""}</p>` : ""}
       <h3>Weekly Trial</h3>${P ? `<p class="dim" style="font-size:12px;margin:0 0 6px">This week: <b>${MONSTERS[P.boss].name.split(",")[0]}</b> at tier II, twist <b>${P.twist.name}</b>: ${P.twist.desc} ${wk && wk.cleared ? `Your best: ${wk.best} rounds.` : "First clear: 100 coin, a rare item and 60 renown."} A new trial every Monday.</p>
         <div class="row2"><button type="button" class="pbtn" data-road="weekly" ${lock}>Take the trial</button></div>` : `<p class="dim" style="font-size:12px;margin:0">Beat your first boss to open the Weekly Trial.</p>`}
       <h3>Hall of Echoes</h3><p class="dim" style="font-size:12px;margin:0 0 6px">Fight any boss you have beaten again, at three tiers. Echoes cleared: ${echoTotal()} of ${HALL.length * 3}. Relics at 3, 8 and 15.</p>
@@ -12275,7 +12424,8 @@
     const b = e.target.closest("button[data-road]"); if (!b || b.disabled) return;
     e.stopPropagation();
     const act = b.dataset.road, go = f => { resumeGame(); setTimeout(f, 80); };
-    if (act === "deep") go(deepStart);
+    if (act === "deep") go(() => deepStart(false));
+    if (act === "deepdaily") go(() => deepStart(true));
     if (act === "deepgo") go(deepNext);
     if (act === "deepout") go(() => deepEnd(false));
     if (act === "weekly") go(weeklyStart);
@@ -12421,7 +12571,7 @@
     return out;
   }
   setTimeout(() => Object.assign(window.__saltRoad || (window.__saltRoad = {}), {
-    sim: spec => simRun(spec),
+    simRun: spec => simRun(spec),
     strHome: (ids, boss) => ids.map(id => strHome(id, boss)),
     strength: () => JSON.parse(JSON.stringify(STRENGTH)),
     simLevels: () => Object.fromEntries([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(s => [s, simLevelAt(s)])),
@@ -12991,322 +13141,354 @@
     }
   }
 
-  // ================================================================== BATTLE WORDS, ONE AT A TIME
-  // Powers, runes and talents all announce themselves over a fighter. When several fire at once the words used to land
-  // on top of each other; now each fighter's words go up one after another (a short beat apart), and a word that would
-  // wait too long is dropped rather than shown late.
-  const WORD_GAP = 0.45, WORD_WAIT_MAX = 1.4, wordAt = new WeakMap();
-  const _popupTextQ = popupText;
-  popupText = function (u, text, color) {
-    if (!battle || !u || typeof u !== "object") return _popupTextQ(u, text, color);
-    const now = time, at = Math.max(now, (wordAt.get(u) || -9) + WORD_GAP);
-    if (at - now > WORD_WAIT_MAX) return;
-    wordAt.set(u, at);
-    if (at - now < 0.02) return _popupTextQ(u, text, color);
-    const b0 = battle;
-    setTimeout(() => { if (battle === b0 && !(u.side === "foe" && u.dead)) _popupTextQ(u, text, color); }, (at - now) * 1000);
-  };
-
-  // ================================================================== HOW IT WORKS: A GUIDE THAT GROWS WITH THE ROAD
-  // Every system is explained on one page in the pause menu, but only once the player has met it, so the list starts
-  // short and grows. A newly added entry is marked "new" and announced once.
-  const GUIDE = [
-    ["basics", "Battle basics", () => true,
-      "Everyone acts in order of speed (the row at the top). On a hero's turn: Attack; a Skill, which costs SP (SP comes back a little every turn); Guard, which halves damage until your next turn and gives 3 SP; an Item; or Flee (not from bosses)."],
-    ["dash", "Running and ambushes", () => true,
-      "Hold Shift (or K) to run. Dash into a monster on the map to ambush it: your lead hero strikes the whole pack first and your party acts first."],
-    ["fury", "Fury and the Chain Assault", () => G.stats && G.stats.wins >= 1,
-      "Every hit dealt or taken fills the Fury bar. When it is full, any hero can call a Chain Assault: every standing hero strikes one enemy in turn, and the last blow always lands critical."],
-    ["break", "Breaking a big attack", () => G.flags.breakTip,
-      "A foe winding up shows CHARGING, and BREAK tells you how much damage stops it. Deal that much before it acts and the attack falls apart: the foe loses its turn and takes 25% more for two rounds. A boss shrugs off stuns for a while after one."],
-    ["weak", "Weak spots and resistances", () => G.flags.affTip,
-      "Hits come in kinds: blade, blunt, pierce, storm, light, poison and fire. A foe weak to a kind takes 50% more from it; one that resists takes less. What you learn is shown over the foe and kept in the journal."],
-    ["phase", "Boss transformations", () => G.flags.butcherDead || (G.flags.kills || {}).butcher,
-      "At half health a boss changes into its second form: stronger, faster, and ready to use its worst move. Keep a Chain Assault or your best skills for that moment."],
-    ["gear", "Arms and armour", () => G.stage >= 1,
-      "Smiths sell a weapon and an armour for each fighter, and stock better pieces as the road opens. Buying fits the piece at once and trades the old one in for half its price."],
-    ["forge", "The forge", () => G.stage >= 1,
-      "Ilse's forge at Odo's shop (Smithing) upgrades blades and leathers for the whole party at once, including anyone who joins later."],
-    ["relic", "Relics", () => (G.relics || []).length > 0,
-      "Bosses leave relics behind. Each fighter can carry one: on the Party screen (P), tap a fighter's Relic line to change it."],
-    ["talent", "Talents", () => Object.values(G.party || {}).some(h => h.level >= 3),
-      "At levels 3, 6, 10 and 14 each fighter chooses one of two talents. The choice comes up after a battle, or on the Party screen, where you can also switch one later for 20 coin."],
-    ["champ", "Champions", () => G.flags.champTip || ((G.spoils || {}).champs > 0),
-      "Some monsters are champions, marked with a ★ and a glow (some glow on the map too). They are tougher and carry powers: Vampiric heals from you, Ironhide shrugs off a fifth of each blow, Swift strikes twice, Thorned hurts whoever hits it, Frenzied hits harder as it is hurt, Warded has a shell to break first, Undying gets up once. They pay extra coin, salt shards and a champion core."],
-    ["anvil", "Spoils and the anvil", () => !!G.spoils,
-      "Every win pays salt shards; champions and bosses also give champion cores. At a smith's anvil, shards temper a fighter's weapon and armour (up to +5), and a core sets a rune: weapon runes add bleeding, healing, sparks or armour-breaking, armour runes add thorns, healing each turn, or a guard against the first blow."],
-    ["bond", "Bonds", () => G.members.length >= 2,
-      "When ★ Sit and talk shows on the Party screen, spend a quiet moment with that companion. There are three bonds for each; the second one also opens that companion's duo technique."],
-    ["duo", "Duo techniques", () => DUOS.some(d => d.pair.every(m => G.members.includes(m)) && d.pair.every(bonded)),
-      "Pairs who have bonded (a second bond with each, beyond Sable) can act together. When both are fighting, the technique appears with a ★ among either hero's skills; each pays their own share of SP."],
-    ["road", "The Long Road", () => G.stage >= 3,
-      "In the pause menu: the Deep Stair (an endless climb of harder floors with a boon between them), the Hall of Echoes (beaten bosses again, at higher tiers) and the Weekly Trial. None of them touches the story."],
-    ["day", "Days and daily tasks", () => !!G.flags.daily,
-      "The world has day and night; some monsters only walk at night. Each day brings small tasks in Today's tasks (pause menu) for coin and renown."],
-  ];
-  const guideOpen = () => GUIDE.filter(([, , ok]) => { try { return !!ok(); } catch { return false; } });
-  function guideHtml() {
-    const seen = new Set(G.flags.guideSeen || []), open = guideOpen();
-    const rows = open.map(([id, title, , text]) => `<div class="guideRow"><b>${htmlEsc(title)}${seen.has(id) ? "" : ' <span class="gnew">new</span>'}</b><p>${htmlEsc(text)}</p></div>`).join("");
-    G.flags.guideSeen = open.map(([id]) => id); save(); markGuideBtn();
-    return `<p class="dim" style="font-size:13px;margin:0 0 8px">${open.length} of ${GUIDE.length} topics so far. More appear as you meet them on the road.</p>${rows}`;
-  }
-  const guideCss = document.createElement("style");
-  guideCss.textContent = ".guideRow{margin:0 0 10px;padding:8px 10px;border:1px solid rgba(255,255,255,.1);border-radius:8px;background:rgba(255,255,255,.03)}.guideRow b{font-size:14px}.guideRow p{margin:4px 0 0;font-size:13px;line-height:1.4;color:var(--muted)}.gnew{font-size:10px;padding:1px 5px;border-radius:6px;background:#ffcf4a;color:#1b1633;margin-left:6px;vertical-align:middle}";
-  document.head.appendChild(guideCss);
-  const guideBtn = document.createElement("button"); guideBtn.type = "button"; guideBtn.dataset.a = "guide"; guideBtn.innerHTML = "How it works";
-  { const ctl = $("pauseMain").querySelector('[data-a="controls"]'); if (ctl) ctl.before(guideBtn); else $("pauseMain").appendChild(guideBtn); }
-  function markGuideBtn() { if (!G || !G.flags) return; const n = guideOpen().filter(([id]) => !(G.flags.guideSeen || []).includes(id)).length; guideBtn.innerHTML = `How it works${n ? ` <small class="gnew">${n} new</small>` : ""}`; }
-  $("pauseUI").addEventListener("click", e => { const b = e.target.closest("button"); if (b && b.dataset.a === "guide") showPanel("How it works", guideHtml()); });
-  // a topic that opens up is announced once (the first two are there from the start and need no fanfare)
-  setInterval(() => {
-    if (!G || !G.flags || mode === "title") return;
-    const known = G.flags.guideKnown || (G.flags.guideKnown = ["basics", "dash"]), fresh = guideOpen().filter(([id]) => !known.includes(id));
-    if (!fresh.length) return;
-    for (const [id] of fresh) known.push(id);
-    markGuideBtn(); toast(`New in How it works (pause menu): ${fresh.map(([, t]) => t).join(", ")}.`);
-  }, 2500);
-  setTimeout(() => Object.assign(window.__saltRoad || (window.__saltRoad = {}), { guide: () => guideOpen().map(([id]) => id), guideHtml: () => guideHtml() }), 0);
-
-  // ================================================================== THE LAST TIDE: KING AUREL'S FINAL BATTLE
-  // The last fight has rules no other fight has, in three tides:
-  //   First tide, the Drowned Court (full health to two thirds): the sea rises every round. While his court kneels
-  //     around him the King takes a third less damage, so the court comes first.
-  //   Second tide, the King Rises (two thirds): he transforms, and every third round he drags a fighter below.
-  //     A fighter held below loses their turns and drowns a little each round, until the party hurts the King enough
-  //     in one round to make him let go (or two rounds pass).
-  //   Third tide, the Last Rain (a quarter): the rain falls upward, the sea rises twice as fast, his Last Rain
-  //     comes every third round, and the party's Fury builds half again as fast (the living song answering).
-  // Over it all, the water: a level from 0 to 10 drawn rising over the party. From 6 it drowns everyone a little each
-  // round; at 10 it becomes the Flood, his strongest blow. Any fighter can spend a turn to Ring the Rain Bell (the Bell
-  // Sable carried all this way): the sea falls back 4, the King is exposed for a round, and a wind-up is broken. The Bell
-  // needs a round's breath between rings (none in the last tide). The apology's honest duel keeps its own rules.
-  const KING_TIDE = [0.85, 0.7], KING_DUEL = [1.25, 1.35];   // health and attack on top of the usual strength (tuned with the simulation: about 11 rounds, and 8 for the apology's duel)
-  const KB = () => battle && battle.king;   // the final battle's state, or nothing
-  const kingUnit = () => battle && battle.foes.find(f => f.id === "king" && !f.dead);
-  const _startBattleK = startBattle;
-  startBattle = function (group, opts = {}) {
-    const r = _startBattleK(group, opts);
-    const k0 = battle && group && group[0] === "king" ? battle.foes.find(f => f.id === "king") : null;
-    if (k0) {   // his own tuning on top of the usual strength: with the sea and the tides it is the longest fight of the road
-      const [hk, ak] = (opts || {}).apology ? (SIM.kingDuel || KING_DUEL) : (SIM.kingTide || KING_TIDE);
-      k0.maxHp = k0.hp = Math.round(k0.maxHp * hk); k0.atk = Math.round(k0.atk * ak);
+  // ================================================================== ACT III, PART 1: THE RIME (rows 140-189)
+  // South of the Dry Sea, under its rim, the salt turns to ice. Four generations ago the village of Kelda froze its
+  // rain in the Ice House so that the Guild could never sell it, and Saint Isolde sang the water still and froze with
+  // it. Now the Bell rings again and the ice is answering: it will thaw, and if Isolde lets it all go at once the
+  // meltwater will tear down the old riverbed and drown the caravan road. Kelda asks the courier to go down to her.
+  // Opens with Chapter X, when the three tones wake; the tones are what let Sable sing to her.
+  const RIME = { y0: 140, y1: 189, gate: [100, 138], land: [100, 142], house: { x0: 128, y0: 156, x1: 152, y1: 174 }, door: [140, 175], kelda: { x0: 56, y0: 148, x1: 90, y1: 166 } };
+  const rimeOpen = () => G.stage >= 10;
+  Object.assign(T, { SNOW: 39, ICE: 40, PINE: 41 });
+  SOLID.add(T.PINE);
+  Object.assign(VARIANTS, { [T.SNOW]: 3, [T.ICE]: 3, [T.PINE]: 2 });
+  Object.assign(MINI, { [T.SNOW]: "#eef4fa", [T.ICE]: "#a8d4ec", [T.PINE]: "#5a7a8a" });
+  const _tileCanvasRime = tileCanvas;
+  tileCanvas = function (t, v) {
+    if (t !== T.SNOW && t !== T.ICE && t !== T.PINE) return _tileCanvasRime(t, v);
+    const key = t * 10 + v; if (tileCache.has(key)) return tileCache.get(key);
+    const c = document.createElement("canvas"); c.width = c.height = TILE;
+    const g = c.getContext("2d"), px = (x, y, w, h, col) => { g.fillStyle = col; g.fillRect(x, y, w, h); }, r = i => hash(t * 97 + v * 13 + i, i * 7 + v);
+    if (t === T.SNOW) {   // packed snow over salt: blue-white, a few sparkles and footprints of the wind
+      px(0, 0, 16, 16, "#e8eef6"); for (let i = 0; i < 6; i++) px(Math.floor(r(i) * 16), Math.floor(r(i + 9) * 16), 1, 1, "#cdd8e6");
+      if (v === 1) { px(3, 9, 5, 1, "#d4dfeb"); px(9, 5, 4, 1, "#d4dfeb"); }
+      if (v === 2) { px(6, 4, 1, 1, "#ffffff"); px(11, 11, 1, 1, "#ffffff"); px(2, 13, 1, 1, "#ffffff"); }
+    } else if (t === T.ICE) {   // the frozen lake: pale blue, glassy streaks and hairline cracks
+      px(0, 0, 16, 16, "#a8d4ec"); px(0, 0, 16, 1, "#c8e6f6");
+      g.fillStyle = "#d8f0fc"; g.fillRect(2 + v * 3, 3, 6, 1); g.fillRect(8 - v, 10, 5, 1);
+      if (v !== 1) { g.strokeStyle = "#7eb4d4"; g.lineWidth = 1; g.beginPath(); g.moveTo(1, 14); g.lineTo(5, 9); g.lineTo(9, 10); g.lineTo(14, 6); g.stroke(); }
+    } else {   // a pine killed by the frost, rimed white
+      px(0, 0, 16, 16, "#e8eef6"); px(7, 9, 2, 7, "#4a3a2e");
+      g.fillStyle = "#3e5a66"; g.beginPath(); g.moveTo(8, 0); g.lineTo(14, 11); g.lineTo(2, 11); g.fill();
+      g.fillStyle = "#e8f4fa"; for (const [x, y, w] of [[6, 3, 4], [4, 6, 3], [9, 7, 3], [3, 10, 4], [9, 10, 4]]) g.fillRect(x, y, w, 1);
+      if (v) px(5, 5, 1, 1, "#ffffff");
     }
-    if (battle && group && group[0] === "king" && !(opts || {}).apology) {
-      battle.king = { water: 0, tide: 1, bellReady: 1, below: null, roundDmg: 0, lastRound: 0, souls: [] };
-      blog("The floor of the deep is water now, and the water is rising. (Ring the Rain Bell to push the sea back.)");
-    }
-    return r;
+    tileCache.set(key, c); return c;
   };
-  const kingSplash = (name, sub) => { $("splashName").textContent = name; $("splashSub").textContent = sub; const sp = $("splash"); sp.hidden = true; void sp.offsetWidth; sp.hidden = false; clearTimeout(sp._t); sp._t = setTimeout(() => { sp.hidden = true; }, 2600); };
-  const kingSay = (f, text) => { for (let i = RIG_FX.length - 1; i >= 0; i--) if (RIG_FX[i].kind === "say" && RIG_FX[i].unit === f) RIG_FX.splice(i, 1); RIG_FX.push({ kind: "say", text, unit: f, t0: time, dur: 3 }); Voice.say("king", text); };
-  function raiseWater(n) {
-    const K = KB(); if (!K) return; K.water = Math.max(0, Math.min(10, K.water + n));
-    if (n > 0 && K.water >= 10) popupText(kingUnit() || battle.heroes[0], "THE FLOOD COMES", "#9ef0f5");
-  }
-  // each round, when the King chooses his move
-  const _chooseIntentK = chooseIntent;
-  chooseIntent = function (f) {
-    const K = KB();
-    if (!K || f.id !== "king" || f.dead) return _chooseIntentK(f);
-    if (K.lastRound !== battle.round) {
-      K.lastRound = battle.round; K.roundDmg = 0;
-      raiseWater(battle.round === 1 ? 0 : K.tide === 3 ? 2 : 1);
-      if (K.water >= 6) {   // the sea takes a little from everyone
-        const pct = 0.04 * (K.water - 5);
-        for (const h of battle.heroes) if (alive(h)) { const d = Math.max(1, Math.round(h.ref.maxHp * pct)); damage(h, d, { silent: true, noFury: true }); popup(h, d, "#4ab8d8"); }
-        blog(`The sea is at ${K.water} of 10. Everyone chokes on brine.`);
+  // ---- the land: snow, the frozen lake with the Ice House in it, Kelda, the cutters' quarry, dead pines
+  const rimeRnd = (a, b) => { let h = Math.imul(a ^ 0x5bd1e995, 0x27d4eb2d) ^ Math.imul(b + 0x165667b1, 0x9e3779b1); h ^= h >>> 15; h = Math.imul(h, 0x85ebca6b); h ^= h >>> 13; return (h >>> 0) / 4294967296; };
+  const _buildMapRime = buildMap;
+  buildMap = function () {
+    _buildMapRime();
+    const Y0 = RIME.y0, Y1 = RIME.y1;
+    rect(0, Y0, W - 1, Y1, T.CLIFF);
+    for (let y = Y0 + 1; y < Y1; y++) for (let x = 1; x < W - 1; x++) set(x, y, T.SNOW);
+    for (let y = 148; y <= 182; y++) for (let x = 112; x <= 166; x++) { const dx = (x - 140) / 27, dy = (y - 165) / 17; if (dx * dx + dy * dy < 1 + (rimeRnd(x, y) - 0.5) * 0.12) set(x, y, T.ICE); }   // the lake
+    for (let i = 0; i < 140; i++) {   // dead pines in stands, and rock
+      const x = 2 + Math.floor(rimeRnd(i * 13 + 1, 401) * 164), y = Y0 + 2 + Math.floor(rimeRnd(403, i * 7 + 2) * 46);
+      if (get(x, y) !== T.SNOW) continue;
+      if (x >= RIME.kelda.x0 - 2 && x <= RIME.kelda.x1 + 2 && y >= RIME.kelda.y0 - 2 && y <= RIME.kelda.y1 + 2) continue;
+      set(x, y, rimeRnd(i, 409) < 0.75 ? T.PINE : T.ROCK);
+    }
+    // the cutters' quarry in the south-west: blocks of ice cut square out of the frozen ground
+    for (let y = 168; y <= 184; y++) for (let x = 8; x <= 40; x++) if (rimeRnd(Math.floor(x / 3), Math.floor(y / 3) + 50) < 0.42) set(x, y, (x + y) % 5 ? T.ICE : T.CRYSTAL);
+    // Kelda: a ring wall against the wind, four houses, the hearth, the old frozen well
+    const K = RIME.kelda;
+    rect(K.x0, K.y0, K.x1, K.y1, T.SWALL); rect(K.x0 + 1, K.y0 + 1, K.x1 - 1, K.y1 - 1, T.COBBLE);
+    for (const y of [156, 157, 158]) { set(K.x0, y, T.COBBLE); set(K.x1, y, T.COBBLE); }
+    for (const x of [72, 73, 74]) { set(x, K.y0, T.COBBLE); set(x, K.y1, T.COBBLE); }
+    house2(59, 150, 6); house2(79, 150, 7); house2(59, 160, 6); house2(80, 160, 6);
+    set(73, 154, T.WELL);
+    // the Ice House: a hall of salt-glass walls standing in the lake
+    const Hh = RIME.house;
+    rect(Hh.x0, Hh.y0, Hh.x1, Hh.y1, T.SWALL); rect(Hh.x0 + 1, Hh.y0 + 1, Hh.x1 - 1, Hh.y1 - 1, T.FLOOR);
+    for (let x = Hh.x0 + 3; x < Hh.x1 - 2; x += 4) for (const y of [Hh.y0 + 3, Hh.y1 - 3]) set(x, y, T.CRYSTAL);
+    set(RIME.door[0], RIME.door[1] - 1, T.FLOOR); set(RIME.door[0], RIME.door[1], G && G.flags && G.flags.rimeGate ? T.FLOOR : T.GDOOR);
+    // roads: from the stair down to Kelda, on to the lake shore, and west to the quarry
+    carve([[RIME.land[0], RIME.land[1]], [100, 157], [K.x1, 157]], T.PATH);
+    carve([[K.x0, 157], [40, 157], [24, 168]], T.PATH);
+    carve([[100, 157], [100, 182], [140, 182], [140, RIME.door[1] + 1]], T.PATH);
+    // the way down from the Dry Sea
+    carve([[RIME.gate[0], 114], [RIME.gate[0], RIME.gate[1]]], T.PATH);
+    fixSpots();
+  };
+  const _applyWorldRime = applyWorldState;
+  applyWorldState = function () {
+    _applyWorldRime();
+    if (!G) return;
+    if (G.flags.fog && G.flags.fog.length < FW * FH) G.flags.fog = G.flags.fog.padEnd(FW * FH, "0");   // older saves knew a smaller world
+    set(RIME.door[0], RIME.door[1], G.flags.rimeGate ? T.FLOOR : T.GDOOR);
+  };
+  WARPS.push({ x: RIME.gate[0], y: RIME.gate[1], to: RIME.land, req: rimeOpen, msg: "A stair cut into the south rim of the old seabed, iced over and humming faintly, like a held note. (Chapter X)" },
+    { x: RIME.land[0], y: RIME.land[1] - 1, to: [RIME.gate[0], RIME.gate[1] - 1] });
+  const _regionOfRime = regionOf;
+  regionOf = function (x, y) { return y >= RIME.y0 ? "rime" : _regionOfRime(x, y); };
+  REGION_LINKS.rime = { drysea: [RIME.land[0], RIME.land[1] - 1] }; REGION_LINKS.drysea.rime = RIME.gate;
+  REGIONS.unshift({ name: "Kelda", x0: RIME.kelda.x0, y0: RIME.kelda.y0, x1: RIME.kelda.x1, y1: RIME.kelda.y1, music: "village" },
+    { name: "The Ice House", x0: RIME.house.x0, y0: RIME.house.y0, x1: RIME.house.x1, y1: RIME.house.y1, music: "cathedral" },
+    { name: "The Cutters' Quarry", x0: 6, y0: 166, x1: 42, y1: 186, music: "deep" },
+    { name: "The Frozen Lake", x0: 110, y0: 146, x1: 168, y1: 184, music: "coast" },
+    { name: "The Rime", x0: 1, y0: 141, x1: 168, y1: 188, music: "flats" });
+  MAP_LABELS.push(["Kelda", 73, 146], ["The Ice House", 140, 154], ["Frozen Lake", 158, 184], ["Cutters' Quarry", 24, 186], ["The Rime", 100, 146]);
+  const _areaAtRime = areaAt;
+  areaAt = function (tx, ty, f) { return ty >= RIME.y0 ? "rime" : _areaAtRime(tx, ty, f); };
+  SKIES2.rime = ["#0e1a30", "#7a9abe"]; SKIES2.icehouse = ["#06101e", "#1e3a5a"];
+  const _bgRime = drawBattleBg2b;
+  drawBattleBg2b = function (g, area) {
+    if (area !== "rime" && area !== "icehouse") return _bgRime(g, area);
+    const t = time;
+    if (area === "rime") {
+      g.fillStyle = "#d8e6f2"; g.beginPath(); g.arc(70, 50, 12, 0, Math.PI * 2); g.fill();                                          // a white winter sun
+      for (const [base, amp, col, sp] of [[88, 12, "#9ab4cc", 0.025], [100, 9, "#c4d6e6", 0.04]]) {                                  // two rows of snow hills
+        g.fillStyle = col; g.beginPath(); g.moveTo(-10, 130); for (let x = -10; x <= VIEW_W + 10; x += 6) g.lineTo(x, base + Math.sin(x * sp + base) * amp); g.lineTo(VIEW_W + 10, 130); g.fill();
       }
-      if (K.below) {   // a fighter held under
-        const h = K.below.unit;
-        if (--K.below.rounds <= 0 || !alive(h)) freeBelow(false);
-        else { h.st.stun = true; const d = Math.max(1, Math.round(h.ref.maxHp * 0.06)); damage(h, d, { silent: true, noFury: true }); popup(h, d, "#4ab8d8"); }
-      }
+      g.fillStyle = "#3e5a66"; for (const [x, h] of [[24, 30], [40, 22], [262, 34], [284, 26], [300, 30]]) { g.beginPath(); g.moveTo(x, 112 - h); g.lineTo(x + 8, 112); g.lineTo(x - 8, 112); g.fill(); }
+      g.fillStyle = "#e8eef6"; g.fillRect(-10, 114, VIEW_W + 20, 90);
+      g.fillStyle = "#cdd8e6"; for (let i = 0; i < 16; i++) { const x = (i * 41) % (VIEW_W + 20) - 10, y = 122 + (i * 17) % 60; g.fillRect(x, y, 18, 1); }
+    } else {
+      g.fillStyle = "#0e1e32"; g.fillRect(-10, -10, VIEW_W + 20, 130);
+      g.fillStyle = "#a8d4ec"; for (let i = 0; i < 14; i++) { const x = i * 24 + 4, h = 10 + (i * 7) % 18; g.beginPath(); g.moveTo(x, 0); g.lineTo(x + 5, h); g.lineTo(x + 10, 0); g.fill(); }   // icicles
+      g.fillStyle = "#1e3a5a"; for (let i = 0; i < 5; i++) { const x = 18 + i * 66; g.fillRect(x, 30, 14, 88); g.fillStyle = "#3a6a90"; g.fillRect(x + 2, 30, 3, 88); g.fillStyle = "#1e3a5a"; }
+      g.fillStyle = "#a8d4ec"; g.fillRect(-10, 116, VIEW_W + 20, 90); g.fillStyle = "#c8e6f6"; for (let i = 0; i < 10; i++) g.fillRect((i * 53) % VIEW_W, 124 + (i * 11) % 50, 26, 1);
+      g.fillStyle = "rgba(200,232,248,.18)"; g.fillRect(-10, 116, VIEW_W + 20, 4);
     }
-    if (K.water >= 10) { K.water = 5; return { name: "The Flood", power: 1.9, all: true, kingMove: "flood", announce: "THE FLOOD. The whole sea stands up and falls on you." }; }
-    if (K.tide >= 2 && !K.below && battle.round % 3 === 0 && battle.heroes.filter(alive).length > 1) return { name: "Taken Below", kingMove: "below" };
-    return _chooseIntentK(f);
+    if (!REDUCED) { g.fillStyle = "rgba(255,255,255,.75)"; for (let i = 0; i < 40; i++) { const x = (hash(i, 31) * (VIEW_W + 20) + Math.sin(t + i) * 6) % (VIEW_W + 20) - 10, y = (hash(i, 37) * 200 + t * (14 + (i % 4) * 4)) % 200 - 4; g.fillRect(x, y, 1 + (i % 3 === 0), 1 + (i % 3 === 0)); } }   // snow falling
+    return true;
   };
-  // the court shields him; the tides turn at two thirds and a quarter; the Last Rain feeds the party's song
-  onBattle("damage", ctx => {
-    const K = KB(); if (!K || ctx.target.id !== "king" || ctx.target.side !== "foe") return;
-    if (battle.foes.some(f => f.summoned && !f.dead) && ctx.amount > 1) ctx.amount = Math.max(1, Math.round(ctx.amount * 0.67));
+  // ---- the cold's own creatures
+  RAMP.ice = ["#0e1a2e", "#1e3a5a", "#3a6a90", "#6aa0c8", "#a8d4ec", "#e0f4ff"];
+  RAMP.frost = ["#2a2e3a", "#4a5262", "#7a8496", "#b4bccc", "#dce2ec", "#ffffff"];
+  Object.assign(REG_ART, {
+    rimewolf: { w: 52, h: 40, ramps: ["ink", "frost", "ice", "glowc", "blood"], paint(K, ph) {
+      const run = Math.sin(ph * Math.PI * 2), cx = 78;
+      for (const [x, d] of [[36, 1], [54, -1], [98, 1], [114, -1]]) { const sw = run * d * 7; K.S([[x, 74], [x + sw * 0.4, 92], [x + sw, 112]], 7, "#4a5262"); K.S([[x, 76], [x + sw * 0.4, 92]], 3, "#b4bccc"); K.E(x + sw, 112, 5, 2, "#2a2e3a"); }
+      K.vol(cx, 64, 50, 22, ["#ffffff", "#b4bccc", "#4a5262"]);                                   // a lean body under a ruff of frost
+      for (let i = 0; i < 9; i++) K.P([[34 + i * 10, 46], [38 + i * 10, 30 - (i % 2) * 6], [42 + i * 10, 46]], i % 2 ? "#dce2ec" : "#a8d4ec");   // icicle hackles
+      K.Q([[28, 56], [10, 46 + run * 4], [2, 30]], 6, "#7a8496"); K.Q([[28, 56], [10, 46 + run * 4], [2, 30]], 2, "#e0f4ff");
+      K.vol(126, 46, 20, 15, ["#ffffff", "#b4bccc", "#4a5262"]);                                  // the head, low and long
+      K.P([[128, 52], [152, 56], [148, 64], [126, 62]], "#dce2ec"); K.teeth(130, 56, 6, 3, 5, "#ffffff");
+      K.P([[112, 34], [116, 16], [122, 32]], "#7a8496"); K.P([[124, 32], [130, 14], [134, 32]], "#7a8496");
+      K.eye(124, 42, 3.2, "#3ee0e8"); K.E(140, 68, 6, 3, "rgba(158,240,245,0.5)");                  // cold breath
+      for (let i = 0; i < 6; i++) K.R(30 + K.rng() * 100, 20 + K.rng() * 20, 1.6, 1.6, "rgba(224,244,255,0.8)");
+    } },
+    frostwight: { w: 44, h: 60, ramps: ["ink", "frost", "ice", "cloth", "glowc"], paint(K, ph) {
+      const b = Math.sin(ph * Math.PI * 2) * 3, cx = 66;
+      // a hooded shape of rime, no feet: the hem frays into falling snow
+      K.P([[cx - 30, 70 + b], [cx + 30, 70 + b], [cx + 46, 150 + b], [cx + 22, 172], [cx + 4, 154 + b], [cx - 16, 176], [cx - 34, 152 + b], [cx - 48, 160]], K.LG(cx - 48, 0, cx + 48, 0, [[0, "#4a5262"], [0.5, "#dce2ec"], [1, "#7a8496"]]));
+      for (let i = 0; i < 5; i++) K.S([[cx - 20 + i * 10, 84 + b], [cx - 34 + i * 18, 160 + b]], 1.2, "rgba(58,106,144,0.5)");
+      K.P([[cx - 32, 76 + b], [cx - 22, 26 + b], [cx, 14 + b], [cx + 22, 26 + b], [cx + 32, 76 + b]], "#b4bccc");   // the hood
+      K.E(cx, 56 + b, 18, 22, "#07060c"); K.eye(cx - 7, 52 + b, 3.4, "#9ef0f5", null); K.eye(cx + 7, 52 + b, 3.4, "#9ef0f5", null);
+      for (const s of [-1, 1]) { K.S([[cx + s * 26, 84 + b], [cx + s * 48, 106 + b], [cx + s * 54, 128 + b]], 6, "#7a8496"); for (let f = 0; f < 3; f++) K.S([[cx + s * 54, 128 + b], [cx + s * (50 + f * 5), 142 + b]], 2, "#e0f4ff"); }
+      K.E(cx, 92 + b, 10, 10, K.RG(cx, 92 + b, 1, 14, [[0, "rgba(158,240,245,0.9)"], [1, "rgba(62,224,232,0)"]]));
+      for (let i = 0; i < 12; i++) K.R(cx - 50 + K.rng() * 100, 150 + K.rng() * 26, 1.6, 1.6, "rgba(255,255,255,0.8)");
+    } },
+    icethrall: { w: 48, h: 62, ramps: ["ink", "ice", "frost", "leather", "pale", "glowc"], paint(K, ph) {
+      const b = Math.sin(ph * Math.PI * 2) * 1.5, cx = 72;
+      // an ice-cutter who stayed too long: a man inside a block of ice that walks
+      for (const s of [-1, 1]) { K.S([[cx + s * 16, 130], [cx + s * 18, 166]], 12, "#3a6a90"); K.E(cx + s * 18, 170, 10, 4, "#1e3a5a"); }
+      K.P([[cx - 40, 50 + b], [cx + 40, 46 + b], [cx + 46, 136], [cx - 44, 138]], K.LG(cx - 44, 0, cx + 46, 0, [[0, "#6aa0c8"], [0.5, "#e0f4ff"], [1, "#3a6a90"]]));
+      K.rim([[cx - 40, 50 + b], [cx + 40, 46 + b], [cx + 46, 136], [cx - 44, 138]], "#1e3a5a", 2);
+      K.vol(cx, 92 + b, 20, 30, ["#8e6a4c", "#523828", "#1e140e"]);                                  // the frozen man inside
+      K.vol(cx, 62 + b, 12, 13, ["#ccccd8", "#848498", "#3a3a4a"]); K.E(cx - 4, 60 + b, 2, 2, "#07060c"); K.E(cx + 4, 60 + b, 2, 2, "#07060c"); K.E(cx, 68 + b, 3, 2, "#07060c");
+      for (let i = 0; i < 5; i++) K.crack(cx - 30 + i * 14, 52 + b + (i % 2) * 20, 30, 1.4, "#ffffff", 1.2);
+      for (const s of [-1, 1]) { K.S([[cx + s * 42, 70 + b], [cx + s * 56, 110], [cx + s * 54, 138]], 12, "#6aa0c8"); }
+      K.P([[cx + 50, 120], [cx + 62, 150], [cx + 46, 154]], "#a8d4ec"); K.S([[cx + 54, 104], [cx + 54, 150]], 3, "#523828");   // an ice pick frozen to the hand
+      K.eye(cx - 4, 60 + b, 1.8, "#3ee0e8", null); K.eye(cx + 4, 60 + b, 1.8, "#3ee0e8", null);
+    } },
+    hoarmoth: { w: 60, h: 46, ramps: ["ink", "frost", "ice", "paper", "glowc"], paint(K, ph) {
+      const flap = Math.sin(ph * Math.PI * 2), cx = 90;
+      for (const s of [-1, 1]) {   // four pale wings, dusted with frost, eyespots of ice
+        const tip = 40 + flap * 14;
+        K.P([[cx, 64], [cx + s * 84, tip], [cx + s * 78, 96], [cx + s * 20, 84]], K.LG(cx, 0, cx + s * 84, 0, [[0, "#dce2ec"], [1, "#7a8496"]]));
+        K.P([[cx, 80], [cx + s * 66, 112 + flap * 6], [cx + s * 30, 124], [cx, 92]], "#b4bccc");
+        K.E(cx + s * 50, 70 + flap * 6, 10, 9, "#3a6a90"); K.E(cx + s * 50, 70 + flap * 6, 5, 5, "#e0f4ff");
+        K.S([[cx + s * 6, 66], [cx + s * 80, tip + 4]], 1.2, "#4a5262");
+      }
+      K.vol(cx, 86, 12, 28, ["#f4eed6", "#bab08e", "#6a6250"]); for (let i = 0; i < 5; i++) K.S([[cx - 10, 72 + i * 9], [cx + 10, 72 + i * 9]], 1.4, "#948a70");
+      K.vol(cx, 56, 11, 10, ["#f4eed6", "#bab08e", "#6a6250"]); K.eye(cx - 5, 54, 3, "#9ef0f5"); K.eye(cx + 5, 54, 3, "#9ef0f5");
+      K.Q([[cx - 4, 48], [cx - 20, 30], [cx - 30, 30]], 1.6, "#948a70"); K.Q([[cx + 4, 48], [cx + 20, 30], [cx + 30, 30]], 1.6, "#948a70");
+      for (let i = 0; i < 16; i++) K.R(cx - 80 + K.rng() * 160, 100 + K.rng() * 38, 1.4, 1.4, "rgba(224,244,255,0.7)");   // the dust it sheds
+    } },
   });
-  onBattle("damaged", (ctx, d) => {
-    const K = KB(), f = ctx.target; if (!K || f.id !== "king" || f.side !== "foe" || f.dead) return;
-    K.roundDmg += d;
-    if (K.below && K.roundDmg >= f.maxHp * 0.08) freeBelow(true);
-    if (K.tide === 1 && f.hp <= f.maxHp * 0.66) {
-      K.tide = 2; if (!f.phase2) enterPhase2(f);
-      setTimeout(() => { if (KB()) kingSplash("The King Rises", "Second tide"); }, 2700);
-    }
-    if (K.tide === 2 && f.hp <= f.maxHp * 0.25) {
-      K.tide = 3; K.bellReady = 0; f.phase3 = true;
-      setTimeout(() => { if (!KB()) return; kingSplash("The Last Rain", "Third tide"); kingSay(f, "Then let it all come down."); blog("THE LAST RAIN. The rain falls upward. Your Fury answers faster: the living song against the sea."); flash(1); shake = Math.max(shake, 12); Music.sound("boss"); }, 300);
-    }
+  Object.assign(MONSTERS, {
+    rimewolf: { name: "Rime Wolf", hp: 70, atk: 19, def: 5, spd: 16, xp: 52, coin: [5, 9], sprite: "rimewolf",
+      moves: [{ name: "Frost Bite", w: 3, power: 1.0, bleed: [3, 2] }, { name: "Harry", w: 2, power: 0.65, hits: 2 }, { name: "Howl", w: 1, guard: true }] },
+    frostwight: { name: "Frost Wight", hp: 66, atk: 20, def: 4, spd: 10, xp: 56, coin: [6, 10], sprite: "frostwight",
+      moves: [{ name: "Rime Breath", w: 2, power: 0.75, all: true }, { name: "Numb", w: 2, power: 0.9, weakOne: 2 }, { name: "The Long Cold", w: 1, charge: true, power: 1.5, all: true }] },
+    icethrall: { name: "Ice Thrall", hp: 118, atk: 21, def: 13, spd: 4, xp: 60, coin: [7, 12], sprite: "icethrall",
+      moves: [{ name: "Ice Pick", w: 3, power: 1.35, stunChance: 0.25 }, { name: "Set Hard", w: 1, guard: true, heal: 16 }] },
+    hoarmoth: { name: "Hoarfrost Moth", hp: 58, atk: 18, def: 3, spd: 13, xp: 50, coin: [5, 9], sprite: "hoarmoth",
+      moves: [{ name: "Frost Dust", w: 2, weakAll: 2 }, { name: "Drink Warmth", w: 3, power: 1.0, drain: 0.6 }] },
+    isolde: { name: "Saint Isolde, the Rime Keeper", hp: 820, atk: 21, def: 9, spd: 8, xp: 480, coin: [170, 170], sprite: "isolde", boss: true, music: "boss", tall: true,
+      moves: [{ name: "Hymn of Ice", w: 3, power: 0.85, all: true, weakAll: 1 }, { name: "Hold Fast", w: 3, power: 1.45, stunChance: 0.3 }, { name: "Frozen Embrace", w: 1, guard: true, heal: 30 },
+        { name: "The Long Winter", w: 0, charge: true, power: 1.8, all: true },
+        { name: "Call the Faithful", w: 0, summonKind: "icethrall", summonText: "Isolde lifts her hands. Two cutters, frozen at their work, step out of the walls." }] },
   });
-  const _addFuryK = addFury;
-  addFury = function (n) { const K = KB(); return _addFuryK(K && K.tide === 3 && n > 0 ? n * 1.5 : n); };
-  function freeBelow(early) {
-    const K = KB(); if (!K || !K.below) return; const h = K.below.unit; K.below = null; delete h.st.stun; delete h.st.below;
-    if (!alive(h)) return;
-    popupText(h, early ? "PULLED FREE" : "SURFACES", "#9ef0f5"); Music.sound("heal");
-    blog(early ? `You hurt the King enough that he lets go. ${h.name} breaks the surface, gasping.` : `${h.name} claws back to the surface.`);
-    const k = kingUnit(); if (early && k) { k.st.exposed = Math.max(k.st.exposed || 0, 2); popupText(k, "EXPOSED", "#ffcf4a"); }
+  Object.assign(BESTIARY, {
+    rimewolf: "Wolves the cold got into and never left. They run in pairs and bite to bleed you; the bleeding is the warm part.",
+    frostwight: "Snow that remembers being someone's breath. Its long cold builds slowly; break it while it builds.",
+    icethrall: "Ice-cutters who worked one winter too many. Armoured in their own ice: hammers and spears break it; blades skate.",
+    hoarmoth: "Moths that drink warmth. Their dust weakens a whole party, and they are thin as paper.",
+    isolde: "The saint who sang Kelda's rain still four generations ago, so the Guild could never sell it, and froze with it to keep it.",
+  });
+  FIELD.push(
+    { id: "r1", x: 96, y: 150, group: ["rimewolf", "rimewolf"], minStage: 10 }, { id: "r2", x: 110, y: 145, group: ["hoarmoth", "frostwight"], minStage: 10 },
+    { id: "r3", x: 44, y: 150, group: ["rimewolf", "hoarmoth"], minStage: 10 }, { id: "r4", x: 30, y: 176, group: ["icethrall", "frostwight"], minStage: 10 },
+    { id: "r5", x: 18, y: 172, group: ["icethrall", "icethrall"], minStage: 10, elite: true }, { id: "r6", x: 104, y: 172, group: ["frostwight", "frostwight", "hoarmoth"], minStage: 10 },
+    { id: "r7", x: 124, y: 184, group: ["rimewolf", "rimewolf", "frostwight"], minStage: 10 }, { id: "r8", x: 160, y: 150, group: ["hoarmoth", "hoarmoth", "rimewolf"], minStage: 10, elite: true },
+  );
+  LORE.push(
+    { id: 23, x: 68, y: 147, title: "Kelda's Oath", text: "Carved over the village gate, the letters filled with ice: \"WHAT FALLS ON KELDA IS KELDA'S TO GIVE. NOT TO SELL. NOT TO KEEP. TO GIVE.\" Somebody has scratched a line through KEEP, and then, later, scratched the line out." },
+    { id: 24, x: 22, y: 166, title: "A Cutter's Contract", text: "A Guild form nailed to a post, the ink frozen pale: \"The undersigned shall cut ice for the Guild of Oru at one cup of water per block, the cup to be drawn from the block.\"" },
+    { id: 25, x: 116, y: 164, title: "The Last Song", text: "Scratched into the lake ice and frozen over a hundred times: \"She said she would hold it until somebody came who could carry it. She said: tell them not to hurry.\"" },
+  );
+  RELICS.rimeheart = { name: "Isolde's Breath", from: "isolde", desc: "A breath of the saint's cold, still singing. +3 defence, +2 SP each turn, and stuns don't take.", def: 3, spRegen: 2, noStun: true };
+  // ---- Kelda's people
+  const RIME_LOOK = {
+    hild: { robe: "#3a5a7a", hair: "#e8eef6", skin: "#c49a7a", style: { hair: "veil", dress: true, eye: "#3a6a8a" } },
+    brannoc: { robe: "#5a4a3a", hair: "#a86a3a", skin: "#e0a878", style: { hair: "cap", eye: "#3a4a5a" } },
+    wynn: { robe: "#a8403a", hair: "#2a1a10", skin: "#c98d63", style: { hair: "fringe", eye: "#3a2a1a" } },
+    edda: { robe: "#e8eef6", hair: "#6a6a7a", skin: "#a87a5a", style: { hair: "hood", hood: "#3a6a90", eye: "#4a5a6a" } },
+  };
+  npc2({ id: "hild", name: "Mother Hild", x: 73, y: 156, look: RIME_LOOK.hild, show: rimeOpen });
+  npc2({ id: "brannoc", name: "Brannoc the Cutter", x: 64, y: 158, look: RIME_LOOK.brannoc, show: rimeOpen });
+  npc2({ id: "wynn", name: "Wynn", x: 84, y: 157, look: RIME_LOOK.wynn, show: rimeOpen });
+  npc2({ id: "edda", name: "Sister Edda", x: 62, y: 153, look: RIME_LOOK.edda, show: rimeOpen });
+  for (const id of ["hild", "brannoc", "wynn", "edda"]) SPEAKERS[id] = NPCS.find(n => n.id === id).name;
+  SPEAKERS.isolde = "Saint Isolde";
+  Object.assign(ACTS, {
+    hild: { draw: (P, t) => { P(9, -22, 2, 22, "#6b5a44"); P(7, -24, 6, 3, "#a8d4ec"); } },
+    brannoc: { draw: (P, t) => { const a = Math.sin(t * 2) * 3; P(-10, -20 + a, 2, 18, "#523828"); P(-13, -22 + a, 8, 3, "#a8d4ec"); } },
+    wynn: { pace: 14, draw: (P, t, n, g2, x, y) => { if (!n.walking && Math.sin(t * 1.3) > 0.7) drawEmote(g2, x + 8, y - 30, "note"); } },
+    edda: { draw: (P, t) => { P(8, -12, 6, 7, "#e8eef6"); P(9, -11, 4, 1, "#3a6a90"); } },
+  });
+  const rf = () => G.flags;
+  Object.assign(D, {
+    rime_arrive: say(null, "The stair comes out under a white sky. Snow, on the salt. Somewhere to the east a sound like a choir holding one note, so long that you stop hearing it and only hear it stop. Smoke rises from a walled village to the west of the road.", null, () => { rf().rimeArrived = true; save(); }),
+    hild_0: { who: "hild", text: "A courier. With the three tones on you, I can hear them from here. ...Sit. You've come because of the singing on the lake.", choices: [
+      { t: "\"What is it?\"", go: "hild_1" }, { t: "\"Another time.\"", go: null }] },
+    hild_1: say("hild", "Four generations ago the Guild came to buy our rain, the way they bought yours. Saint Isolde walked out onto the lake and sang the whole winter's rain still, into one great house of ice, so there would be nothing to buy. Then she stayed inside it, to keep it.", "hild_2"),
+    hild_2: say("hild", "Your Bell rang, and the ice heard it. It wants to be water again. If she lets it all go at once, it goes down the old riverbed in one night, through the Dry Sea, over Tamar's Rest and every caravan on the road.", "hild_3"),
+    hild_3: { who: "hild", text: "She won't listen to us. We're the ones she's keeping it for. She might listen to someone who carries things for a living. Will you go down to the Ice House and ask her to let go slowly?", choices: [
+      { t: "\"I'll go.\"", go: "hild_yes" }, { t: "\"Why not keep it frozen?\"", go: "hild_keep" }] },
+    hild_keep: say("hild", "Because water held too long stops being water and becomes a price. Ask Brannoc what the Guild pays him for a block. Then go.", "hild_yes"),
+    hild_yes: say("hild", "Take this. It's her own lullaby, the one we sing the children; she'll know it. The door opens for anyone who sings it at the threshold. Go round by the shore road. The wolves don't like the lake.", null, () => { rf().rimeQuest = true; rf().rimeGate = true; applyWorldState(); miniDirty = true; toast("Mother Hild teaches you Isolde's lullaby. The Ice House door will open."); save(); updateHud(); }),
+    hild_wait: say("hild", "Go round by the shore road. She has been holding on for four generations; she can hold on until you get there. Don't make her hold on longer than that."),
+    hild_after: say("hild", "", null),
+    brannoc_0: say("brannoc", "One block of ice, one cup of water, and the cup comes out of the block. The Guild man said it with a straight face. My father signed it. I signed it. If she lets the lake go, there's nothing left to cut, and nothing left to owe. I've been trying to decide if that frightens me."),
+    brannoc_after: say("brannoc", "", null),
+    wynn_0: say("wynn", "Mother Hild says the saint sings so the ice won't forget how to be ice. I skate out to the house sometimes and sing back. She's never answered. ...Do you think she's lonely? Four generations is a lot of winters."),
+    wynn_after: say("wynn", "", null),
+    edda_0: { who: "edda", text: "The cold gets into wounds. I keep salves warm by the hearth, and tonics that taste like burnt pine. Rest here too, if you like: the hearth never goes out.", choices: [
+      { t: "Salve (heal 22): 6 coin", go: "edda_0", act: () => buy("salve"), req: () => G.coins >= 6, reqText: "6 coin" },
+      { t: "Bitter Tonic: 5 coin", go: "edda_0", act: () => buy("tonic"), req: () => G.coins >= 5, reqText: "5 coin" },
+      { t: "Smelling Salts: 10 coin", go: "edda_0", act: () => buy("salts"), req: () => G.coins >= 10, reqText: "10 coin" },
+      { t: "Rest by the hearth", go: "edda_rest" }, { t: "That's all", go: null }] },
+    edda_rest: say(null, "You sit by Kelda's hearth until the cold lets go of your fingers. Everyone is fully healed, and your progress is saved.", null, () => restParty()),
+    isolde_0: say("isolde", "(The hall is blue and very quiet. A woman of ice sits on a throne of it, her mouth a little open on one long note. When you sing the lullaby, the note stops.) ...That song. Nobody has sung it to me in a long time. Who sent you?", "isolde_1"),
+    isolde_1: { who: "isolde", text: "Hild. Of course. She wants me to let go. They all want me to let go, and the moment I do, the Guild will be at the shore with barrels.", choices: [
+      { t: "\"The Guild has fallen. The Bell rings for everyone now.\"", go: "isolde_2" }, { t: "\"Then let it go slowly. I'll carry the word downriver.\"", go: "isolde_2" }] },
+    isolde_2: say("isolde", "Fallen. They always say fallen, and then someone else stands up in the same coat. I held this for four generations. I will not open my hands because a stranger says the weather has changed. If you want it, courier... come and take it.", null, () => startBattle(["isolde"], { boss: "isolde", area: "icehouse" })),
+    isolde_after: { who: "isolde", text: "(The ice of her body is running now, all over, gently.) You didn't take it. You could have, at the end, and you didn't. ...All right. Tell me how. Quickly, or slowly. Down the river, or kept here for Kelda to give.", choices: [
+      { t: "\"Slowly. Down the old riverbed, all the way to the Dry Sea.\"", go: "isolde_river" },
+      { t: "\"Keep a little here, for Kelda to give, and let the rest go slowly.\"", go: "isolde_keep" }] },
+    isolde_river: say("isolde", "Slowly, then. (She opens her hands. Far off, under the lake, something gives, and goes on giving.) Tell Tamar's people a river is coming, and to plant on its banks, not sell its cups. I'm going to sleep now. Don't wake me unless it's to say the river reached the sea.", null, () => rimeDone("river")),
+    isolde_keep: say("isolde", "A little, kept, to give. That's the oath, isn't it? I had forgotten the last word was give. (She lets most of the lake go, slowly, and keeps one bright block in her hands.) I'll stay and keep it. Send me the children who want to learn the song.", null, () => rimeDone("keep")),
+  });
+  function rimeDone(choice) {
+    rf().rimeChoice = choice; rf().rimeDone = true; save(); updateHud();
+    setTimeout(() => card("Act III · The Rime", choice === "river" ? "A River Is Coming" : "Kept to Give",
+      choice === "river" ? "The ice of the Rime lets go one cup at a time. By spring there is a stream in the old riverbed of the Dry Sea, and by summer Tamar's Rest has a willow. Nobody owns it. Kelda sends its children down to see." :
+        "The lake goes down the old riverbed slowly, and one bright block stays in the Ice House with its saint. Kelda's children walk out every winter to learn the lullaby. When anyone in the valley is dry, Kelda gives."), 600);
   }
-  // his own moves
-  const _doFoeK = doFoe;
-  doFoe = async function (f) {
-    const K = KB(), mv = f && f.intent;
-    if (!K || !mv || !mv.kingMove || f.st.stun) return _doFoeK(f);
-    if (mv.kingMove === "below") {
-      const pool = battle.heroes.filter(alive).filter(h => !h.st.taunt), h = pick(pool.length ? pool : battle.heroes.filter(alive)); if (!h) return;
-      f.anim = { k: "wind", t0: time }; await wait(300); f.anim = null; if (!KB()) return;
-      K.below = { unit: h, rounds: 2 }; h.st.stun = true; h.st.below = true; K.belowT = time;
-      shake = Math.max(shake, 9); Music.sound("bleed"); popupText(h, "TAKEN BELOW", "#4ab8d8");
-      kingSay(f, pick(["Stay with us. It is quiet here.", "One more for the deep.", "Below, courier. Where they all are."]));
-      blog(`The King's hundred hands drag ${h.name} under the water! Hit him hard (${Math.round(f.maxHp * 0.08)} in one round) to make him let go.`);
-      await wait(900); return;
-    }
-    if (mv.kingMove === "flood") {
-      blog(mv.announce); flash(1); shake = 14; Music.sound("boss"); await wait(700); if (!KB()) return;
-      const texts = []; for (const t of battle.heroes.filter(alive)) { const r = attackRoll(f, t, mv.power); texts.push(r.dodged ? `${t.name} dodges` : `${t.name} ${r.dmg}`); }
-      blog(`The Flood: ${texts.join(", ")}. The water falls back to 5.`); await wait(900); return;
-    }
-    return _doFoeK(f);
+  D.hild_after.text = "She let go. I felt it in my teeth, the moment it happened, like a held note stopping. Thank you, courier. Kelda will owe you a long time, and we don't mean it the way the Guild means it.";
+  D.brannoc_after.text = "No more blocks, no more cups. I've torn my contract into strips and I'm using them to light the hearth. It burns better than I thought it would.";
+  D.wynn_after.text = "I sang to the house this morning and someone hummed back! Mother Hild says I imagined it. I didn't imagine it.";
+  const _dialogForRime = dialogFor;
+  dialogFor = function (n) {
+    if (n.id === "hild") return rf().rimeDone ? "hild_after" : rf().rimeQuest ? "hild_wait" : "hild_0";
+    if (n.id === "brannoc") return rf().rimeDone ? "brannoc_after" : "brannoc_0";
+    if (n.id === "wynn") return rf().rimeDone ? "wynn_after" : "wynn_0";
+    if (n.id === "edda") return "edda_0";
+    return _dialogForRime(n);
   };
-  // the Rain Bell, on every fighter's menu in this battle
-  const bellOk = () => { const K = KB(); return K && battle.round >= K.bellReady; };
-  const _menuItemsK = menuItems;
-  menuItems = function () {
-    const items = _menuItemsK(), K = KB();
-    if (!K || !menuState || menuState.page !== "main") return items;
-    const ok = bellOk(), wait2 = K.bellReady - battle.round;
-    items.splice(1, 0, { label: "🔔 Ring the Rain Bell", sub: ok ? `Push the sea back 4 (now ${K.water}/10), expose the King for a round, break his wind-up.` : `The Bell is still ringing out (ready in ${wait2} round${wait2 === 1 ? "" : "s"}). The sea: ${K.water}/10.`, disabled: !ok, go: () => finish({ kind: "bell" }) });
-    return items;
+  // the Ice House: the door opens to Hild's lullaby; inside, Isolde waits on her throne
+  const RIME_THRONE = { x: 140, y: 160 };
+  const _interactRime = interact;
+  interact = function () {
+    if (rimeOpen() && mode === "play" && near({ x: RIME_THRONE.x * TILE + 8, y: RIME_THRONE.y * TILE + 8 }, 44) && !rf().isoldeDead) { openDialog("isolde_0"); return true; }
+    if (rimeOpen() && mode === "play" && !rf().rimeGate && near({ x: RIME.door[0] * TILE + 8, y: RIME.door[1] * TILE + 8 }, 26)) { D.__icedoor = say(null, "A door of clear ice, a hand thick. Through it, far inside, a blue hall and someone sitting very still. It doesn't open to a push. (Kelda's elder may know how.)"); openDialog("__icedoor"); return true; }
+    return _interactRime();
   };
-  const _doHeroK = doHero;
-  doHero = async function (u, act) {
-    const K = KB();
-    if (!K || !act || act.kind !== "bell") return _doHeroK(u, act);
-    const k = kingUnit(); K.bellReady = battle.round + (K.tide === 3 ? 1 : 2);
-    playAct(u, "cast", 0.9); await wait(250); if (!KB()) return;
-    raiseWater(-4); K.bellT = time; flash(0.9); shake = Math.max(shake, 8); Music.sound("heal"); Music.sound("crit");
-    let extra = "";
-    if (k) {
-      k.st.exposed = Math.max(k.st.exposed || 0, 2); popupText(k, "EXPOSED", "#ffcf4a");
-      if (k.charged || (k.intent && k.intent.release)) { k.charged = false; k.chargeDmg = 0; k.intent = { name: "Staggered" }; k.st.stun = true; extra = " His wind-up breaks apart!"; popupText(k, "BROKEN", "#ffcf4a"); }
-      else if (k.intent && k.intent.kingMove === "flood") { k.intent = { name: "Staggered" }; k.st.stun = true; extra = " The Flood breaks before it falls!"; }
-    }
-    if (G.flags) G.flags.bellRung = (G.flags.bellRung || 0) + 1;
-    blog(`${u.name} rings the Rain Bell. The sea shrinks back to ${K.water}.${extra}`); renderCards();
-    await wait(800);
+  const _addProp2Rime = addProp2;
+  addProp2 = () => {
+    _addProp2Rime();
+    addProp("sign", 101, 144, { text: "A post with a bell frozen silent on it: KELDA, WEST. THE LAKE, EAST: STAY ON THE SHORE ROAD. In fresher paint: THE SAINT IS SLEEPING. DON'T SKATE TO THE HOUSE. (Somebody has written underneath, in a child's hand: SHE ISN'T.)" });
+    addProp("campfire", 70, 158); addProp("barrel", 66, 155); addProp("crate", 82, 155); addProp("banner", 73, 149);
+    for (const [x, y] of [[26, 170], [34, 182], [12, 180]]) addProp("crate", x, y);
+    addProp("statue", RIME_THRONE.x, RIME_THRONE.y - 1);
+    for (const [x, y] of [[134, 162], [146, 162], [134, 168], [146, 168]]) addProp("candles", x, y);
   };
-  // the souls go up when he falls
-  const _victoryK = victory;
-  victory = function () { const K = KB(); if (K) { K.won = time; if (K.below) { const h = K.below.unit; delete h.st.stun; delete h.st.below; K.below = null; } for (let i = 0; i < 60; i++) K.souls.push({ x: rand(20, VIEW_W - 20), y: rand(120, 200), v: rand(14, 34), w: rand(0, 6.28), s: rand(0.6, 1.4) }); } return _victoryK(); };
-  // ---- on screen
-  const _drawRigFxK = drawRigFx;
-  drawRigFx = function (k) {
-    _drawRigFxK(k);
-    const K = KB(); if (!K) return;
-    const X = x => VP.ox + x * k, Y = y => VP.oy + y * k, W = VIEW_W;
-    ctx.save();
-    // the Last Rain: rain falling upward
-    if (K.tide === 3 && !K.won) {
-      ctx.strokeStyle = "rgba(158,240,245,0.55)"; ctx.lineWidth = Math.max(1, 0.8 * k);
-      for (let i = 0; i < 70; i++) { const px = (i * 37.3) % W, py = 200 - ((time * (90 + (i % 7) * 12) + i * 23) % 220); ctx.beginPath(); ctx.moveTo(X(px), Y(py)); ctx.lineTo(X(px - 1.5), Y(py + 7)); ctx.stroke(); }
-    }
-    // the water, rising over the party
-    const lvl = K.won ? K.water * Math.max(0, 1 - (time - K.won) / 2.5) : K.water, top = 196 - lvl * 9.5;   // it drains away when he falls
-    if (lvl > 0 || K.bellT) {
-      const g2 = ctx.createLinearGradient(0, Y(top), 0, Y(200)); g2.addColorStop(0, "rgba(62,200,220,0.42)"); g2.addColorStop(1, "rgba(10,40,70,0.7)");
-      ctx.fillStyle = g2; ctx.beginPath(); ctx.moveTo(X(0), Y(210));
-      for (let x = 0; x <= W; x += 4) ctx.lineTo(X(x), Y(top + Math.sin(x * 0.06 + time * 2.2) * 1.6 + Math.sin(x * 0.13 - time * 1.4) * 0.8));
-      ctx.lineTo(X(W), Y(210)); ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = "rgba(220,250,255,0.75)"; ctx.lineWidth = Math.max(1, 1 * k); ctx.beginPath();
-      for (let x = 0; x <= W; x += 4) { const y = top + Math.sin(x * 0.06 + time * 2.2) * 1.6 + Math.sin(x * 0.13 - time * 1.4) * 0.8; x ? ctx.lineTo(X(x), Y(y)) : ctx.moveTo(X(x), Y(y)); } ctx.stroke();
-      ctx.fillStyle = "rgba(220,250,255,0.6)";   // bubbles
-      for (let i = 0; i < 18; i++) { const s = (time * 0.4 + i / 18) % 1, bx = (i * 53.7) % W, by = 200 - s * (200 - top); ctx.fillRect(X(bx + Math.sin(time * 3 + i) * 2), Y(by), 1.2 * k, 1.2 * k); }
-      if (lvl >= 6) {   // drowned hands reaching up through the surface
-        ctx.fillStyle = "rgba(150,190,200,0.55)";
-        for (let i = 0; i < lvl - 4; i++) { const hx = 24 + ((i * 71) % (W - 48)), rise = 4 + 3 * Math.sin(time * 1.7 + i); ctx.fillRect(X(hx), Y(top - rise), 2 * k, (rise + 3) * k); ctx.fillRect(X(hx - 2), Y(top - rise - 2), 1 * k, 3 * k); ctx.fillRect(X(hx + 2), Y(top - rise - 3), 1 * k, 3 * k); ctx.fillRect(X(hx + 4), Y(top - rise - 1), 1 * k, 3 * k); }
-      }
-    }
-    // the gauge: the sea, and where the Flood comes
-    const gx = 8, gy = 40, gh = 90;
-    if (!K.won) {
-    ctx.fillStyle = "rgba(10,8,24,0.75)"; ctx.fillRect(X(gx - 2), Y(gy - 2), 8 * k, (gh + 4) * k);
-    ctx.fillStyle = lvl >= 8 ? "#ff6b6b" : lvl >= 6 ? "#ffcf4a" : "#3ec8dc"; ctx.fillRect(X(gx), Y(gy + gh * (1 - lvl / 10)), 4 * k, gh * lvl / 10 * k);
-    ctx.fillStyle = "#ffffff"; ctx.fillRect(X(gx - 2), Y(gy + gh * 0.5), 8 * k, 1 * k);
-    ctx.font = `${Math.round(6 * k)}px 'Pixelify Sans', monospace`; ctx.textAlign = "left"; ctx.fillStyle = "#e8f4ff";
-    ctx.fillText(`SEA ${lvl}/10`, X(gx - 2), Y(gy - 5)); ctx.fillText(bellOk() ? "BELL ✓" : `BELL ${Math.max(0, K.bellReady - battle.round)}`, X(gx - 2), Y(gy + gh + 10));
-    }
-    // a fighter held below: a dark column of water and hands
-    if (K.below && alive(K.below.unit)) {
-      const p = unitPos(K.below.unit), a = Math.min(1, (time - (K.belowT || 0)) / 0.5);
-      const g3 = ctx.createLinearGradient(0, Y(p.y - 50), 0, Y(p.y + 4)); g3.addColorStop(0, "rgba(10,40,70,0)"); g3.addColorStop(1, `rgba(10,40,70,${0.78 * a})`);
-      ctx.fillStyle = g3; ctx.fillRect(X(p.x - 16), Y(p.y - 50), 32 * k, 56 * k);
-      ctx.fillStyle = `rgba(150,190,200,${0.8 * a})`; for (let i = 0; i < 4; i++) { const hx = p.x - 10 + i * 6, hy = p.y - 16 - 10 * Math.abs(Math.sin(time * 2 + i)); ctx.fillRect(X(hx), Y(hy), 2 * k, (p.y - hy) * k); }
-      ctx.fillStyle = "#9ef0f5"; ctx.textAlign = "center"; ctx.fillText(`BELOW · ${K.below.rounds}`, X(p.x), Y(p.y - 52));
-    }
-    // the Bell: rings of gold going out
-    if (K.bellT && time - K.bellT < 1.2) {
-      const a = (time - K.bellT) / 1.2; ctx.strokeStyle = `rgba(255,207,74,${1 - a})`; ctx.lineWidth = 2 * k;
-      for (let r = 0; r < 3; r++) { ctx.beginPath(); ctx.arc(X(W / 2), Y(40), (a * 170 + r * 18) * k, 0, Math.PI * 2); ctx.stroke(); }
-    }
-    // when he falls, the drowned go up toward a surface they can see now
-    if (K.won) {
-      ctx.globalCompositeOperation = "lighter";
-      for (const s of K.souls) {
-        const t = time - K.won, y = s.y - t * s.v; if (y < -10) continue;
-        const a = Math.min(1, t * 1.5) * Math.max(0, Math.min(1, 1.8 - t * 0.16)), x = s.x + Math.sin(t * 1.5 + s.w) * 5, r = (2.5 + s.s * 2) * k;
-        const gl = ctx.createRadialGradient(X(x), Y(y), 0, X(x), Y(y), r * 2.4); gl.addColorStop(0, `rgba(232,248,255,${0.9 * a})`); gl.addColorStop(0.35, `rgba(158,240,245,${0.45 * a})`); gl.addColorStop(1, "rgba(158,240,245,0)");
-        ctx.fillStyle = gl; ctx.fillRect(X(x) - r * 2.4, Y(y) - r * 2.4, r * 4.8, r * 4.8);
-        ctx.fillStyle = `rgba(158,240,245,${0.35 * a})`; ctx.fillRect(X(x) - 0.5 * k, Y(y), 1 * k, 10 * s.s * k);   // a faint trail below it
-      }
-    }
-    ctx.restore();
+  // the first steps on the snow, the boss's end, and a word from Tamar once Chapter X opens the stair
+  const _updateRime = update;
+  let rimeTick = 0;
+  update = function (dt) {
+    _updateRime(dt);
+    if (!G || mode !== "play" || (rimeTick -= dt) > 0) return; rimeTick = 1;
+    const ty = Math.floor(G.py / TILE);
+    if (rimeOpen() && ty >= RIME.y0 && !rf().rimeArrived) openDialog("rime_arrive");
+    else if (rimeOpen() && !rf().rimeHint && regionOf(Math.floor(G.px / TILE), ty) === "drysea") { rf().rimeHint = true; toast("Tamar's drovers say the stair at the south rim of the Dry Sea has thawed open, and a village down there is asking for a courier."); }
   };
-  ACHIEVEMENTS.push(["bellking", "The Bell Answers", "Ring the Rain Bell against the Drowned King.", () => (G.flags.bellRung || 0) >= 1]);
-  GUIDE.push(["tides", "The last battle: the sea and the Bell", () => !!KB() || !!G.flags.kingDead,
-    "Against the Drowned King the sea rises every round (the gauge on the left). From 6 it drowns everyone a little; at 10 it falls on you as the Flood. Any fighter can spend a turn to Ring the Rain Bell: the sea falls back 4, the King is exposed, and his wind-up breaks. The Bell needs a round between rings, except in the last tide. His court shields him until it falls; later he drags a fighter below, and hurting him hard in one round makes him let go."]);
-  // the balance simulation's player rings the Bell when the sea is high, or to break a wind-up
-  const _simActK = simAct;
-  simAct = function (u) {
-    const K = KB(), k = kingUnit();
-    if (K && bellOk() && (K.water >= 4 || (k && (k.charged || (k.intent && k.intent.kingMove === "flood"))))) return { kind: "bell" };
-    return _simActK(u);
-  };
-  setTimeout(() => Object.assign(window.__saltRoad || (window.__saltRoad = {}), {
-    kingState: () => { const K = KB(), k = battle && battle.foes.find(f => f.id === "king"); return K ? { water: K.water, tide: K.tide, bellReady: K.bellReady, round: battle.round, below: K.below ? K.below.unit.id : null, hp: k && k.hp, maxHp: k && k.maxHp, court: battle.foes.filter(f => f.summoned && !f.dead).length } : null; },
-    kingSet: o => { const K = KB(), k = kingUnit(); if (!K) return null; if (o.water !== undefined) K.water = o.water; if (o.hpPct !== undefined && k) { k.hp = Math.round(k.maxHp * o.hpPct); damage(k, 1, { noFury: true }); } return true; },
-  }), 0);
-
-  // ================================================================== A HELPING HAND AFTER A DEFEAT
-  // Normal is tuned for a party that uses the smiths. A party that falls to the same boss again gets a little help:
-  // each defeat (up to three) makes that boss a tenth weaker next time, and the game says so, and what else helps.
-  // Winning clears it. The Long Road's challenges keep their own rules.
-  const lossesTo = id => ((G.flags.bossLoss || {})[id] || 0);
-  const _defeatH = defeat;
-  defeat = function () {
-    const o = battle && battle.opts, id = o && o.boss;
-    if (id && !o.deep && !o.echo && !o.weekly) {
-      G.flags.bossLoss = G.flags.bossLoss || {}; const n = G.flags.bossLoss[id] = Math.min(3, lossesTo(id) + 1);
-      setTimeout(() => toast(`The salt remembers: next time ${MONSTERS[id].name.split(",")[0]} will be a little weaker (${n} of 3). Better arms from the smiths help too, and Story difficulty is gentler.`), 0);
+  const _bossEndRime = act2BossEndB;
+  act2BossEndB = function (boss) { _bossEndRime(boss); if (boss === "isolde") { rf().isoldeDead = true; save(); setTimeout(() => openDialog("isolde_after"), 300); } };
+  // her second form: the ice of her lets go and the water inside her pours out
+  PHASE2.isolde = ["Then take it! Take ALL of it!", "#9ef0f5"];
+  P2NAME.isolde = "Isolde, the Thaw";
+  const isoldeBody = (K, ph, thaw) => {
+    const b = Math.sin(ph * Math.PI * 2) * 3, W2 = 288, cx = W2 / 2;
+    K.E(cx, 344, 120, 10, "rgba(7,6,12,0.4)");
+    // the throne of ice behind her
+    K.P([[cx - 100, 340], [cx - 92, 120], [cx - 60, 70], [cx, 50], [cx + 60, 70], [cx + 92, 120], [cx + 100, 340]], K.LG(cx - 100, 0, cx + 100, 0, [[0, "#3a6a90"], [0.5, "#a8d4ec"], [1, "#1e3a5a"]]));
+    for (let i = 0; i < 9; i++) K.crack(cx - 80 + i * 20, 90 + (i % 3) * 40, 70, 1.5, thaw ? "#e0f4ff" : "#6aa0c8", 1.4);
+    // the saint: a long habit of ice, hands open or closed
+    K.P([[cx - 34, 140 + b], [cx + 34, 140 + b], [cx + 60, 330], [cx - 60, 330]], K.LG(cx - 60, 0, cx + 60, 0, [[0, "#6aa0c8"], [0.45, "#e0f4ff"], [1, "#3a6a90"]]));
+    for (let i = 0; i < 6; i++) K.S([[cx - 24 + i * 10, 150 + b], [cx - 50 + i * 20, 326]], 1.4, "rgba(30,58,90,0.45)");
+    K.P([[cx - 36, 138 + b], [cx + 36, 138 + b], [cx + 26, 176 + b], [cx - 26, 176 + b]], "#dce2ec");
+    for (const s of [-1, 1]) {
+      if (thaw) { K.S([[cx + s * 30, 150 + b], [cx + s * 80, 140 + b], [cx + s * 112, 112 + b]], 10, "#a8d4ec"); for (let k = 0; k < 4; k++) K.drip(cx + s * (108 - k * 6), 118 + b, 30 + k * 10, 3, "#6aa0c8"); }
+      else K.S([[cx + s * 30, 150 + b], [cx + s * 40, 200 + b], [cx + s * 10, 222 + b]], 10, "#a8d4ec");
     }
-    return _defeatH();
+    if (!thaw) K.E(cx, 222 + b, 16, 12, K.RG(cx, 222 + b, 1, 20, [[0, "#ffffff"], [0.5, "rgba(158,240,245,0.8)"], [1, "rgba(62,224,232,0)"]]));   // the held light
+    // the face: closed eyes and an open mouth on the note; in the thaw, the eyes open and the crown runs
+    K.vol(cx, 104 + b, 20, 26, ["#ffffff", "#a8d4ec", "#3a6a90"]);
+    if (thaw) { K.eye(cx - 8, 98 + b, 4, "#ffffff", null); K.eye(cx + 8, 98 + b, 4, "#ffffff", null); } else for (const s of [-1, 1]) K.S([[cx + s * 3, 98 + b], [cx + s * 12, 97 + b]], 1.6, "#1e3a5a");
+    K.E(cx, 118 + b, 5, thaw ? 8 : 6 + Math.sin(ph * 6.28) * 1.2, "#0e1a2e");
+    for (let i = 0; i < 7; i++) K.P([[cx - 24 + i * 8, 80 + b], [cx - 20 + i * 8, 54 + b - Math.abs(i - 3) * -4 - (3 - Math.abs(i - 3)) * 6], [cx - 16 + i * 8, 80 + b]], "#e0f4ff");
+    if (thaw) { for (let i = 0; i < 9; i++) K.drip(cx - 26 + i * 6.5, 80 + b, 20 + (i % 3) * 14, 1.6, "#6aa0c8"); for (let i = 0; i < 26; i++) { const x = cx - 120 + K.rng() * 240, y = (K.rng() * 340 + ph * 120) % 340; K.S([[x, y], [x, y + 8]], 1.2, "rgba(168,212,236,0.6)"); } }
+    else for (let i = 0; i < 18; i++) K.R(cx - 110 + K.rng() * 220, K.rng() * 330, 1.6, 1.6, "rgba(255,255,255,0.8)");
   };
-  const _startBattleH = startBattle;
-  startBattle = function (group, opts = {}) {
-    const r = _startBattleH(group, opts), o = opts || {}, n = o.boss && !o.deep && !o.echo && !o.weekly ? lossesTo(o.boss) : 0;
-    if (battle && n) {
-      for (const f of battle.foes) if (f.id === o.boss) { f.maxHp = f.hp = Math.max(1, Math.round(f.maxHp * (1 - 0.1 * n))); f.atk = Math.max(1, Math.round(f.atk * (1 - 0.07 * n))); }
-      setTimeout(() => { if (battle) blog(`The salt remembers your last attempt: ${MONSTERS[o.boss].name.split(",")[0]} is a little weaker this time.`); }, 1200);
-    }
-    return r;
+  BOSS_ART.isolde = { w: 96, h: 118, ramps: ["ink", "ice", "frost", "glowc", "night"], paint(K, ph) { isoldeBody(K, ph, false); } };
+  P2ART.isolde = { w: 96, h: 118, ramps: ["ink", "ice", "frost", "glowc", "night"], paint(K, ph) { isoldeBody(K, ph, true); } };
+  // the journal, the Chronicle and the endings remember the Rime
+  const _renderJournalRime = renderJournal;
+  renderJournal = function () {
+    _renderJournalRime();
+    if (!rimeOpen() || !(rf().rimeArrived || rf().rimeQuest)) return;
+    const h = [...$("journalBody").querySelectorAll("h3")].find(x => x.textContent === "Side quests"), ul = h && h.nextElementSibling; if (!ul) return;
+    const done = !!rf().rimeDone, t = done ? `Act III, the Rime: Saint Isolde let go${rf().rimeChoice === "keep" ? ", keeping a little for Kelda to give" : ", and a river is coming to the Dry Sea"}.` : rf().rimeQuest ? "Act III, the Rime: go round the shore road to the Ice House on the frozen lake and ask Saint Isolde to let go slowly." : "Act III, the Rime: find out what is singing on the frozen lake (ask in Kelda).";
+    ul.querySelector("li.dim") && ul.querySelector("li.dim").remove();
+    ul.insertAdjacentHTML("afterbegin", `<li class="${done ? "done" : ""}">${done ? "✓ " : ""}${t}</li>`);
   };
-  onBattle("won", B => { const id = B.opts && B.opts.boss; if (id && G.flags.bossLoss && G.flags.bossLoss[id]) delete G.flags.bossLoss[id]; });
+  const _chronicleRime = chronicle;
+  chronicle = function () {
+    const P = _chronicleRime();
+    if (rf().rimeDone) P.splice(Math.max(0, P.length - 1), 0, ["The Rime", rf().rimeChoice === "river" ? "South of the Dry Sea, in the Rime, a saint had held a winter's rain frozen for four generations so that no one could sell it. The courier sang her own lullaby back to her, and she let it go, slowly, down the old riverbed. There is a stream at Tamar's Rest now." : "South of the Dry Sea, in the Rime, a saint had held a winter's rain frozen for four generations so that no one could sell it. The courier reminded her that Kelda's oath ends with give. She let the lake go slowly, and kept one block of it, for Kelda to give."]);
+    return P;
+  };
+  const _extraFatesRime = extraFates;
+  extraFates = function (k) { const out = _extraFatesRime(k); if (rf().rimeDone) out.push(rf().rimeChoice === "river" ? "A stream runs through the Dry Sea now, out of the Rime. Tamar's Rest planted willows along it. Nobody sells its cups." : "In the Rime, Saint Isolde keeps one block of the old winter. When anyone in the valley is dry, Kelda gives."); return out; };
+  ACHIEVEMENTS.push(["rime", "Not to Keep. To Give.", "Ask Saint Isolde to let go.", () => G.flags.rimeDone]);
+  setTimeout(() => Object.assign(window.__saltRoad || (window.__saltRoad = {}), { rime: () => ({ ...RIME, flags: { arrived: !!rf().rimeArrived, quest: !!rf().rimeQuest, gate: !!rf().rimeGate, done: !!rf().rimeDone, choice: rf().rimeChoice || null } }) }), 0);
 
   // ================================================================== SAVES: FOR EVERY PLAYER
   // The game saves itself as you play, into this browser (see the store at the top). Where the browser refuses to
@@ -13436,6 +13618,721 @@
     _flushHiArt();
   };
 
+  // ================================================================== BATTLE WORDS, ONE AT A TIME
+  // Powers, runes and talents all announce themselves over a fighter. When several fire at once the words used to land
+  // on top of each other; now each fighter's words go up one after another (a short beat apart), and a word that would
+  // wait too long is dropped rather than shown late.
+  const WORD_GAP = 0.45, WORD_WAIT_MAX = 1.4, wordAt = new WeakMap();
+  const _popupTextQ = popupText;
+  popupText = function (u, text, color) {
+    if (!battle || !u || typeof u !== "object") return _popupTextQ(u, text, color);
+    const now = time, at = Math.max(now, (wordAt.get(u) || -9) + WORD_GAP);
+    if (at - now > WORD_WAIT_MAX) return;
+    wordAt.set(u, at);
+    if (at - now < 0.02) return _popupTextQ(u, text, color);
+    const b0 = battle;
+    setTimeout(() => { if (battle === b0 && !(u.side === "foe" && u.dead)) _popupTextQ(u, text, color); }, (at - now) * 1000);
+  };
+
+  // ================================================================== HOW IT WORKS: A GUIDE THAT GROWS WITH THE ROAD
+  // Every system is explained on one page in the pause menu, but only once the player has met it, so the list starts
+  // short and grows. A newly added entry is marked "new" and announced once.
+  const GUIDE = [
+    ["basics", "Battle basics", () => true,
+      "Everyone acts in order of speed (the row at the top). On a hero's turn: Attack; a Skill, which costs SP (SP comes back a little every turn); Guard, which halves damage until your next turn and gives 3 SP; an Item; or Flee (not from bosses)."],
+    ["dash", "Running and ambushes", () => true,
+      "Hold Shift (or K) to run. Dash into a monster on the map to ambush it: your lead hero strikes the whole pack first and your party acts first."],
+    ["fury", "Fury and the Chain Assault", () => G.stats && G.stats.wins >= 1,
+      "Every hit dealt or taken fills the Fury bar. When it is full, any hero can call a Chain Assault: every standing hero strikes one enemy in turn, and the last blow always lands critical."],
+    ["break", "Breaking a big attack", () => G.flags.breakTip,
+      "A foe winding up shows CHARGING, and BREAK tells you how much damage stops it. Deal that much before it acts and the attack falls apart: the foe loses its turn and takes 25% more for two rounds. A boss shrugs off stuns for a while after one."],
+    ["weak", "Weak spots and resistances", () => G.flags.affTip,
+      "Hits come in kinds: blade, blunt, pierce, storm, light, poison and fire. A foe weak to a kind takes 50% more from it; one that resists takes less. What you learn is shown over the foe and kept in the journal."],
+    ["phase", "Boss transformations", () => G.flags.butcherDead || (G.flags.kills || {}).butcher,
+      "At half health a boss changes into its second form: stronger, faster, and ready to use its worst move. Keep a Chain Assault or your best skills for that moment."],
+    ["gear", "Arms and armour", () => G.stage >= 1,
+      "Smiths sell a weapon and an armour for each fighter, and stock better pieces as the road opens. Buying fits the piece at once and trades the old one in for half its price."],
+    ["forge", "The forge", () => G.stage >= 1,
+      "Ilse's forge at Odo's shop (Smithing) upgrades blades and leathers for the whole party at once, including anyone who joins later."],
+    ["relic", "Relics", () => (G.relics || []).length > 0,
+      "Bosses leave relics behind. Each fighter can carry one: on the Party screen (P), tap a fighter's Relic line to change it."],
+    ["talent", "Talents", () => Object.values(G.party || {}).some(h => h.level >= 3),
+      "At levels 3, 6, 10 and 14 each fighter chooses one of two talents. The choice comes up after a battle, or on the Party screen, where you can also switch one later for 20 coin."],
+    ["champ", "Champions", () => G.flags.champTip || ((G.spoils || {}).champs > 0),
+      "Some monsters are champions, marked with a ★ and a glow (some glow on the map too). They are tougher and carry powers: Vampiric heals from you, Ironhide shrugs off a fifth of each blow, Swift strikes twice, Thorned hurts whoever hits it, Frenzied hits harder as it is hurt, Warded has a shell to break first, Undying gets up once. They pay extra coin, salt shards and a champion core."],
+    ["anvil", "Spoils and the anvil", () => !!G.spoils,
+      "Every win pays salt shards; champions and bosses also give champion cores. At a smith's anvil, shards temper a fighter's weapon and armour (up to +5), and a core sets a rune: weapon runes add bleeding, healing, sparks or armour-breaking, armour runes add thorns, healing each turn, or a guard against the first blow."],
+    ["bond", "Bonds", () => G.members.length >= 2,
+      "When ★ Sit and talk shows on the Party screen, spend a quiet moment with that companion. There are three bonds for each; the second one also opens that companion's duo technique."],
+    ["duo", "Duo techniques", () => DUOS.some(d => d.pair.every(m => G.members.includes(m)) && d.pair.every(bonded)),
+      "Pairs who have bonded (a second bond with each, beyond Sable) can act together. When both are fighting, the technique appears with a ★ among either hero's skills; each pays their own share of SP."],
+    ["road", "The Long Road", () => G.stage >= 3,
+      "In the pause menu: the Deep Stair (an endless climb of harder floors with a boon between them), the Hall of Echoes (beaten bosses again, at higher tiers) and the Weekly Trial. None of them touches the story."],
+    ["day", "Days and daily tasks", () => !!G.flags.daily,
+      "The world has day and night; some monsters only walk at night. Each day brings small tasks in Today's tasks (pause menu) for coin and renown."],
+  ];
+  const guideOpen = () => GUIDE.filter(([, , ok]) => { try { return !!ok(); } catch { return false; } });
+  function guideHtml() {
+    const seen = new Set(G.flags.guideSeen || []), open = guideOpen();
+    const rows = open.map(([id, title, , text]) => `<div class="guideRow"><b>${htmlEsc(title)}${seen.has(id) ? "" : ' <span class="gnew">new</span>'}</b><p>${htmlEsc(text)}</p></div>`).join("");
+    G.flags.guideSeen = open.map(([id]) => id); save(); markGuideBtn();
+    return `<p class="dim" style="font-size:13px;margin:0 0 8px">${open.length} of ${GUIDE.length} topics so far. More appear as you meet them on the road.</p>${rows}`;
+  }
+  const guideCss = document.createElement("style");
+  guideCss.textContent = ".guideRow{margin:0 0 10px;padding:8px 10px;border:1px solid rgba(255,255,255,.1);border-radius:8px;background:rgba(255,255,255,.03)}.guideRow b{font-size:14px}.guideRow p{margin:4px 0 0;font-size:13px;line-height:1.4;color:var(--muted)}.gnew{font-size:10px;padding:1px 5px;border-radius:6px;background:#ffcf4a;color:#1b1633;margin-left:6px;vertical-align:middle}";
+  document.head.appendChild(guideCss);
+  const guideBtn = document.createElement("button"); guideBtn.type = "button"; guideBtn.dataset.a = "guide"; guideBtn.innerHTML = "How it works";
+  { const ctl = $("pauseMain").querySelector('[data-a="controls"]'); if (ctl) ctl.before(guideBtn); else $("pauseMain").appendChild(guideBtn); }
+  function markGuideBtn() { if (!G || !G.flags) return; const n = guideOpen().filter(([id]) => !(G.flags.guideSeen || []).includes(id)).length; guideBtn.innerHTML = `How it works${n ? ` <small class="gnew">${n} new</small>` : ""}`; }
+  $("pauseUI").addEventListener("click", e => { const b = e.target.closest("button"); if (b && b.dataset.a === "guide") showPanel("How it works", guideHtml()); });
+  // a topic that opens up is announced once (the first two are there from the start and need no fanfare)
+  setInterval(() => {
+    if (!G || !G.flags || mode === "title") return;
+    const known = G.flags.guideKnown || (G.flags.guideKnown = ["basics", "dash"]), fresh = guideOpen().filter(([id]) => !known.includes(id));
+    if (!fresh.length) return;
+    for (const [id] of fresh) known.push(id);
+    markGuideBtn(); toast(`New in How it works (pause menu): ${fresh.map(([, t]) => t).join(", ")}.`);
+  }, 2500);
+  setTimeout(() => Object.assign(window.__saltRoad || (window.__saltRoad = {}), { guide: () => guideOpen().map(([id]) => id), guideHtml: () => guideHtml() }), 0);
+
+  // ================================================================== THE LAST TIDE: KING AUREL'S FINAL BATTLE
+  // The last fight has rules no other fight has, in three tides:
+  //   First tide, the Drowned Court (full health to two thirds): the sea rises every round. While his court kneels
+  //     around him the King takes a third less damage, so the court comes first.
+  //   Second tide, the King Rises (two thirds): he transforms, and every third round he drags a fighter below.
+  //     A fighter held below loses their turns and drowns a little each round, until the party hurts the King enough
+  //     in one round to make him let go (or two rounds pass).
+  //   Third tide, the Last Rain (a quarter): the rain falls upward, the sea rises twice as fast, his Last Rain
+  //     comes every third round, and the party's Fury builds half again as fast (the living song answering).
+  // Over it all, the water: a level from 0 to 10 drawn rising over the party. From 6 it drowns everyone a little each
+  // round; at 10 it becomes the Flood, his strongest blow. Any fighter can spend a turn to Ring the Rain Bell (the Bell
+  // Sable carried all this way): the sea falls back 4, the King is exposed for a round, and a wind-up is broken. The Bell
+  // needs a round's breath between rings (none in the last tide). The apology's honest duel keeps its own rules.
+  const KING_TIDE = [0.85, 0.7], KING_DUEL = [1.25, 1.35];   // health and attack on top of the usual strength (tuned with the simulation: about 11 rounds, and 8 for the apology's duel)
+  const KB = () => battle && battle.king;   // the final battle's state, or nothing
+  const kingUnit = () => battle && battle.foes.find(f => f.id === "king" && !f.dead);
+  const _startBattleTide = startBattle;
+  startBattle = function (group, opts = {}) {
+    const r = _startBattleTide(group, opts);
+    const k0 = battle && group && group[0] === "king" ? battle.foes.find(f => f.id === "king") : null;
+    if (k0) {   // his own tuning on top of the usual strength: with the sea and the tides it is the longest fight of the road
+      const [hk, ak] = (opts || {}).apology ? (SIM.kingDuel || KING_DUEL) : (SIM.kingTide || KING_TIDE);
+      k0.maxHp = k0.hp = Math.round(k0.maxHp * hk); k0.atk = Math.round(k0.atk * ak);
+    }
+    if (battle && group && group[0] === "king" && !(opts || {}).apology) {
+      battle.king = { water: 0, tide: 1, bellReady: 1, below: null, roundDmg: 0, lastRound: 0, souls: [] };
+      blog("The floor of the deep is water now, and the water is rising. (Ring the Rain Bell to push the sea back.)");
+    }
+    return r;
+  };
+  const kingSplash = (name, sub) => { $("splashName").textContent = name; $("splashSub").textContent = sub; const sp = $("splash"); sp.hidden = true; void sp.offsetWidth; sp.hidden = false; clearTimeout(sp._t); sp._t = setTimeout(() => { sp.hidden = true; }, 2600); };
+  const kingSay = (f, text) => { for (let i = RIG_FX.length - 1; i >= 0; i--) if (RIG_FX[i].kind === "say" && RIG_FX[i].unit === f) RIG_FX.splice(i, 1); RIG_FX.push({ kind: "say", text, unit: f, t0: time, dur: 3 }); Voice.say("king", text); };
+  function raiseWater(n) {
+    const K = KB(); if (!K) return; K.water = Math.max(0, Math.min(10, K.water + n));
+    if (n > 0 && K.water >= 10) popupText(kingUnit() || battle.heroes[0], "THE FLOOD COMES", "#9ef0f5");
+  }
+  // each round, when the King chooses his move
+  const _chooseIntentTide = chooseIntent;
+  chooseIntent = function (f) {
+    const K = KB();
+    if (!K || f.id !== "king" || f.dead) return _chooseIntentTide(f);
+    if (K.lastRound !== battle.round) {
+      K.lastRound = battle.round; K.roundDmg = 0;
+      raiseWater(battle.round === 1 ? 0 : K.tide === 3 ? 2 : 1);
+      if (K.water >= 6) {   // the sea takes a little from everyone
+        const pct = 0.04 * (K.water - 5);
+        for (const h of battle.heroes) if (alive(h)) { const d = Math.max(1, Math.round(h.ref.maxHp * pct)); damage(h, d, { silent: true, noFury: true }); popup(h, d, "#4ab8d8"); }
+        blog(`The sea is at ${K.water} of 10. Everyone chokes on brine.`);
+      }
+      if (K.below) {   // a fighter held under
+        const h = K.below.unit;
+        if (--K.below.rounds <= 0 || !alive(h)) freeBelow(false);
+        else { h.st.stun = true; const d = Math.max(1, Math.round(h.ref.maxHp * 0.06)); damage(h, d, { silent: true, noFury: true }); popup(h, d, "#4ab8d8"); }
+      }
+    }
+    if (K.water >= 10) { K.water = 5; return { name: "The Flood", power: 1.9, all: true, kingMove: "flood", announce: "THE FLOOD. The whole sea stands up and falls on you." }; }
+    if (K.tide >= 2 && !K.below && battle.round % 3 === 0 && battle.heroes.filter(alive).length > 1) return { name: "Taken Below", kingMove: "below" };
+    return _chooseIntentTide(f);
+  };
+  // the court shields him; the tides turn at two thirds and a quarter; the Last Rain feeds the party's song
+  onBattle("damage", ctx => {
+    const K = KB(); if (!K || ctx.target.id !== "king" || ctx.target.side !== "foe") return;
+    if (battle.foes.some(f => f.summoned && !f.dead) && ctx.amount > 1) ctx.amount = Math.max(1, Math.round(ctx.amount * 0.67));
+  });
+  onBattle("damaged", (ctx, d) => {
+    const K = KB(), f = ctx.target; if (!K || f.id !== "king" || f.side !== "foe" || f.dead) return;
+    K.roundDmg += d;
+    if (K.below && K.roundDmg >= f.maxHp * 0.08) freeBelow(true);
+    if (K.tide === 1 && f.hp <= f.maxHp * 0.66) {
+      K.tide = 2; if (!f.phase2) enterPhase2(f);
+      setTimeout(() => { if (KB()) kingSplash("The King Rises", "Second tide"); }, 2700);
+    }
+    if (K.tide === 2 && f.hp <= f.maxHp * 0.25) {
+      K.tide = 3; K.bellReady = 0; f.phase3 = true;
+      setTimeout(() => { if (!KB()) return; kingSplash("The Last Rain", "Third tide"); kingSay(f, "Then let it all come down."); blog("THE LAST RAIN. The rain falls upward. Your Fury answers faster: the living song against the sea."); flash(1); shake = Math.max(shake, 12); Music.sound("boss"); }, 300);
+    }
+  });
+  const _addFuryTide = addFury;
+  addFury = function (n) { const K = KB(); return _addFuryTide(K && K.tide === 3 && n > 0 ? n * 1.5 : n); };
+  function freeBelow(early) {
+    const K = KB(); if (!K || !K.below) return; const h = K.below.unit; K.below = null; delete h.st.stun; delete h.st.below;
+    if (!alive(h)) return;
+    popupText(h, early ? "PULLED FREE" : "SURFACES", "#9ef0f5"); Music.sound("heal");
+    blog(early ? `You hurt the King enough that he lets go. ${h.name} breaks the surface, gasping.` : `${h.name} claws back to the surface.`);
+    const k = kingUnit(); if (early && k) { k.st.exposed = Math.max(k.st.exposed || 0, 2); popupText(k, "EXPOSED", "#ffcf4a"); }
+  }
+  // his own moves
+  const _doFoeTide = doFoe;
+  doFoe = async function (f) {
+    const K = KB(), mv = f && f.intent;
+    if (!K || !mv || !mv.kingMove || f.st.stun) return _doFoeTide(f);
+    if (mv.kingMove === "below") {
+      const pool = battle.heroes.filter(alive).filter(h => !h.st.taunt), h = pick(pool.length ? pool : battle.heroes.filter(alive)); if (!h) return;
+      f.anim = { k: "wind", t0: time }; await wait(300); f.anim = null; if (!KB()) return;
+      K.below = { unit: h, rounds: 2 }; h.st.stun = true; h.st.below = true; K.belowT = time;
+      shake = Math.max(shake, 9); Music.sound("bleed"); popupText(h, "TAKEN BELOW", "#4ab8d8");
+      kingSay(f, pick(["Stay with us. It is quiet here.", "One more for the deep.", "Below, courier. Where they all are."]));
+      blog(`The King's hundred hands drag ${h.name} under the water! Hit him hard (${Math.round(f.maxHp * 0.08)} in one round) to make him let go.`);
+      await wait(900); return;
+    }
+    if (mv.kingMove === "flood") {
+      blog(mv.announce); flash(1); shake = 14; Music.sound("boss"); await wait(700); if (!KB()) return;
+      const texts = []; for (const t of battle.heroes.filter(alive)) { const r = attackRoll(f, t, mv.power); texts.push(r.dodged ? `${t.name} dodges` : `${t.name} ${r.dmg}`); }
+      blog(`The Flood: ${texts.join(", ")}. The water falls back to 5.`); await wait(900); return;
+    }
+    return _doFoeTide(f);
+  };
+  // the Rain Bell, on every fighter's menu in this battle
+  const bellOk = () => { const K = KB(); return K && battle.round >= K.bellReady; };
+  const _menuItemsTide = menuItems;
+  menuItems = function () {
+    const items = _menuItemsTide(), K = KB();
+    if (!K || !menuState || menuState.page !== "main") return items;
+    const ok = bellOk(), wait2 = K.bellReady - battle.round;
+    items.splice(1, 0, { label: "🔔 Ring the Rain Bell", sub: ok ? `Push the sea back 4 (now ${K.water}/10), expose the King for a round, break his wind-up.` : `The Bell is still ringing out (ready in ${wait2} round${wait2 === 1 ? "" : "s"}). The sea: ${K.water}/10.`, disabled: !ok, go: () => finish({ kind: "bell" }) });
+    return items;
+  };
+  const _doHeroTide = doHero;
+  doHero = async function (u, act) {
+    const K = KB();
+    if (!K || !act || act.kind !== "bell") return _doHeroTide(u, act);
+    const k = kingUnit(); K.bellReady = battle.round + (K.tide === 3 ? 1 : 2);
+    playAct(u, "cast", 0.9); await wait(250); if (!KB()) return;
+    raiseWater(-4); K.bellT = time; flash(0.9); shake = Math.max(shake, 8); Music.sound("heal"); Music.sound("crit");
+    let extra = "";
+    if (k) {
+      k.st.exposed = Math.max(k.st.exposed || 0, 2); popupText(k, "EXPOSED", "#ffcf4a");
+      if (k.charged || (k.intent && k.intent.release)) { k.charged = false; k.chargeDmg = 0; k.intent = { name: "Staggered" }; k.st.stun = true; extra = " His wind-up breaks apart!"; popupText(k, "BROKEN", "#ffcf4a"); }
+      else if (k.intent && k.intent.kingMove === "flood") { k.intent = { name: "Staggered" }; k.st.stun = true; extra = " The Flood breaks before it falls!"; }
+    }
+    if (G.flags) G.flags.bellRung = (G.flags.bellRung || 0) + 1;
+    blog(`${u.name} rings the Rain Bell. The sea shrinks back to ${K.water}.${extra}`); renderCards();
+    await wait(800);
+  };
+  // the souls go up when he falls
+  const _victoryTide = victory;
+  victory = function () { const K = KB(); if (K) { K.won = time; if (K.below) { const h = K.below.unit; delete h.st.stun; delete h.st.below; K.below = null; } for (let i = 0; i < 60; i++) K.souls.push({ x: rand(20, VIEW_W - 20), y: rand(120, 200), v: rand(14, 34), w: rand(0, 6.28), s: rand(0.6, 1.4) }); } return _victoryTide(); };
+  // ---- on screen
+  const _drawRigFxTide = drawRigFx;
+  drawRigFx = function (k) {
+    _drawRigFxTide(k);
+    const K = KB(); if (!K) return;
+    const X = x => VP.ox + x * k, Y = y => VP.oy + y * k, W = VIEW_W;
+    ctx.save();
+    // the Last Rain: rain falling upward
+    if (K.tide === 3 && !K.won) {
+      ctx.strokeStyle = "rgba(158,240,245,0.55)"; ctx.lineWidth = Math.max(1, 0.8 * k);
+      for (let i = 0; i < 70; i++) { const px = (i * 37.3) % W, py = 200 - ((time * (90 + (i % 7) * 12) + i * 23) % 220); ctx.beginPath(); ctx.moveTo(X(px), Y(py)); ctx.lineTo(X(px - 1.5), Y(py + 7)); ctx.stroke(); }
+    }
+    // the water, rising over the party
+    const lvl = K.won ? K.water * Math.max(0, 1 - (time - K.won) / 2.5) : K.water, top = 196 - lvl * 9.5;   // it drains away when he falls
+    if (lvl > 0 || K.bellT) {
+      const g2 = ctx.createLinearGradient(0, Y(top), 0, Y(200)); g2.addColorStop(0, "rgba(62,200,220,0.42)"); g2.addColorStop(1, "rgba(10,40,70,0.7)");
+      ctx.fillStyle = g2; ctx.beginPath(); ctx.moveTo(X(0), Y(210));
+      for (let x = 0; x <= W; x += 4) ctx.lineTo(X(x), Y(top + Math.sin(x * 0.06 + time * 2.2) * 1.6 + Math.sin(x * 0.13 - time * 1.4) * 0.8));
+      ctx.lineTo(X(W), Y(210)); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = "rgba(220,250,255,0.75)"; ctx.lineWidth = Math.max(1, 1 * k); ctx.beginPath();
+      for (let x = 0; x <= W; x += 4) { const y = top + Math.sin(x * 0.06 + time * 2.2) * 1.6 + Math.sin(x * 0.13 - time * 1.4) * 0.8; x ? ctx.lineTo(X(x), Y(y)) : ctx.moveTo(X(x), Y(y)); } ctx.stroke();
+      ctx.fillStyle = "rgba(220,250,255,0.6)";   // bubbles
+      for (let i = 0; i < 18; i++) { const s = (time * 0.4 + i / 18) % 1, bx = (i * 53.7) % W, by = 200 - s * (200 - top); ctx.fillRect(X(bx + Math.sin(time * 3 + i) * 2), Y(by), 1.2 * k, 1.2 * k); }
+      if (lvl >= 6) {   // drowned hands reaching up through the surface
+        ctx.fillStyle = "rgba(150,190,200,0.55)";
+        for (let i = 0; i < lvl - 4; i++) { const hx = 24 + ((i * 71) % (W - 48)), rise = 4 + 3 * Math.sin(time * 1.7 + i); ctx.fillRect(X(hx), Y(top - rise), 2 * k, (rise + 3) * k); ctx.fillRect(X(hx - 2), Y(top - rise - 2), 1 * k, 3 * k); ctx.fillRect(X(hx + 2), Y(top - rise - 3), 1 * k, 3 * k); ctx.fillRect(X(hx + 4), Y(top - rise - 1), 1 * k, 3 * k); }
+      }
+    }
+    // the gauge: the sea, and where the Flood comes
+    const gx = 8, gy = 40, gh = 90;
+    if (!K.won) {
+    ctx.fillStyle = "rgba(10,8,24,0.75)"; ctx.fillRect(X(gx - 2), Y(gy - 2), 8 * k, (gh + 4) * k);
+    ctx.fillStyle = lvl >= 8 ? "#ff6b6b" : lvl >= 6 ? "#ffcf4a" : "#3ec8dc"; ctx.fillRect(X(gx), Y(gy + gh * (1 - lvl / 10)), 4 * k, gh * lvl / 10 * k);
+    ctx.fillStyle = "#ffffff"; ctx.fillRect(X(gx - 2), Y(gy + gh * 0.5), 8 * k, 1 * k);
+    ctx.font = `${Math.round(6 * k)}px 'Pixelify Sans', monospace`; ctx.textAlign = "left"; ctx.fillStyle = "#e8f4ff";
+    ctx.fillText(`SEA ${lvl}/10`, X(gx - 2), Y(gy - 5)); ctx.fillText(bellOk() ? "BELL ✓" : `BELL ${Math.max(0, K.bellReady - battle.round)}`, X(gx - 2), Y(gy + gh + 10));
+    }
+    // a fighter held below: a dark column of water and hands
+    if (K.below && alive(K.below.unit)) {
+      const p = unitPos(K.below.unit), a = Math.min(1, (time - (K.belowT || 0)) / 0.5);
+      const g3 = ctx.createLinearGradient(0, Y(p.y - 50), 0, Y(p.y + 4)); g3.addColorStop(0, "rgba(10,40,70,0)"); g3.addColorStop(1, `rgba(10,40,70,${0.78 * a})`);
+      ctx.fillStyle = g3; ctx.fillRect(X(p.x - 16), Y(p.y - 50), 32 * k, 56 * k);
+      ctx.fillStyle = `rgba(150,190,200,${0.8 * a})`; for (let i = 0; i < 4; i++) { const hx = p.x - 10 + i * 6, hy = p.y - 16 - 10 * Math.abs(Math.sin(time * 2 + i)); ctx.fillRect(X(hx), Y(hy), 2 * k, (p.y - hy) * k); }
+      ctx.fillStyle = "#9ef0f5"; ctx.textAlign = "center"; ctx.fillText(`BELOW · ${K.below.rounds}`, X(p.x), Y(p.y - 52));
+    }
+    // the Bell: rings of gold going out
+    if (K.bellT && time - K.bellT < 1.2) {
+      const a = (time - K.bellT) / 1.2; ctx.strokeStyle = `rgba(255,207,74,${1 - a})`; ctx.lineWidth = 2 * k;
+      for (let r = 0; r < 3; r++) { ctx.beginPath(); ctx.arc(X(W / 2), Y(40), (a * 170 + r * 18) * k, 0, Math.PI * 2); ctx.stroke(); }
+    }
+    // when he falls, the drowned go up toward a surface they can see now
+    if (K.won) {
+      ctx.globalCompositeOperation = "lighter";
+      for (const s of K.souls) {
+        const t = time - K.won, y = s.y - t * s.v; if (y < -10) continue;
+        const a = Math.min(1, t * 1.5) * Math.max(0, Math.min(1, 1.8 - t * 0.16)), x = s.x + Math.sin(t * 1.5 + s.w) * 5, r = (2.5 + s.s * 2) * k;
+        const gl = ctx.createRadialGradient(X(x), Y(y), 0, X(x), Y(y), r * 2.4); gl.addColorStop(0, `rgba(232,248,255,${0.9 * a})`); gl.addColorStop(0.35, `rgba(158,240,245,${0.45 * a})`); gl.addColorStop(1, "rgba(158,240,245,0)");
+        ctx.fillStyle = gl; ctx.fillRect(X(x) - r * 2.4, Y(y) - r * 2.4, r * 4.8, r * 4.8);
+        ctx.fillStyle = `rgba(158,240,245,${0.35 * a})`; ctx.fillRect(X(x) - 0.5 * k, Y(y), 1 * k, 10 * s.s * k);   // a faint trail below it
+      }
+    }
+    ctx.restore();
+  };
+  ACHIEVEMENTS.push(["bellking", "The Bell Answers", "Ring the Rain Bell against the Drowned King.", () => (G.flags.bellRung || 0) >= 1]);
+  GUIDE.push(["tides", "The last battle: the sea and the Bell", () => !!KB() || !!G.flags.kingDead,
+    "Against the Drowned King the sea rises every round (the gauge on the left). From 6 it drowns everyone a little; at 10 it falls on you as the Flood. Any fighter can spend a turn to Ring the Rain Bell: the sea falls back 4, the King is exposed, and his wind-up breaks. The Bell needs a round between rings, except in the last tide. His court shields him until it falls; later he drags a fighter below, and hurting him hard in one round makes him let go."]);
+  // the balance simulation's player rings the Bell when the sea is high, or to break a wind-up
+  const _simActTide = simAct;
+  simAct = function (u) {
+    const K = KB(), k = kingUnit();
+    if (K && bellOk() && (K.water >= 4 || (k && (k.charged || (k.intent && k.intent.kingMove === "flood"))))) return { kind: "bell" };
+    return _simActTide(u);
+  };
+  setTimeout(() => Object.assign(window.__saltRoad || (window.__saltRoad = {}), {
+    kingState: () => { const K = KB(), k = battle && battle.foes.find(f => f.id === "king"); return K ? { water: K.water, tide: K.tide, bellReady: K.bellReady, round: battle.round, below: K.below ? K.below.unit.id : null, hp: k && k.hp, maxHp: k && k.maxHp, court: battle.foes.filter(f => f.summoned && !f.dead).length } : null; },
+    kingSet: o => { const K = KB(), k = kingUnit(); if (!K) return null; if (o.water !== undefined) K.water = o.water; if (o.hpPct !== undefined && k) { k.hp = Math.round(k.maxHp * o.hpPct); damage(k, 1, { noFury: true }); } return true; },
+  }), 0);
+
+  // ================================================================== A HELPING HAND AFTER A DEFEAT
+  // Normal is tuned for a party that uses the smiths. A party that falls to the same boss again gets a little help:
+  // each defeat (up to three) makes that boss a tenth weaker next time, and the game says so, and what else helps.
+  // Winning clears it. The Long Road's challenges keep their own rules.
+  const lossesTo = id => ((G.flags.bossLoss || {})[id] || 0);
+  const _defeatH = defeat;
+  defeat = function () {
+    const o = battle && battle.opts, id = o && o.boss;
+    if (id && !o.deep && !o.echo && !o.weekly) {
+      G.flags.bossLoss = G.flags.bossLoss || {}; const n = G.flags.bossLoss[id] = Math.min(3, lossesTo(id) + 1);
+      setTimeout(() => toast(`The salt remembers: next time ${MONSTERS[id].name.split(",")[0]} will be a little weaker (${n} of 3). Better arms from the smiths help too, and Story difficulty is gentler.`), 0);
+    }
+    return _defeatH();
+  };
+  const _startBattleH = startBattle;
+  startBattle = function (group, opts = {}) {
+    const r = _startBattleH(group, opts), o = opts || {}, n = o.boss && !o.deep && !o.echo && !o.weekly ? lossesTo(o.boss) : 0;
+    if (battle && n) {
+      for (const f of battle.foes) if (f.id === o.boss) { f.maxHp = f.hp = Math.max(1, Math.round(f.maxHp * (1 - 0.1 * n))); f.atk = Math.max(1, Math.round(f.atk * (1 - 0.07 * n))); }
+      setTimeout(() => { if (battle) blog(`The salt remembers your last attempt: ${MONSTERS[o.boss].name.split(",")[0]} is a little weaker this time.`); }, 1200);
+    }
+    return r;
+  };
+  onBattle("won", B => { const id = B.opts && B.opts.boss; if (id && G.flags.bossLoss && G.flags.bossLoss[id]) delete G.flags.bossLoss[id]; });
+  // ================================================================== COMFORT: CONTROLLERS, KEYS, TEXT SIZE, FLASHES
+  // Everything the game reads arrives as a key it already knows. A remapped key, or a controller button, is turned
+  // into that key before any other part of the game sees it, so every screen (the road, menus, battles, dialogue,
+  // fishing, scenes) works the same with them. Arrow keys and Esc always keep their meaning.
+  const ACTIONS = [
+    ["up", "Move up", "w"], ["down", "Move down", "s"], ["left", "Move left", "a"], ["right", "Move right", "d"],
+    ["act", "Talk, confirm", "e"], ["back", "Back", "q"], ["dash", "Dash (hold to run)", "k"],
+    ["party", "Party", "p"], ["journal", "Journal", "j"], ["map", "Minimap", "m"], ["music", "Music", "n"],
+  ];
+  const DEFAULT_KEY = Object.fromEntries(ACTIONS.map(([id, , k]) => [id, k]));
+  const PRESETS = { qwerty: {}, azerty: { up: "z", left: "q", back: "a" } };
+  const boundKey = id => ((SETTINGS.keys || {})[id]) || DEFAULT_KEY[id];
+  const keyName = k => ({ " ": "Space", shift: "Shift", enter: "Enter", tab: "Tab", control: "Ctrl", alt: "Alt" })[k] || (k.length === 1 ? k.toUpperCase() : k[0].toUpperCase() + k.slice(1));
+  let remap = {};   // the key pressed -> the key the game listens for
+  function buildRemap() {
+    remap = {};
+    // a key bound to an action sends that action's own key; on AZERTY, Q means "left" and no longer "back"
+    for (const [id] of ACTIONS) { const k = boundKey(id); if (k !== DEFAULT_KEY[id]) remap[k] = DEFAULT_KEY[id]; }
+    refreshHelp();
+  }
+  const fire = (type, key) => { const ev = new KeyboardEvent(type, { key, bubbles: true }); ev._comfort = true; window.dispatchEvent(ev); };
+  let rebinding = null;   // the action waiting for its new key in Settings
+  for (const type of ["keydown", "keyup"]) addEventListener(type, e => {
+    if (e._comfort) return;
+    const k = e.key.toLowerCase();
+    if (rebinding && type === "keydown") {   // Settings is listening for a key
+      e.preventDefault(); e.stopImmediatePropagation();
+      if (k !== "escape") {   // a key already in use swaps with this action's old one
+        const prev = boundKey(rebinding); SETTINGS.keys = { ...(SETTINGS.keys || {}) };
+        for (const [id] of ACTIONS) if (id !== rebinding && boundKey(id) === k) SETTINGS.keys[id] = prev;
+        SETTINGS.keys[rebinding] = k; saveSettings(); buildRemap();
+      }
+      const was = rebinding; rebinding = null; showSettings(); const b = $("pausePanel").querySelector(`[data-rebind="${was}"]`); if (b) b.focus({ preventScroll: true });
+      return;
+    }
+    if (!(k in remap) || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (document.activeElement && /^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName) && document.activeElement.type !== "range") return;   // typing a save code
+    e.preventDefault(); e.stopImmediatePropagation();
+    if (type === "keyup" || !e.repeat) fire(type, remap[k]);
+  }, true);
+  function refreshHelp() {   // the key hints under the game follow the bindings
+    const h = $("help"); if (!h) return;
+    const k = id => `<kbd>${keyName(boundKey(id))}</kbd>`;
+    h.innerHTML = `<span>${k("up")}${k("left")}${k("down")}${k("right")} / <kbd>←↑↓→</kbd> move</span><span>${k("dash")} dash (hold to run)</span><span>${k("act")} talk, rest, confirm</span>`
+      + `<span>${k("back")} back</span><span>${k("party")} party</span><span>${k("journal")} journal</span><span>${k("map")} map</span><span>${k("music")} music</span><span><kbd>Esc</kbd> pause</span>`
+      + (padOn ? `<span class="padnote">🎮 controller connected</span>` : "");
+    const nx = $("next"); if (nx) nx.textContent = `${keyName(boundKey("act"))} / Space to continue`;
+  }
+  // ---- controllers: the standard layout, polled every frame
+  // A / Cross: talk, confirm   B / Circle: back   X / Square: dash, hold to run   Y / Triangle: party
+  // Start: pause   Select / View: journal   LB: minimap   D-pad or left stick: move and choose
+  let padOn = false;
+  const padHeld = {};
+  const PAD_BUTTONS = [[0, "act"], [1, "back"], [2, "dash"], [3, "party"], [8, "journal"], [4, "map"]];
+  function padKey(id, key, down) {
+    if (!!padHeld[id] === down) return;
+    padHeld[id] = down; fire(down ? "keydown" : "keyup", key);
+  }
+  function pollPads() {
+    const pads = navigator.getGamepads ? [...navigator.getGamepads()].filter(Boolean) : [];
+    const p = pads.find(x => x.mapping === "standard") || pads[0];
+    if (!p) { for (const id of Object.keys(padHeld)) if (padHeld[id]) padKey(id, padHeld[id + ":k"] || id, false); return; }
+    const btn = i => !!(p.buttons[i] && (p.buttons[i].pressed || p.buttons[i].value > 0.5)), ax = i => p.axes[i] || 0;
+    const dirs = { arrowup: btn(12) || ax(1) < -0.5, arrowdown: btn(13) || ax(1) > 0.5, arrowleft: btn(14) || ax(0) < -0.5, arrowright: btn(15) || ax(0) > 0.5 };
+    for (const [key, on] of Object.entries(dirs)) padKey(key, key, on);
+    for (const [i, act] of PAD_BUTTONS) {
+      // the title screen and story cards start and continue with Enter; everywhere else A is the game's "E"
+      const key = act === "act" && (mode === "title") ? "enter" : DEFAULT_KEY[act];
+      if (btn(i) && !padHeld["b" + i]) padHeld["b" + i + ":k"] = key;
+      padKey("b" + i, padHeld["b" + i + ":k"] || key, btn(i));
+    }
+    padKey("start", "escape", btn(9));
+  }
+  addEventListener("gamepadconnected", e => { padOn = true; refreshHelp(); toast(`Controller connected: ${String((e.gamepad && e.gamepad.id) || "").split("(")[0].trim() || "gamepad"}. A talks, B goes back, X dashes, Start pauses.`); });
+  addEventListener("gamepaddisconnected", () => { padOn = [...(navigator.getGamepads ? navigator.getGamepads() : [])].some(Boolean); refreshHelp(); toast("Controller disconnected."); });
+  (function padLoop() { requestAnimationFrame(padLoop); try { if (padOn || (navigator.getGamepads && [...navigator.getGamepads()].some(Boolean))) pollPads(); } catch { /* no controller support here */ } })();
+  // ---- text size and softer flashes
+  const comfortCss = document.createElement("style");
+  comfortCss.textContent = [1.2, 1.4].map((f, i) => {
+    const c = `body.text-${i + 1}`;
+    return `${c} .dialog .line{font-size:${Math.round(16 * f)}px}${c} .opts button{font-size:${Math.round(15 * f)}px}${c} .toast{font-size:${Math.round(16 * f)}px}${c} .blog{font-size:${Math.round(14 * f)}px}`
+      + `${c} .menu button{font-size:${Math.round(15 * f)}px}${c} .menu button small{font-size:${Math.round(11 * f)}px}${c} .card{font-size:${Math.round(12 * f)}px}${c} #cardText{font-size:${Math.round(16 * f)}px}`
+      + `${c} .goal{font-size:${Math.round(14 * f)}px}${c} .roster p,${c} .roster button small,${c} .journal p,${c} .journal li{font-size:${Math.round(14 * f)}px}${c} .pmenu button,${c} .pbtn{font-size:${Math.round(15 * f)}px}${c} #cineBox,${c} #banter{font-size:${Math.round(15 * f)}px}`;
+  }).join("") + ".keymap{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px;margin:4px 0}.keymap .pbtn{flex-direction:row;align-items:center;justify-content:space-between;gap:8px}.keymap .pbtn kbd{flex:none;font:600 12px var(--font);background:#231d45;border:1px solid var(--edge);border-radius:4px;padding:1px 7px}.keymap .pbtn.wait{border-color:var(--gold);color:var(--gold)}.help .padnote{color:var(--scarf)}";
+  document.head.appendChild(comfortCss);
+  function applyComfort() { document.body.classList.toggle("text-1", SETTINGS.textSize === "large"); document.body.classList.toggle("text-2", SETTINGS.textSize === "larger"); document.body.classList.toggle("font-pixel", SETTINGS.font === "pixel"); }
+  const _flashC = flash;
+  flash = function (a) { _flashC(SETTINGS.flashes === "soft" ? a * 0.3 : a); };
+  const _saveSettingsC = saveSettings;
+  saveSettings = function () { _saveSettingsC(); applyComfort(); };
+  // ---- Settings: the new rows and the key map
+  const _showSettingsC = showSettings;
+  showSettings = function (focusKey) {
+    _showSettingsC(focusKey);
+    const panel = $("pausePanel"), back = [...panel.querySelectorAll("button")].find(b => /^Back/.test(b.textContent.trim())); if (!back) return;
+    const seg = (key, opts, cur) => `<div class="seg">${opts.map(([v, l]) => `<button type="button" data-set="${key}" data-v="${v}" class="${cur === v ? "on" : ""}">${l}</button>`).join("")}</div>`;
+    const box = document.createElement("div");
+    box.innerHTML = `<h3>Comfort</h3>`
+      + `<div class="setrow"><span>Font</span>${seg("font", [["read", "Easy to read"], ["pixel", "Pixel"]], SETTINGS.font === "pixel" ? "pixel" : "read")}<span></span></div>`
+      + `<div class="setrow"><span>Cutscene lines</span>${seg("cutPace", [["wait", "Wait for me"], ["auto", "Auto"]], SETTINGS.cutPace === "auto" ? "auto" : "wait")}<span></span></div>`
+      + `<p class="dim" style="font-size:12px;margin:0 0 6px">Wait for me: each cutscene line stays until you press ${keyName(boundKey("act"))} or tap. Auto: it moves on by itself, after time to read it.</p>`
+      + `<div class="setrow"><span>Text size</span>${seg("textSize", [["normal", "Normal"], ["large", "Large"], ["larger", "Larger"]], SETTINGS.textSize || "normal")}<span></span></div>`
+      + `<div class="setrow"><span>Battle flashes</span>${seg("flashes", [["full", "Full"], ["soft", "Soft"]], SETTINGS.flashes || "full")}<span></span></div>`
+      + `<h3>Keys</h3><p class="dim" style="font-size:12px;margin:0 0 6px">Choose an action, then press the key you want for it. Arrow keys and Esc always work. A controller works too: A talks, B goes back, X dashes, Y opens the party, Start pauses.</p>`
+      + `<div class="keymap">${ACTIONS.map(([id, label]) => `<button type="button" class="pbtn${rebinding === id ? " wait" : ""}" data-rebind="${id}">${label} <kbd>${rebinding === id ? "press a key…" : keyName(boundKey(id))}</kbd></button>`).join("")}</div>`
+      + `<div class="savebar"><button type="button" class="pbtn" data-keyset="qwerty">Default keys (WASD)</button><button type="button" class="pbtn" data-keyset="azerty">AZERTY keyboard (ZQSD)</button></div>`;
+    back.before(box);
+    if (["textSize", "flashes", "font", "cutPace"].includes(focusKey)) { const f = panel.querySelector(`[data-set="${focusKey}"].on`); if (f) f.focus({ preventScroll: true }); }
+  };
+  $("pausePanel").addEventListener("click", e => {
+    const b = e.target.closest("button[data-rebind], button[data-keyset]"); if (!b) return;
+    e.stopPropagation(); Music.sound("click");
+    if (b.dataset.keyset) { SETTINGS.keys = { ...PRESETS[b.dataset.keyset] }; saveSettings(); buildRemap(); showSettings(); toast(b.dataset.keyset === "azerty" ? "Keys set for an AZERTY keyboard: Z Q S D to move, A to go back." : "Keys back to their defaults."); return; }
+    rebinding = rebinding === b.dataset.rebind ? null : b.dataset.rebind; showSettings();
+    const w = $("pausePanel").querySelector(`[data-rebind="${b.dataset.rebind}"]`); if (w) w.focus({ preventScroll: true });
+  }, true);
+  const _resumeC = resumeGame;
+  resumeGame = function () { rebinding = null; return _resumeC(); };
+  const _showControlsC = showControls;
+  showControls = function () {
+    _showControlsC();
+    const back = [...$("pausePanel").querySelectorAll("button")].find(b => /^Back/.test(b.textContent.trim()));
+    if (back) back.insertAdjacentHTML("beforebegin", `<p class="dim" style="font-size:12px;margin-top:8px">These are the default keys${Object.keys(SETTINGS.keys || {}).length ? "; yours are changed" : ""}. Change any of them, or switch to an AZERTY layout, in Settings &gt; Keys. A controller works too: A talks, B goes back, X dashes, Y opens the party, Select the journal, LB the minimap, Start pauses.</p>`);
+  };
+  buildRemap(); applyComfort();
+  setTimeout(() => Object.assign(window.__saltRoad || (window.__saltRoad = {}), { remap: () => ({ ...remap }), padTest: () => { padOn = true; pollPads(); return { ...padHeld }; }, furyFull: () => { if (!battle) return false; addFury(100); renderMenu(); return true; }, cineNext: () => cineNext(), sceneTest: () => playScene([{ line: ["Sable", "The first line of a test scene."] }, { line: [null, "The second line."] }], () => { window.__sceneDone = true; }) }), 0);
+
+  // ================================================================== REBUILDING KESSA
+  // The village that raised Sable has nothing to spare. A board by the well lists six places to rebuild, paid for in
+  // coin and salt shards. The builders finish by the next dawn (sleep at a rest point at night to get there sooner),
+  // the new building stands on its lot, and it helps the road: better salves, reserves who keep learning, daily
+  // supplies, cheaper arms, a head start on Fury, and more coin from every fight. Each place can be raised twice.
+  const KESSA = [
+    { id: "herbs", name: "The Herb Garden", x: 5, y: 50, who: "Widow Aba's sister comes home to plant it.",
+      lv: [{ coin: 60, shards: 3, stage: 1, eff: "Salves heal 30 instead of 22." }, { coin: 180, shards: 10, stage: 5, eff: "Salves heal 40, and Bitter Tonics restore 10 SP." }] },
+    { id: "inn", name: "The Salt Bed Inn", x: 23, y: 34, who: "Old Bram's daughter reopens her father's inn.",
+      lv: [{ coin: 90, shards: 4, stage: 1, eff: "Companions who sit out a battle earn 75% of its experience instead of half." }, { coin: 240, shards: 12, stage: 5, eff: "Companions who sit out a battle earn all of its experience." }] },
+    { id: "market", name: "The Market Hall", x: 25, y: 44, who: "The stallholders who fled to Oru bring their carts back.",
+      lv: [{ coin: 80, shards: 4, stage: 2, eff: "Once a day, collect two Salves at the hall." }, { coin: 220, shards: 10, stage: 7, eff: "Once a day, collect two Salves, a Bitter Tonic and one rarer remedy." }] },
+    { id: "forge", name: "The Village Forge", x: 25, y: 38, who: "Ilse's old apprentices fire the forge again.",
+      lv: [{ coin: 100, shards: 5, stage: 3, eff: "Arms and armour cost 10% less at every smith." }, { coin: 280, shards: 14, stage: 7, eff: "Arms and armour cost 20% less at every smith." }] },
+    { id: "yard", name: "The Training Yard", x: 17, y: 50, who: "The village children come to watch, then to train.",
+      lv: [{ coin: 70, shards: 4, stage: 2, eff: "Every battle starts with 15 Fury." }, { coin: 200, shards: 12, stage: 6, eff: "Every battle starts with 30 Fury." }] },
+    { id: "post", name: "The Courier Post", x: 3, y: 39, who: "Postmistress Ama gets a counter, a stamp and a loft of pigeons.",
+      lv: [{ coin: 80, shards: 4, stage: 1, eff: "Battles pay 15% more coin." }, { coin: 220, shards: 12, stage: 6, eff: "Battles pay 30% more coin." }] },
+  ];
+  const KBOARD = { x: 14, y: 43 };
+  const kRec = id => { G.kessa = G.kessa || {}; return G.kessa[id] || (G.kessa[id] = { lv: 0 }); };
+  const kLv = id => (G && G.kessa && G.kessa[id] && G.kessa[id].lv) || 0;
+  const kBuilding = id => { const r = G && G.kessa && G.kessa[id]; return r && r.ready ? r : null; };
+  const kPeople = () => 34 + KESSA.reduce((s, P) => s + kLv(P.id) * 7, 0);
+  const kOpen = () => G && G.stage >= 1 && !G.flags.epilogue;
+  const kDay = () => G.day || 1;
+  // ---- what the buildings do
+  const ITEM_BASE = { salveHeal: ITEMS.salve.heal, tonicSp: ITEMS.tonic.sp, salveDesc: ITEMS.salve.desc, tonicDesc: ITEMS.tonic.desc };
+  const GEAR_BASE = Object.fromEntries(Object.entries(GEAR).map(([k, g]) => [k, g.price]));
+  function applyKessa() {
+    const h = kLv("herbs"), f = kLv("forge");
+    ITEMS.salve.heal = h >= 2 ? 40 : h >= 1 ? 30 : ITEM_BASE.salveHeal;
+    ITEMS.salve.desc = h ? `Heal an ally by ${ITEMS.salve.heal}. (Kessa's herb garden)` : ITEM_BASE.salveDesc;
+    ITEMS.tonic.sp = h >= 2 ? 10 : ITEM_BASE.tonicSp;
+    ITEMS.tonic.desc = h >= 2 ? "Stop bleeding and restore 10 SP. (Kessa's herb garden)" : ITEM_BASE.tonicDesc;
+    for (const [k, p] of Object.entries(GEAR_BASE)) GEAR[k].price = Math.round(p * (1 - 0.1 * f));
+    // shop lines that print the salve's strength follow the garden
+    for (const node of Object.values(D)) if (node && Array.isArray(node.choices)) for (const c of node.choices) {
+      if (typeof c.t !== "string" && !c._kt) continue;
+      if (!c._kt && /Salve \(heal 22\)/.test(c.t)) c._kt = c.t;
+      if (c._kt) c.t = c._kt.replace("heal 22", `heal ${ITEMS.salve.heal}`);
+    }
+  }
+  const _victoryK = victory;
+  victory = function () {
+    if (!battle) return _victoryK();
+    const fought = new Set(battle.heroes.map(u => u.id)), xp = battle.foes.reduce((s, f) => s + ((MONSTERS[f.id] && MONSTERS[f.id].xp) || 0), 0), c0 = G.coins;
+    _victoryK();
+    const inn = kLv("inn"), post = kLv("post");
+    if (inn && xp) for (const id of G.members) {
+      if (fought.has(id)) continue;
+      const h = G.party[id]; h.xp += Math.round(xp * 0.25 * inn);
+      while (h.xp >= xpNeed(h.level)) { h.xp -= xpNeed(h.level); levelUp(h); }
+    }
+    const won = G.coins - c0;
+    if (post && won > 0) { const extra = Math.max(1, Math.round(won * 0.15 * post)); G.coins += extra; if (battle) blog(`${battle.log || ""} The Courier Post adds ${extra} coin.`.trim()); }
+    if (inn || post) { save(); updateHud(); }
+  };
+  const _startBattleK = startBattle;
+  startBattle = function (group, opts) { _startBattleK(group, opts); const y = kLv("yard"); if (battle && y) addFury(15 * y); };
+  // ---- the buildings on their lots: a staked plot, scaffolding while the builders work, then the place itself
+  function kessaProps() {
+    for (let i = PROPS.length - 1; i >= 0; i--) if (PROPS[i].kessa) { propSolid.delete(PROPS[i].x + "," + PROPS[i].y); PROPS.splice(i, 1); }
+    applyKessa();   // a new or loaded game starts from its own buildings, not the last game's
+    if (!G || G.stage < 1) return;
+    addProp("kboard", KBOARD.x, KBOARD.y, { kessa: true }); propSolid.add(KBOARD.x + "," + KBOARD.y);
+    for (const P of KESSA) {
+      const lv = kLv(P.id), b = kBuilding(P.id);
+      addProp("kessa_" + P.id, P.x, P.y, { kessa: true, lv, building: !!b }); propSolid.add(P.x + "," + P.y);
+    }
+  }
+  const _addProp2K = addProp2;
+  addProp2 = () => { _addProp2K(); kessaProps(); };
+  const _applyWorldK = applyWorldState;
+  applyWorldState = function () { _applyWorldK(); kessaProps(); };
+  const OUTL = "#1b1633";
+  function drawKessaProp(g2, pr, x, y) {
+    const R = (dx, dy, w, h, c) => { g2.fillStyle = c; g2.fillRect(x + dx, y + dy, w, h); }, t = time, lv = pr.lv;
+    const shadow = w => { g2.fillStyle = "rgba(20,14,40,.28)"; g2.beginPath(); g2.ellipse(x, y + 6, w, 2.6, 0, 0, Math.PI * 2); g2.fill(); };
+    const glow = (gx, gy, r, a) => { const gr = g2.createRadialGradient(x + gx, y + gy, 1, x + gx, y + gy, r); gr.addColorStop(0, `rgba(255,200,110,${a})`); gr.addColorStop(1, "rgba(255,200,110,0)"); g2.fillStyle = gr; g2.fillRect(x + gx - r, y + gy - r, r * 2, r * 2); };
+    if (pr.type === "kboard") {
+      shadow(8); R(-8, -10, 2, 16, "#6b3f24"); R(6, -10, 2, 16, "#6b3f24"); R(-10, -20, 20, 12, OUTL); R(-9, -19, 18, 10, "#b98a52");
+      R(-7, -17, 5, 4, "#f2ead8"); R(-1, -18, 4, 5, "#f2ead8"); R(4, -16, 4, 3, "#f2ead8"); R(-6, -12, 7, 1, "#6b3f24"); R(2, -12, 5, 1, "#6b3f24"); R(-10, -21, 20, 2, "#a8403a");
+      if (near({ x: pr.px, y: pr.py }, 22) && mode === "play") drawPrompt(g2, x, y - 26);
+      return;
+    }
+    const id = pr.type.slice(6);
+    if (!lv && !pr.building) {   // an empty, staked lot
+      R(-8, -2, 1, 6, "#6b3f24"); R(7, -2, 1, 6, "#6b3f24"); R(-8, -1, 16, 1, "#d9c9a0"); R(-2, -9, 1, 13, "#6b3f24"); R(-6, -13, 9, 5, OUTL); R(-5, -12, 7, 3, "#d9c9a0"); R(-4, -11, 5, 1, "#8a5533");
+      for (const [dx, dy] of [[-5, 2], [3, 3], [5, 0]]) R(dx, dy, 2, 1, "#c9b48a");
+      if (near({ x: pr.px, y: pr.py }, 20) && mode === "play" && kOpen()) drawPrompt(g2, x, y - 18);
+      return;
+    }
+    const sc = pr.building;   // scaffolding stands around whatever is being raised
+    if (id === "herbs") {
+      shadow(11); R(-11, -4, 22, 9, "#5a3a24"); for (let i = 0; i < 3; i++) { R(-10, -3 + i * 3, 20, 1, "#3a2a1e"); for (let j = 0; j < 5; j++) R(-9 + j * 4, -4 + i * 3, 2, 2, ["#4f9a4a", "#6fbf62", "#3a7a3a"][(i + j) % 3]); }
+      R(-12, -6, 1, 11, "#8a5533"); R(11, -6, 1, 11, "#8a5533"); R(-12, -6, 24, 1, "#b98a52");
+      if (lv >= 2) { R(-8, -20, 16, 14, OUTL); R(-7, -19, 14, 12, "rgba(190,240,230,.55)"); R(-7, -19, 14, 1, "#e8ffff"); R(0, -19, 1, 12, "#8ab8c8"); R(-5, -10, 3, 3, "#ff8ab0"); R(2, -11, 3, 4, "#ffd24a"); }
+      else { R(-4, -10, 1, 6, "#6b3f24"); R(-7, -11, 7, 2, "#b98a52"); for (let j = 0; j < 3; j++) R(-7 + j * 2, -9, 1, 3, "#6fbf62"); }
+    } else if (id === "inn") {
+      shadow(13); R(-12, -26, 24, 32, OUTL); R(-11, -18, 22, 23, "#d9b98a"); R(-13, -28, 26, 11, OUTL); R(-12, -27, 24, 9, "#a8403a"); for (let i = 0; i < 3; i++) R(-12, -25 + i * 3, 24, 1, "#8a3030");
+      R(-2, -3, 5, 8, "#5a3a24"); R(1, 0, 1, 1, "#ffcf4a"); const win = lv >= 2 ? "#ffcf4a" : "#3b2f55";
+      R(-9, -14, 4, 4, win); R(5, -14, 4, 4, win); R(-9, -6, 4, 3, win); R(5, -6, 4, 3, win);
+      R(11, -16, 1, 8, "#6b3f24"); R(12, -16, 6, 1, "#6b3f24"); R(13, -15, 5, 5, OUTL); R(14, -14, 3, 3, "#b98a52");
+      if (lv >= 2) { glow(0, -10, 26, 0.18); R(-8, -31, 3, 4, "#6b5a44"); const s2 = (t * 0.6) % 1; R(-8 + Math.round(Math.sin(t * 2) * 2), -34 - s2 * 8, 2, 2, `rgba(220,220,230,${0.6 - s2 * 0.5})`); }
+    } else if (id === "market") {
+      shadow(13); for (const dx of [-11, 10]) R(dx, -18, 2, 24, "#6b3f24");
+      for (let i = 0; i < 8; i++) R(-12 + i * 3, -22, 3, 6, i % 2 ? "#f2ead8" : "#3b4f9a"); R(-12, -16, 24, 1, OUTL);
+      R(-9, -2, 7, 6, "#b98a52"); R(-9, -2, 7, 1, "#d9a86c"); R(2, -1, 7, 5, "#8a5533"); R(-8, -4, 2, 2, "#ff8a5c"); R(-5, -4, 2, 2, "#6fbf62"); R(3, -3, 2, 2, "#ffcf4a"); R(6, -3, 2, 2, "#c8102e");
+      if (lv >= 2) { for (let i = 0; i < 5; i++) { const sw = Math.round(Math.sin(t * 2 + i) * 1); R(-10 + i * 5, -15 + sw, 2, 3, ["#ffcf4a", "#ff8ab0", "#9ef0f5", "#6fbf62", "#ffcf4a"][i]); } glow(0, -12, 20, 0.14); }
+    } else if (id === "forge") {
+      shadow(12); R(-11, -12, 22, 18, OUTL); R(-10, -11, 20, 16, "#857ea5"); for (let i = 0; i < 3; i++) R(-10, -8 + i * 5, 20, 1, "#5e5680");
+      R(4, -26, 6, 15, OUTL); R(5, -25, 4, 14, "#5e5680"); R(-7, -3, 8, 6, "#1b1633"); const fl = 0.5 + 0.5 * Math.sin(t * 10);
+      R(-6, -2, 6, 4, fl > 0.5 ? "#ff8a3c" : "#ffcf4a"); glow(-3, 0, 14 + lv * 3, 0.22 + fl * 0.08);
+      R(-12, 2, 6, 2, OUTL); R(-11, 0, 4, 2, "#5e5680");
+      if (lv >= 2) { R(3, -30, 8, 5, OUTL); R(4, -29, 6, 3, "#5e5680"); for (let i = 0; i < 2; i++) { const s2 = (t * 1.3 + i * 0.5) % 1; R(-4 + Math.round(Math.sin(t * 7 + i) * 3), -4 - s2 * 10, 1, 1, `rgba(255,190,90,${1 - s2})`); } R(11, -8, 1, 12, "#6b3f24"); R(10, -9, 3, 2, "#cacee0"); R(10, -3, 3, 2, "#cacee0"); }
+    } else if (id === "yard") {
+      shadow(13); R(-12, 3, 24, 1, "#8a5533"); for (const dx of [-12, -4, 4, 11]) R(dx, -1, 1, 5, "#6b3f24");
+      const dummy = (dx, ph) => { const sw = Math.round(Math.sin(t * 1.5 + ph) * 0.6); R(dx, -14, 1, 17, "#6b3f24"); R(dx - 4, -11 + sw, 9, 2, "#b98a52"); R(dx - 2, -15, 5, 8, "#d9c9a0"); R(dx - 1, -19, 3, 4, "#d9c9a0"); R(dx - 2, -13, 5, 1, "#a8403a"); };
+      dummy(-6, 0);
+      if (lv >= 2) { R(5, -16, 1, 19, "#6b3f24"); R(2, -18, 8, 8, OUTL); R(3, -17, 6, 6, "#f2ead8"); R(4, -16, 4, 4, "#c8102e"); R(5, -15, 2, 2, "#f2ead8"); R(10, -20, 1, 10, "#6b3f24"); R(11, -20, 4, 3, "#3ee0e8"); }
+      else dummy(5, 1.5);
+    } else if (id === "post") {
+      shadow(10); R(-9, -18, 18, 24, OUTL); R(-8, -12, 16, 17, "#c9a070"); R(-10, -20, 20, 8, OUTL); R(-9, -19, 18, 6, "#3b2f7a"); R(-3, -8, 6, 3, OUTL); R(-2, -7, 4, 1, "#ffcf4a");
+      R(-6, -2, 4, 7, "#5a3a24"); R(8, -14, 1, 12, "#6b3f24"); R(9, -14, 4, 3, "#c8102e");
+      if (lv >= 2) { R(-8, -27, 10, 8, OUTL); R(-7, -26, 8, 6, "#8a5533"); for (let i = 0; i < 3; i++) { const bob = Math.round(Math.sin(t * 4 + i * 2) * 1); R(-6 + i * 3, -29 + bob, 2, 2, "#e8e4f0"); R(-6 + i * 3, -28 + bob, 1, 1, "#857ea5"); } }
+    }
+    if (sc) { for (const dx of [-13, 12]) R(dx, -30, 1, 36, "#b98a52"); for (const dy of [-22, -12]) R(-13, dy, 26, 1, "#b98a52"); R(-13, -30, 26, 1, "#8a5533");
+      R(-1, 0, 6, 3, "#857ea5"); R(-6, 1, 4, 2, "#b98a52"); }
+    const near2 = near({ x: pr.px, y: pr.py }, 22) && mode === "play" && kOpen();
+    if (near2) drawPrompt(g2, x, y - 36);
+  }
+  const _drawPropK = drawProp;
+  drawProp = function (g2, pr, x, y) { if (!pr.kessa) return _drawPropK(g2, pr, x, y); drawKessaProp(g2, pr, Math.round(x), Math.round(y)); };
+  // ---- the board and the lots
+  D.kessa_board = { who: null, text: "", choices: [] };
+  D.kessa_p = { who: null, text: "", choices: [] };
+  let kCur = null;
+  const kCost = c => `${c.coin} coin and ${c.shards} salt shard${c.shards === 1 ? "" : "s"}`;
+  const kState = P => { const lv = kLv(P.id), b = kBuilding(P.id); return b ? `being built (ready at dawn of day ${b.ready})` : lv >= P.lv.length ? "finished" : lv ? `level ${lv} of ${P.lv.length}` : "empty lot"; };
+  function boardNode() {
+    const S = spoils(), n = D.kessa_board, done = KESSA.filter(P => kLv(P.id) >= P.lv.length).length;
+    n.text = `(Elder Nadia's board by the well.) KESSA, REBUILDING. ${kPeople()} people live here. You carry ${G.coins} coin and ${S.shards} salt shard${S.shards === 1 ? "" : "s"} (won in battle).${done === KESSA.length ? " Every line is crossed out. Somebody has drawn a bell at the bottom." : " Builders finish by the next dawn."}`;
+    n.choices = [...KESSA.map(P => ({ t: `${P.name.replace(/^The /, "")}: ${kState(P)}`, go: "kessa_p", act: () => projectNode(P) })), { t: "Leave", go: null }];
+  }
+  function projectNode(P) {
+    kCur = P; const n = D.kessa_p, lv = kLv(P.id), b = kBuilding(P.id), next = P.lv[lv], S = spoils();
+    let text = `${P.name}. ${lv ? `Now: ${P.lv[lv - 1].eff}` : P.who}`;
+    if (b) text += ` The builders are at work; it will be ready at dawn of day ${b.ready}. Sleep at a rest point at night to get there sooner.`;
+    else if (next) text += ` ${lv ? "Raise it further" : "Build it"} for ${kCost(next)}: ${next.eff}${G.stage < next.stage ? ` (The builders can't start this until Chapter ${["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII"][next.stage]}.)` : ""}`;
+    else text += " It is finished. People stop you in the street to say so.";
+    n.text = text;
+    n.choices = [];
+    if (!b && next) n.choices.push({ t: `${lv ? "Raise it" : "Build it"}: ${kCost(next)}`, go: "kessa_p", act: () => { orderBuild(P); projectNode(P); },
+      req: () => G.stage >= next.stage && G.coins >= next.coin && spoils().shards >= next.shards, reqText: G.stage < next.stage ? "later in the story" : kCost(next) });
+    if (P.id === "market" && lv && !b) n.choices.push({ t: G.flags.kMarketDay === kDay() ? "Today's supplies: already collected" : "Collect today's supplies", go: "kessa_p", act: () => { marketSupplies(); projectNode(P); }, req: () => G.flags.kMarketDay !== kDay(), reqText: "a new day" });
+    n.choices.push({ t: "Back to the board", go: "kessa_board", act: boardNode }, { t: "Leave", go: null });
+    void S;
+  }
+  function orderBuild(P) {
+    const lv = kLv(P.id), next = P.lv[lv], S = spoils();
+    if (!next || kBuilding(P.id) || G.stage < next.stage || G.coins < next.coin || S.shards < next.shards) return;
+    G.coins -= next.coin; S.shards -= next.shards; Object.assign(kRec(P.id), { ready: kDay() + 1 });
+    Music.sound("item"); toast(`The builders start on ${P.name}. Ready at the next dawn.`);
+    kessaProps(); save(); updateHud();
+  }
+  function marketSupplies() {
+    const lv = kLv("market"); if (!lv || G.flags.kMarketDay === kDay()) return;
+    G.flags.kMarketDay = kDay(); const got = { salve: 2 };
+    if (lv >= 2) { got.tonic = 1; const rare = ["gsalve", "ether", "salts"].filter(k => ITEMS[k]); const r = pick(rare); got[r] = (got[r] || 0) + 1; }
+    for (const [k, n] of Object.entries(got)) G.items[k] = (G.items[k] || 0) + n;
+    Music.sound("item"); toast(`Supplies from the Market Hall: ${Object.entries(got).map(([k, n]) => `${ITEMS[k].name} ×${n}`).join(", ")}.`); save(); updateHud();
+  }
+  const _interactK = interact;
+  interact = function () {
+    if (kOpen() && mode === "play") {
+      if (near({ x: KBOARD.x * TILE + 8, y: KBOARD.y * TILE + 8 }, 22)) { boardNode(); openDialog("kessa_board"); return true; }
+      for (const P of KESSA) if (near({ x: P.x * TILE + 8, y: P.y * TILE + 8 }, 22)) { projectNode(P); openDialog("kessa_p"); return true; }
+    }
+    return _interactK();
+  };
+  // ---- the builders finish at dawn; the first visit after the prologue points at the board
+  let kTick = 0;
+  const _updateK = update;
+  update = function (dt) {
+    _updateK(dt);
+    if (!G || mode !== "play" || (kTick -= dt) > 0) return; kTick = 1;   // news waits for the open road, never over a dialogue or a battle
+    let done = null;
+    for (const P of KESSA) { const r = G.kessa && G.kessa[P.id]; if (r && r.ready && kDay() >= r.ready) { r.lv = (r.lv || 0) + 1; delete r.ready; done = P; renown(r.lv * 15, `${P.name} finished`); } }
+    if (done) {
+      kessaProps(); applyKessa(); save(); updateHud(); Music.sound("victory");
+      toast(`${done.name} is finished. ${done.lv[kLv(done.id) - 1].eff}`);
+      if (KESSA.every(P => kLv(P.id) >= P.lv.length) && !G.flags.kessaWhole) { G.flags.kessaWhole = true; setTimeout(() => card("Kessa", "Home Again", `Every line on Nadia's board is crossed out. ${kPeople()} people live in Kessa now. Tonight they hang lanterns between the new roofs and eat in the street, and somebody keeps a chair for the courier.`), 1200); }
+    }
+    if (kOpen() && mode === "play" && !G.flags.kessaHint && Math.hypot(G.px - KBOARD.x * TILE, G.py - KBOARD.y * TILE) < 200) { G.flags.kessaHint = true; toast("Elder Nadia has put up a rebuilding board by the well."); }
+  };
+  ACHIEVEMENTS.push(
+    ["kessa1", "The First Stone", "Rebuild something in Kessa.", () => KESSA.some(P => kLv(P.id) >= 1)],
+    ["kessa6", "Home Again", "Raise every place in Kessa to its last level.", () => KESSA.every(P => kLv(P.id) >= P.lv.length)],
+  );
+  const _extraFatesK = extraFates;
+  extraFates = function (k) { const out = _extraFatesK(k), n = KESSA.filter(P => kLv(P.id)).length;
+    if (n) out.push(n === KESSA.length ? `Kessa, which had nothing to spare, now has an inn, a market, a forge and a post, and a garden that smells of mint. ${kPeople()} people live there.` : `In Kessa, ${KESSA.filter(P => kLv(P.id)).map(P => P.name.replace(/^The /, "the ")).join(", ")} still stand${n === 1 ? "s" : ""}, built with a courier's coin.`);
+    return out; };
+  setTimeout(() => Object.assign(window.__saltRoad || (window.__saltRoad = {}), {
+    kessa: () => JSON.parse(JSON.stringify(G.kessa || {})),
+    kessaBuild: (id, lv) => { const r = kRec(id); r.lv = lv; delete r.ready; kessaProps(); applyKessa(); return r; },
+    kessaBoard: () => { boardNode(); openDialog("kessa_board"); return D.kessa_board.choices.map(c => c.t); },
+    kessaProject: id => { projectNode(KESSA.find(P => P.id === id)); openDialog("kessa_p"); return { text: D.kessa_p.text, choices: D.kessa_p.choices.map(c => c.t) }; },
+  }), 0);
+
+  // ================================================================== A FINISHED GAME STAYS FINISHED
+  // At an ending the game hands its gear and tempering back as coin (for New Game+) and deletes the save. Daily
+  // tasks, gifts and renown kept saving afterwards, which wrote that stripped game back: a reload offered "Continue"
+  // into Chapter XII with the gear gone. Now nothing is saved from the ending until a new game or the epilogue.
+  let gameDone = false;
+  const _saveDone = save;
+  save = function () {
+    if (gameDone) return;
+    _saveDone();
+    // a New Game+ run starts before Chapter I, where a reload begins afresh: its offer stays on the title until then
+    if (G && G.ng && G.stage > 0) { const c = readNGPlus(); if (c && c.ng <= G.ng) try { localStorage.removeItem(NG_KEY); } catch { /* storage unavailable */ } }
+  };
+  const _endingDone = ending;
+  ending = function (kind) { gameDone = true; return _endingDone(kind); };
+  const _finalCreditsDone = finalCredits;
+  finalCredits = function () { gameDone = true; return _finalCreditsDone(); };
+  const _startEpilogueDone = startEpilogue;
+  startEpilogue = function (kind) { gameDone = false; return _startEpilogueDone(kind); };
+  const _newGameDone = newGame;
+  newGame = function (persist) { gameDone = false; return _newGameDone(persist); };
+
+  // ---- the title screen: what Continue leads to, and New Game+ when a finished game left one
+  const titleCss = document.createElement("style");
+  titleCss.textContent = "#saveSum{margin:-4px 0 0;max-width:68ch;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}#saveSum b{color:var(--text);font-weight:500}"
+    + "#ngBtn{border-color:var(--gold);color:var(--gold)}.screen .ghost.armed{border-color:var(--blood);color:#ffb3bf}.screen .ghost:focus-visible{outline:2px solid var(--gold);outline-offset:2px}";
+  document.head.appendChild(titleCss);
+  const sumEl = document.createElement("p"); sumEl.id = "saveSum"; sumEl.hidden = true;
+  $("startBtn").insertAdjacentElement("afterend", sumEl);
+  const ngBtn = document.createElement("button"); ngBtn.id = "ngBtn"; ngBtn.className = "ghost"; ngBtn.type = "button"; ngBtn.hidden = true;
+  $("newBtn").insertAdjacentElement("afterend", ngBtn);
+  let ngArmed = 0;
+  function titleSummary() {
+    if (mode !== "title" || !G) return;
+    const has = G.stage > 0, t = has ? goal() : null;
+    sumEl.hidden = !has;
+    if (has) sumEl.innerHTML = `<b>${t.ch || "The Salt Road"}</b> · ${fmtTime(G.stats && G.stats.time)} played · ${G.members.map(id => `${G.party[id].name} ${G.party[id].level}`).slice(0, 4).join(", ")}${G.members.length > 4 ? ` +${G.members.length - 4}` : ""}${G.ng ? ` · New Game+ ${G.ng}` : ""}`;
+    const c = readNGPlus();
+    ngBtn.hidden = !c;
+    if (c) ngBtn.textContent = `New Game+ ${c.ng}: Sable at level ${c.sable.level}, with your relics, items, coin and forge`;
+  }
+  ngBtn.addEventListener("click", () => {
+    const c = readNGPlus(); if (!c) { titleSummary(); return; }
+    if (G.stage > 0 && Date.now() - ngArmed > 5000) { ngArmed = Date.now(); ngBtn.textContent = "This replaces your saved game. Press again to begin New Game+"; ngBtn.classList.add("armed"); setTimeout(() => { if (Date.now() - ngArmed >= 5000) { ngBtn.classList.remove("armed"); titleSummary(); } }, 5000); return; }
+    ngBtn.classList.remove("armed"); startNGPlus(c);
+  });
+  setTimeout(titleSummary, 0);
+  localStorage.ready.then(() => setTimeout(titleSummary, 0));
+
+  // ---- coming back after a while: the last page of Tobin's Chronicle and where the road was heading
+  const AWAY = 60 * 60 * 1000;
+  const _saveSeen = save;
+  save = function () { if (G && mode !== "title") G.lastPlayed = Date.now(); _saveSeen(); };
+  const _startGameRecap = startGame;
+  startGame = function () {
+    const away = G && G.stage > 0 && !G.flags.epilogue && G.lastPlayed && Date.now() - G.lastPlayed >= AWAY;
+    _startGameRecap();
+    if (!away) return;
+    const pages = chronicle().filter(([h]) => h), [head, text] = pages[pages.length - 1] || ["", ""], t = goal();
+    card("Previously", head || t.ch || "The Salt Road", `${text}${t.text ? ` Where the road leads now: ${t.text}` : ""}`.trim());
+  };
+
   // ================================================================== BOOT
   const saved = load();          // read the save before a fresh game could overwrite it
   newGame(false);
@@ -13488,7 +14385,7 @@
     return { peak: pk, rms, wav: btoa(bin) };
   }, trackKeys: () => Object.keys(TRACKS), rigSheet: (ids, poses, zoom = 3) => { const c = document.createElement("canvas"); c.width = poses.length * RIG_W * zoom; c.height = ids.length * RIG_H * zoom; const g = c.getContext("2d"); g.imageSmoothingEnabled = false; g.fillStyle = "#1d1830"; g.fillRect(0, 0, c.width, c.height);
     ids.forEach((id, r) => poses.forEach((ps, i) => { const fr = rigFrame(id, POSE[ps], "sheet:" + ps + "|g" + gearTiers(id).join("."), 0.3, false); g.drawImage(fr, i * RIG_W * zoom, r * RIG_H * zoom, RIG_W * zoom, RIG_H * zoom); })); return c.toDataURL(); },
-  rigPose: (i, name, secs = 3) => { if (battle && battle.heroes[i]) { playAct(battle.heroes[i], name, secs); return true; } return false; }, bossMoves: () => Object.entries(MONSTERS).filter(([, m]) => m.boss).map(([id, m]) => id + ': ' + m.moves.map(mv => mv.name + (mv.announce ? '[A]' : '') + (mv.charge ? '[C]' : '') + (mv.target ? '[' + mv.target + ']' : '') + (mv.all ? '[all]' : '')).join(', ')).join('\n'), sigFx: (kind) => { if (!battle) return false; const f = battle.foes[0]; RIG_FX.push({ kind: 'sig:' + kind, unit: f, t0: time, dur: 1.2, heroes: battle.heroes.map(h => unitPos(h)) }); return true; }, heroSkills: () => Object.entries(HEROES).map(([id, hh]) => id + ': ' + (hh.skills || []).map(s => s.name + '{' + Object.keys(s).filter(k => !['name','desc','cost','lvl','pcost'].includes(k)).map(k => k + (typeof s[k] === 'string' ? '=' + s[k] : '')).join(',') + '}').join(' | ')).join('\n'), skillFxTest: (heroIdx, name, foeTargets) => { if (!battle) return false; const u = battle.heroes[heroIdx]; const s = { name, target: foeTargets ? 'allEnemies' : 'party' }; battle.act = { u, skill: s }; return skillFx(u, { skill: s, unit: null }); }, chainTest: () => { if (!battle) return false; battle.chainT = time; battle.chainN = battle.heroes.length; const t = battle.foes[0]; battle.heroes.forEach((h, i) => setTimeout(() => chainBlow(h, t, i === battle.heroes.length - 1), 400 + i * 380)); return true; }, setStatus: (side, i, st) => { if (!battle) return false; const u = (side === 'hero' ? battle.heroes : battle.foes)[i]; if (!u) return false; Object.assign(u.st, st); return true; }, gearTest: (id, w, a) => { G.gear = G.gear || {}; const cur = G.gear[id] || (G.gear[id] = {}); for (const [slot, t] of [['weapon', w], ['armor', a]]) { if (cur[slot]) applyGear(G.party[id], cur[slot], -1); delete cur[slot]; if (t) { const key = (slot === 'weapon' ? 'w_' + WCLASS[id] : 'a_' + ACLASS[id]) + '_' + t; applyGear(G.party[id], key, 1); cur[slot] = key; } } return { ...G.party[id] }; }, gearShop: who => { refreshGear(who, 'odo_0'); return D.gear_shop.choices.map(c => typeof c.t === 'function' ? c.t() : c.t); }, bossPhaseTest: () => { if (!battle) return null; const f = battle.foes[0]; const before = { hp: f.hp, atk: f.atk }; damage(f, Math.ceil(f.hp - f.maxHp * 0.49), { silent: true }); return { before, after: { hp: f.hp, max: f.maxHp, atk: f.atk, spd: f.spd, phase2: !!f.phase2, charged: !!f.charged } }; }, foeStats: () => battle ? battle.foes.map(f => f.id + ' hp' + f.maxHp + ' atk' + f.atk) : null, endingTest: k => { ending(k); const c = document.getElementById('card'), t = document.getElementById('cardText'), tt = document.getElementById('cardTitle'); const r = tt.getBoundingClientRect(), rt = t.getBoundingClientRect(); return { titleTop: Math.round(r.top), textBottom: Math.round(rt.bottom), vh: innerHeight, scrolls: t.scrollHeight > t.clientHeight, long: t.classList.contains('long') }; }, dialogKeys: () => Object.keys(D), bossArtP2: (id, ph = 0) => { const A = P2ART[id]; if (!A) return null; const u = { id, sprite: MONSTERS[id].sprite, phase2: -10 }; const B = p2ArtFor(u); return artFrame(B, B.key, ph, false).toDataURL(); }, forceWin: () => { if (!battle) return false; for (const f of battle.foes) { f.hp = 0; f.dead = true; } victory(); return true; }, cont: () => battle && battle.waitingContinue ? (battle.waitingContinue(), true) : false, lose: () => battle ? (endBattle("lost"), true) : false, dlgChoices: () => dlg && dlg.choices ? dlg.choices.map(c => typeof c.t === "function" ? c.t() : c.t) : null, voiceWav: async (who, text) => {   // a character's voice speaking a line, rendered offline for previews and level checks
+  rigPose: (i, name, secs = 3) => { if (battle && battle.heroes[i]) { playAct(battle.heroes[i], name, secs); return true; } return false; }, bossMoves: () => Object.entries(MONSTERS).filter(([, m]) => m.boss).map(([id, m]) => id + ': ' + m.moves.map(mv => mv.name + (mv.announce ? '[A]' : '') + (mv.charge ? '[C]' : '') + (mv.target ? '[' + mv.target + ']' : '') + (mv.all ? '[all]' : '')).join(', ')).join('\n'), sigFx: (kind) => { if (!battle) return false; const f = battle.foes[0]; RIG_FX.push({ kind: 'sig:' + kind, unit: f, t0: time, dur: 1.2, heroes: battle.heroes.map(h => unitPos(h)) }); return true; }, heroSkills: () => Object.entries(HEROES).map(([id, hh]) => id + ': ' + (hh.skills || []).map(s => s.name + '{' + Object.keys(s).filter(k => !['name','desc','cost','lvl','pcost'].includes(k)).map(k => k + (typeof s[k] === 'string' ? '=' + s[k] : '')).join(',') + '}').join(' | ')).join('\n'), skillFxTest: (heroIdx, name, foeTargets) => { if (!battle) return false; const u = battle.heroes[heroIdx]; const s = { name, target: foeTargets ? 'allEnemies' : 'party' }; battle.act = { u, skill: s }; return skillFx(u, { skill: s, unit: null }); }, chainTest: () => { if (!battle) return false; battle.chainT = time; battle.chainN = battle.heroes.length; const t = battle.foes[0]; battle.heroes.forEach((h, i) => setTimeout(() => chainBlow(h, t, i === battle.heroes.length - 1), 400 + i * 380)); return true; }, setStatus: (side, i, st) => { if (!battle) return false; const u = (side === 'hero' ? battle.heroes : battle.foes)[i]; if (!u) return false; Object.assign(u.st, st); renderCards(); return true; }, gearTest: (id, w, a) => { G.gear = G.gear || {}; const cur = G.gear[id] || (G.gear[id] = {}); for (const [slot, t] of [['weapon', w], ['armor', a]]) { if (cur[slot]) applyGear(G.party[id], cur[slot], -1); delete cur[slot]; if (t) { const key = (slot === 'weapon' ? 'w_' + WCLASS[id] : 'a_' + ACLASS[id]) + '_' + t; applyGear(G.party[id], key, 1); cur[slot] = key; } } return { ...G.party[id] }; }, gearShop: who => { refreshGear(who, 'odo_0'); return D.gear_shop.choices.map(c => typeof c.t === 'function' ? c.t() : c.t); }, bossPhaseTest: () => { if (!battle) return null; const f = battle.foes[0]; const before = { hp: f.hp, atk: f.atk }; damage(f, Math.ceil(f.hp - f.maxHp * 0.49), { silent: true }); return { before, after: { hp: f.hp, max: f.maxHp, atk: f.atk, spd: f.spd, phase2: !!f.phase2, charged: !!f.charged } }; }, foeStats: () => battle ? battle.foes.map(f => f.id + ' hp' + f.maxHp + ' atk' + f.atk) : null, endingTest: k => { ending(k); const c = document.getElementById('card'), t = document.getElementById('cardText'), tt = document.getElementById('cardTitle'); const r = tt.getBoundingClientRect(), rt = t.getBoundingClientRect(); return { titleTop: Math.round(r.top), textBottom: Math.round(rt.bottom), vh: innerHeight, scrolls: t.scrollHeight > t.clientHeight, long: t.classList.contains('long') }; }, dialogKeys: () => Object.keys(D), bossArtP2: (id, ph = 0) => { const A = P2ART[id]; if (!A) return null; const u = { id, sprite: MONSTERS[id].sprite, phase2: -10 }; const B = p2ArtFor(u); return artFrame(B, B.key, ph, false).toDataURL(); }, forceWin: () => { if (!battle) return false; for (const f of battle.foes) { f.hp = 0; f.dead = true; } victory(); return true; }, cont: () => battle && battle.waitingContinue ? (battle.waitingContinue(), true) : false, lose: () => battle ? (endBattle("lost"), true) : false, dlgChoices: () => dlg && dlg.choices ? dlg.choices.map(c => typeof c.t === "function" ? c.t() : c.t) : null, voiceWav: async (who, text) => {   // a character's voice speaking a line, rendered offline for previews and level checks
     const buf = await Voice.render(who, text), d = buf.getChannelData(0), sr = buf.sampleRate, n = d.length; let pk = 0, sq = 0; for (let i = 0; i < n; i++) { const a = Math.abs(d[i]); if (a > pk) pk = a; sq += d[i] * d[i]; }
     const ab = new ArrayBuffer(44 + n * 2), v = new DataView(ab), w = (o, str) => { for (let i = 0; i < str.length; i++) v.setUint8(o + i, str.charCodeAt(i)); };
     w(0, "RIFF"); v.setUint32(4, 36 + n * 2, true); w(8, "WAVE"); w(12, "fmt "); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, sr, true); v.setUint32(28, sr * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, "data"); v.setUint32(40, n * 2, true);
