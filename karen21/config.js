@@ -1,10 +1,6 @@
 // ─────────────────────────────────────────────────────────────
-//  EDIT THIS FILE to personalise the page.
+//  EDIT THIS FILE to change what the page says.
 //  Everything the page shows comes from here.
-//
-//  Lines marked  ✏️ ISI  are warm but generic placeholders written without
-//  knowing your story. Replace them with your own words, memories and dates.
-//  Everything else (name, "21", "from Daniel") is already correct.
 // ─────────────────────────────────────────────────────────────
 window.BDAY = {
   name: "Karen",
@@ -12,60 +8,56 @@ window.BDAY = {
   from: "Daniel",
   signature: "with love, Daniel",
 
-  // ✏️ ISI: her birthday, e.g. "12 November 2026". Leave "" to hide the date.
-  date: "",
+  // Shown under her name. Leave "" to hide.
+  date: "28 Oktober 2026",
 
   // First screen
-  introLine: "Malam ini ada 21 bintang di langit, dan semuanya untukmu.",
-  introHint: "Nyalakan suara 🔊, lalu ketuk tombol di bawah.",
+  introLine: "Malam ini ada 21 bintang di langit, dan semuanya buat kamu.",
+  introHint: "Nyalakan suaranya 🔊, terus ketuk tombol di bawah ya.",
 
   // ── The 21 stars ──────────────────────────────────────────
   // Each star opens a small card. Tapping all 21 joins them into a heart.
   // "title" is the small heading, "text" the message, "photo" (optional) a file in photos/,
-  // "pos" (optional) moves the photo crop, e.g. "80% center".
-  // ✏️ ISI: all 21 are placeholders. The best version swaps several of them for real
-  //   memories ("Kenangan"), things you love about her ("Alasan"), and wishes ("Harapan").
-  //   Keep it to 21 items; short texts (1–3 sentences) read best on a phone.
+  // "pos" (optional) moves the photo crop, e.g. "80% center". Keep it to 21 items.
   stars: [
-    { title: "Bintang pertama",      text: "Selamat ulang tahun ke-21, Karen. Pelan-pelan saja, ada 20 bintang lagi menunggumu. ✨" },               // ✏️ ISI
-    { title: "Harapan",              text: "Semoga umur 21 membawa lebih banyak hari yang ringan dan tawa yang lepas." },                            // ✏️ ISI
-    { title: "Satu bab selesai",     text: "Sidang KP sudah kamu lewati. Bab berikutnya pasti seru juga.", photo: "03-senyum-lega.jpg", pos: "85% center" }, // ✏️ ISI
-    { title: "Harapan",              text: "Semoga kamu selalu dikelilingi orang-orang yang tulus sayang sama kamu." },                              // ✏️ ISI
-    { title: "Kenangan",             text: "Tulis satu kenangan favorit kalian di sini." },                                                          // ✏️ ISI (memory)
-    { title: "Alasan",               text: "Tulis satu hal kecil tentang Karen yang selalu bikin kamu senyum." },                                    // ✏️ ISI (reason)
-    { title: "Harapan",              text: "Semoga kamu berani mencoba hal-hal baru tahun ini, dan menikmati prosesnya.", photo: "05-percaya-diri.jpg", pos: "75% center" }, // ✏️ ISI
-    { title: "Pengingat",            text: "Istirahat itu bukan kalah. Kamu boleh pelan-pelan." },                                                  // ✏️ ISI
-    { title: "Harapan",              text: "Semoga semua yang sedang kamu usahakan pelan-pelan jadi kenyataan." },                                  // ✏️ ISI
-    { title: "Kenangan",             text: "Tulis satu momen lucu yang masih bikin kalian ketawa." },                                               // ✏️ ISI (memory)
-    { title: "Setengah jalan",       text: "Sudah sebelas bintang. Lihat, bentuknya mulai kelihatan…", photo: "04-banyak-cerita.jpg" },           // ✏️ ISI
-    { title: "Harapan",              text: "Semoga kamu selalu sehat, cukup tidur, dan cukup makan enak." },                                       // ✏️ ISI
-    { title: "Alasan",               text: "Tulis satu sifat Karen yang paling kamu kagumi." },                                                     // ✏️ ISI (reason)
-    { title: "Harapan",              text: "Semoga kamu selalu ingat betapa berharganya dirimu, bahkan di hari yang berat." },                     // ✏️ ISI
-    { title: "Kenangan",             text: "Tulis tempat favorit kalian, atau hari pertama kalian bertemu.", photo: "02-rapi-formal.jpg" },        // ✏️ ISI (memory)
-    { title: "Harapan",              text: "Semoga tahun ini penuh kabar baik yang datang tanpa diduga." },                                         // ✏️ ISI
-    { title: "Pengingat",            text: "Kamu nggak harus sempurna untuk disayang." },                                                           // ✏️ ISI
-    { title: "Alasan",               text: "Tulis satu kebiasaan kecil Karen yang diam-diam kamu suka." },                                          // ✏️ ISI (reason)
-    { title: "Harapan",              text: "Semoga mimpi-mimpi besarmu makin dekat, satu langkah demi satu langkah." },                            // ✏️ ISI
-    { title: "Hampir",               text: "Tinggal satu bintang lagi…", photo: "01-mode-serius.jpg" },                                            // ✏️ ISI
-    { title: "Bintang ke-21",        text: "Satu bintang untuk setiap tahunmu. Selamat ulang tahun, Karen. 💛" }                                    // ✏️ ISI
+    { title: "Bintang pertama",   text: "Selamat ulang tahun yang ke-21, sayang! 🎉 Masih ada 20 bintang lagi, buka pelan-pelan ya ✨" },
+    { title: "Kenangan",          text: "Yang paling pertama muncul tiap aku inget kamu: lucunya kamu. Nggak pernah gagal bikin aku senyum 😆" },
+    { title: "Satu bab selesai",  text: "Sidang KP udah kamu lewatin. Aku bangga banget sama kamu!", photo: "03-senyum-lega.jpg", pos: "85% center" },
+    { title: "Alasan",            text: "Alasan aku sayang kamu nomor satu: keimutan kamu. Udah, itu nggak bisa dibantah 🤭" },
+    { title: "Harapan",           text: "Semoga kamu selalu sehat, cukup tidur, dan cukup makan enak." },
+    { title: "Kenangan",          text: "Aku paling suka waktu kamu nelpon terus cerita kejadian-kejadian seru hari itu. Ceritain terus ya, aku selalu mau dengerin 📞" },
+    { title: "Alasan",            text: "Kamu rajin dan baik banget. Makin kenal kamu, makin kagum aku.", photo: "05-percaya-diri.jpg", pos: "75% center" },
+    { title: "Harapan",           text: "Semoga semua jalan kita dibukakan." },
+    { title: "Kenangan",          text: "Tempat kita pertama ketemu? Rahasia, ya kan? 🤫" },
+    { title: "Alasan",            text: "Kamu perhatian banget. Makasih ya, aku ngerasain semuanya 💛" },
+    { title: "Setengah jalan",    text: "Udah sebelas bintang! Coba lihat, bentuknya mulai keliatan…", photo: "04-banyak-cerita.jpg" },
+    { title: "Harapan",           text: "Semoga di-ACC! 🤞" },
+    { title: "Harapan",           text: "Semoga kita bisa terus akrab, dan makin akrab lagi." },
+    { title: "Pengingat",         text: "Kalau capek, istirahat ya. Kamu nggak harus kuat terus." },
+    { title: "Harapan",           text: "Semoga umur 21 bawa banyak kabar baik buat kamu.", photo: "02-rapi-formal.jpg" },
+    { title: "Pengingat",         text: "Kamu nggak harus sempurna buat disayang. Aku sayang kamu apa adanya." },
+    { title: "Harapan",           text: "Semoga mimpi-mimpi kamu makin dekat, satu langkah demi satu langkah." },
+    { title: "Harapan",           text: "Semoga kamu selalu dikelilingi orang-orang yang sayang sama kamu." },
+    { title: "Lagu buat kamu",    text: "Serta Mulia, Sal Priadi. Nanti putar di bawah surat ya 🎧" },
+    { title: "Hampir",            text: "Tinggal satu bintang lagi…", photo: "01-mode-serius.jpg" },
+    { title: "Bintang ke-21",     text: "Satu bintang buat tiap tahun umur kamu. Selamat ulang tahun, sayang. Love u 💛" }
   ],
 
   // Shown when the heart is complete
   heartLine: "21 bintang, satu hati.",
 
   // ── The cake ──────────────────────────────────────────────
-  cakeLine: "Tutup mata, buat satu permohonan, lalu tiup lilinnya.",
+  cakeLine: "Tutup mata, bikin satu permohonan, terus tiup lilinnya.",
   afterBlow: "Semoga permohonanmu terkabul. 🌅",
 
   // ── The letter ────────────────────────────────────────────
-  // ✏️ ISI: the most important part. These paragraphs are placeholders; write your own.
-  letterTitle: "Untuk Karen,",
+  letterTitle: "Untuk Karen sayang,",
   letter: [
-    "Selamat ulang tahun yang ke-21. Hari ini aku cuma mau kamu tahu satu hal: aku senang sekali kamu ada.",               // ✏️ ISI
-    "Tahun ini kamu sudah melewati banyak hal, termasuk sidang KP yang akhirnya selesai. Aku bangga sama kamu, dan aku harap kamu juga bangga sama dirimu sendiri.", // ✏️ ISI
-    "[Tulis di sini kenangan atau cerita kalian tahun ini.]",                                                              // ✏️ ISI (delete this line or replace it)
-    "Semoga umur 21 memberimu keberanian, ketenangan, dan banyak alasan untuk tersenyum. Apa pun yang datang nanti, aku ada di sini.", // ✏️ ISI
-    "Selamat ulang tahun, Karen. 💛"                                                                                       // ✏️ ISI
+    "Selamat ulang tahun yang ke-21, sayang! 🎉 Hari ini hari kamu, dan aku seneng banget bisa ikut ngerayainnya.",
+    "Tahun ini kamu juga udah lewatin sidang KP. Aku bangga banget sama kamu.",
+    "Aku harap kita bisa terus akrab, dan makin mengakrabkan diri satu sama lain. Semoga semua jalan kita dibukakan.",
+    "Dan semoga di-ACC ya! 🤞",
+    "Love u, sayang. 💛"
   ],
 
   // Photos shown under the letter as a little "constellation" of moons (files in photos/), up to 5
@@ -81,8 +73,8 @@ window.BDAY = {
   // ── Music ─────────────────────────────────────────────────
   // The night sky plays music/night.mp3 and the cake plays music/song.mp3
   // ("Selamat Ulang Tahun" as a lullaby). Both are original renders, free to use.
-  // ✏️ ISI (optional): a Spotify song for the letter, the ID at the end of
-  //   open.spotify.com/track/<ID>. Leave "" to hide it.
-  spotifyTrack: "",
-  spotifyNote: "Lagu untukmu, putar sambil baca suratnya ya 🎧"   // ✏️ ISI if you add a song
+  // A Spotify song for the letter: the ID at the end of open.spotify.com/track/<ID>. "" hides it.
+  // Now: "Serta Mulia" by Sal Priadi.
+  spotifyTrack: "1CVUWAC845LKEDHH0l8XG2",
+  spotifyNote: "Serta Mulia, Sal Priadi. Putar sambil baca suratnya ya 🎧"
 };
