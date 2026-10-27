@@ -225,6 +225,7 @@
     $("#cardText").textContent = s.text;
     const img = $("#cardPhoto");
     if (s.photo) {
+      img.onerror = () => img.classList.add("hidden");
       img.src = `photos/${s.photo}`;
       img.style.objectPosition = s.pos || "center";
       img.classList.remove("hidden");
@@ -386,7 +387,12 @@
   // Photos as a small constellation of moons
   (() => {
     const box = $("#moons");
-    const spots = [[22, 24, 104], [70, 16, 86], [50, 52, 116], [20, 80, 84], [76, 78, 96]]; // x%, y%, size px
+    // x%, y%, size px: a small constellation for up to 5 photos, a longer winding one for up to 10
+    const small = [[22, 24, 104], [70, 16, 86], [50, 52, 116], [20, 80, 84], [76, 78, 96]];
+    const tall = [[24, 8, 104], [72, 12, 86], [50, 24, 112], [20, 38, 88], [74, 42, 102],
+                  [46, 55, 90], [78, 66, 84], [26, 71, 108], [68, 85, 100], [28, 93, 84]];
+    const spots = C.photos.length > 5 ? tall : small;
+    if (spots === tall) box.style.height = "620px";
     const ph = C.photos.slice(0, spots.length);
     const svg = $("#moonLines");
     svg.setAttribute("viewBox", "0 0 100 100");
@@ -409,6 +415,7 @@
       img.alt = "";
       img.loading = "lazy";
       img.style.objectPosition = p.pos || "center";
+      img.onerror = () => { b.remove(); };
       b.appendChild(img);
       b.addEventListener("click", () => {
         const lb = $("#lightbox");
