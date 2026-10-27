@@ -494,26 +494,42 @@
   show("intro");
 
   // ── The secret falling star: a 22nd star that crosses the sky until she catches it ──
-  let secretTimer = 0, caught = false, secretAnim = null;
+  // It glides in slowly, hovers for a few seconds, then leaves; after two misses it stays put.
+  // A tap anywhere near it counts.
+  let secretTimer = 0, caught = false, secretAnim = null, passes = 0;
   function flySecret() {
     if (caught) return;
-    if ($("#sky").classList.contains("on") && !sheet.classList.contains("on")) {
-      const el = $("#secret");
-      const fromLeft = Math.random() < 0.5;
-      const x0 = fromLeft ? -40 : W + 40, x1 = fromLeft ? W + 40 : -40;
-      const y0 = H * (0.14 + Math.random() * 0.08), y1 = y0 + H * (0.18 + Math.random() * 0.1);
-      el.style.setProperty("--ang", `${(Math.atan2(y1 - y0, x1 - x0) * 180) / Math.PI}deg`);
-      el.classList.add("fly");
-      secretAnim = el.animate([{ transform: `translate(${x0}px, ${y0}px)` }, { transform: `translate(${x1}px, ${y1}px)` }],
-        { duration: 5200, easing: "linear" });
-      secretAnim.onfinish = () => el.classList.remove("fly");
-      const sub = $("#skySub");
-      sub.textContent = C.secretHint;
-      sub.classList.add("psst");
+    if (!$("#sky").classList.contains("on") || sheet.classList.contains("on")) {
+      secretTimer = setTimeout(flySecret, 1500);
+      return;
     }
-    secretTimer = setTimeout(flySecret, 8500);
+    const el = $("#secret");
+    const fromLeft = Math.random() < 0.5;
+    const x0 = fromLeft ? -60 : W + 60, x1 = fromLeft ? W + 60 : -60;
+    const xs = W * (0.3 + Math.random() * 0.4), ys = Math.max(125, H * 0.18);
+    const y0 = ys - H * 0.12, y1 = ys + H * 0.1;
+    const stay = passes >= 2;
+    passes++;
+    el.style.setProperty("--ang", `${(Math.atan2(ys - y0, xs - x0) * 180) / Math.PI}deg`);
+    el.classList.add("fly");
+    el.classList.remove("still");
+    const at = (x, y) => ({ transform: `translate(${x}px, ${y}px)` });
+    secretAnim = stay
+      ? el.animate([at(x0, y0), at(xs, ys)], { duration: 2600, easing: "cubic-bezier(.2,.7,.3,1)", fill: "forwards" })
+      : el.animate([
+          { ...at(x0, y0), offset: 0, easing: "cubic-bezier(.2,.7,.3,1)" },
+          { ...at(xs, ys), offset: 0.25 },
+          { ...at(xs + 8, ys + 6), offset: 0.75, easing: "ease-in" },
+          { ...at(x1, y1), offset: 1 },
+        ], { duration: 10000 });
+    secretAnim.onfinish = () => { if (stay) el.classList.add("still"); else el.classList.remove("fly"); };
+    const sub = $("#skySub");
+    sub.textContent = C.secretHint;
+    sub.classList.add("psst");
+    if (!stay) secretTimer = setTimeout(flySecret, 13000);
   }
-  $("#secret").addEventListener("click", () => {
+  function catchSecret() {
+    if (caught) return;
     caught = true;
     clearTimeout(secretTimer);
     const r = $("#secret").getBoundingClientRect();
@@ -531,7 +547,20 @@
     $("#cardPhoto").classList.add("hidden");
     $("#nextStar").classList.add("hidden");
     setTimeout(() => sheet.classList.add("on"), 500);
+  }
+  $("#secret").addEventListener("click", catchSecret);
+  document.addEventListener("pointerdown", (e) => {
+    const el = $("#secret");
+    if (caught || !el.classList.contains("fly")) return;
+    const r = el.getBoundingClientRect();
+    if (Math.hypot(e.clientX - (r.left + r.width / 2), e.clientY - (r.top + r.height / 2)) < 80) {
+      catchSecret();
+      swallow = true; // the click that follows this tap shouldn't also open a star underneath
+      setTimeout(() => (swallow = false), 600);
+    }
   });
+  let swallow = false;
+  document.addEventListener("click", (e) => { if (swallow) { swallow = false; e.stopPropagation(); e.preventDefault(); } }, true);
 
   // ── The wish: written, then sent up into the sky. It isn't saved or sent anywhere. ──
   $("#wishLabel").textContent = C.wishLine;

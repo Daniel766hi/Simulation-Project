@@ -282,7 +282,7 @@
 
   /* ── The secret falling star ── */
   #secret {
-    position: fixed; z-index: 4; width: 64px; height: 64px; margin: -32px 0 0 -32px; border: 0; padding: 0;
+    position: fixed; z-index: 4; width: 100px; height: 100px; margin: -50px 0 0 -50px; border: 0; padding: 0;
     background: none; display: none; left: 0; top: 0;
   }
   #secret.fly { display: block; }
@@ -291,7 +291,10 @@
     transform: rotate(var(--ang, 20deg)); border-radius: 3px;
     background: linear-gradient(90deg, transparent, rgba(255, 220, 150, .9));
   }
-  #secret svg { position: absolute; inset: 14px; width: 36px; height: 36px; filter: drop-shadow(0 0 10px #ffd27a) drop-shadow(0 0 4px #fff); animation: spin 2s linear infinite; }
+  #secret.still::after { opacity: 0; }
+  #secret.still svg { animation: spin 2s linear infinite, glowp 1.4s ease-in-out infinite; }
+  @keyframes glowp { 50% { filter: drop-shadow(0 0 22px #ffd27a) drop-shadow(0 0 8px #fff); } }
+  #secret svg { position: absolute; inset: 28px; width: 44px; height: 44px; filter: drop-shadow(0 0 10px #ffd27a) drop-shadow(0 0 4px #fff); animation: spin 2s linear infinite; }
   #secret path { fill: #fff3cf; }
   @keyframes spin { to { transform: rotate(360deg); } }
   .sky-top .sub.psst { color: var(--gold); font-weight: 800; }
@@ -495,12 +498,12 @@
   <div class="fin-bottom"><p id="finSign"></p><button class="btn ghost" id="finClose">Tutup</button></div>
 </div>
 
-<script src="config.js?v=4"></script>
+<script src="config.js?v=5"></script>
 <script>
   // Spotify calls this when its player API has loaded; app.js may not be running yet, so keep it for later.
   window.onSpotifyIframeApiReady = (api) => { window.spotifyApi = api; document.dispatchEvent(new Event("spotify-ready")); };
 </script>
 <script src="https://open.spotify.com/embed/iframe-api/v1" async></script>
-<script src="app.js?v=4"></script>
+<script src="app.js?v=5"></script>
 </body>
 </html>
