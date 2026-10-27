@@ -11,11 +11,6 @@ window.BDAY = {
   // Shown under her name. Leave "" to hide.
   date: "28 Oktober 2026",
 
-  // Before this moment the page shows a countdown instead (WIB). Add ?lihat to the link to skip it.
-  // Leave "" to open straight away.
-  opensAt: "",
-  waitNote: "Halaman ini baru kebuka pas jam 00.00, tanggal 28 Oktober. Sambil nunggu, putar dulu lagunya di bawah ya 🎧",
-
   // First screen
   introLine: "Malam ini ada 21 bintang di langit, dan semuanya buat kamu.",
   introHint: "Putar lagunya di bawah 🎧, terus ketuk tombolnya ya.",

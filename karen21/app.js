@@ -79,7 +79,7 @@
   // the ♫ button controls the page's own music, so it only shows while that music is in use
   function soundBtn() {
     const id = $(".scene.on")?.id;
-    $("#sound").classList.toggle("show", id !== "intro" && id !== "wait" && (!useSpotify || !spot || !!track));
+    $("#sound").classList.toggle("show", id !== "intro" && (!useSpotify || !spot || !!track));
   }
   // pause while the page is hidden (phone locked, app switched)
   document.addEventListener("visibilitychange", () => {
@@ -491,27 +491,7 @@
     requestAnimationFrame(() => { layout(); refresh(-1); });
   });
 
-  // ── Countdown: the page opens at midnight on her birthday ──
-  // Add ?lihat to the link to skip it (for checking the page beforehand).
-  function countdown() {
-    const at = C.opensAt ? new Date(C.opensAt).getTime() : 0;
-    if (!at || Date.now() >= at || /[?&]lihat\b/.test(location.search)) { show("intro"); return; }
-    $("#waitNote").textContent = C.waitNote;
-    show("wait");
-    const two = (n) => String(n).padStart(2, "0");
-    const tick = () => {
-      const left = Math.max(0, Math.ceil((at - Date.now()) / 1000));
-      $("#cH").textContent = two(Math.floor(left / 3600));
-      $("#cM").textContent = two(Math.floor(left / 60) % 60);
-      $("#cS").textContent = two(left % 60);
-      if (left > 0) return setTimeout(tick, 250);
-      burst(W / 2, H * 0.4, 160);
-      if (!reduced) [0, 300, 700, 1200].forEach((d) => setTimeout(() => shoot(true), d));
-      setTimeout(() => show("intro"), 1200);
-    };
-    tick();
-  }
-  countdown();
+  show("intro");
 
   // ── The secret falling star: a 22nd star that crosses the sky until she catches it ──
   let secretTimer = 0, caught = false, secretAnim = null;

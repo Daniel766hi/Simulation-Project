@@ -280,17 +280,6 @@
   body.has-spot .scene { padding-bottom: calc(var(--safe-b) + 100px); }
   body.has-spot #letter .letter-inner { padding-bottom: 110px; }
 
-  /* ── Countdown ── */
-  #wait { justify-content: center; text-align: center; }
-  #wait .eyebrow { margin-bottom: 14px; }
-  #wait h1 { font-family: var(--serif); font-weight: 400; font-size: clamp(34px, 10vw, 48px); margin: 0 0 6px; line-height: 1.1; }
-  #wait h1 em { color: var(--gold); }
-  .clock { display: flex; gap: 10px; justify-content: center; margin: 26px 0 18px; }
-  .clock div { width: 84px; padding: 14px 0 10px; border-radius: 18px; background: rgba(255,255,255,.07); box-shadow: 0 0 0 1px rgba(255,220,160,.2) inset; }
-  .clock b { display: block; font-family: var(--serif); font-size: 40px; font-weight: 500; color: var(--gold); line-height: 1; font-variant-numeric: tabular-nums; }
-  .clock span { font-size: 11px; letter-spacing: .18em; text-transform: uppercase; color: var(--muted); }
-  .wait-note { color: var(--muted); font-size: 15px; line-height: 1.55; max-width: 310px; margin: 0 auto; }
-
   /* ── The secret falling star ── */
   #secret {
     position: fixed; z-index: 4; width: 64px; height: 64px; margin: -32px 0 0 -32px; border: 0; padding: 0;
@@ -342,19 +331,6 @@
 <div id="dawn"></div>
 <canvas id="stars" aria-hidden="true"></canvas>
 <button id="sound" aria-label="Musik">♫</button>
-
-<!-- 0. Countdown to midnight -->
-<section class="scene" id="wait">
-  <div class="moon"></div>
-  <div class="eyebrow">Sebentar lagi…</div>
-  <h1>Sabar ya, <em data-name></em></h1>
-  <div class="clock" aria-live="polite">
-    <div><b id="cH">00</b><span>jam</span></div>
-    <div><b id="cM">00</b><span>menit</span></div>
-    <div><b id="cS">00</b><span>detik</span></div>
-  </div>
-  <p class="wait-note" id="waitNote"></p>
-</section>
 
 <!-- 1. Intro -->
 <section class="scene" id="intro">
@@ -519,12 +495,12 @@
   <div class="fin-bottom"><p id="finSign"></p><button class="btn ghost" id="finClose">Tutup</button></div>
 </div>
 
-<script src="config.js"></script>
+<script src="config.js?v=4"></script>
 <script>
   // Spotify calls this when its player API has loaded; app.js may not be running yet, so keep it for later.
   window.onSpotifyIframeApiReady = (api) => { window.spotifyApi = api; document.dispatchEvent(new Event("spotify-ready")); };
 </script>
 <script src="https://open.spotify.com/embed/iframe-api/v1" async></script>
-<script src="app.js"></script>
+<script src="app.js?v=4"></script>
 </body>
 </html>

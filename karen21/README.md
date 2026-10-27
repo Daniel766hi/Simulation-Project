@@ -1,7 +1,6 @@
 # 21 Bintang untuk Karen
 
-A 21st-birthday page for Karen, from Daniel. It can show a countdown first (`opensAt` in
-`config.js`; off now). A night sky with 21 stars: each one opens a
+A 21st-birthday page for Karen, from Daniel. A night sky with 21 stars: each one opens a
 small card (a wish, a memory, a photo), and opening all 21 joins them into a heart; a secret 22nd
 star then falls across the sky until she catches it. Next a cake with "2" and "1" candles to blow
 out (tap, or blow into the microphone), a wish she can write and send up to the stars (it isn't
