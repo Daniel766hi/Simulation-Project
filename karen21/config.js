@@ -11,9 +11,14 @@ window.BDAY = {
   // Shown under her name. Leave "" to hide.
   date: "28 Oktober 2026",
 
+  // Before this moment the page shows a countdown instead (WIB). Add ?lihat to the link to skip it.
+  // Leave "" to open straight away.
+  opensAt: "2026-10-28T00:00:00+07:00",
+  waitNote: "Halaman ini baru kebuka pas jam 00.00, tanggal 28 Oktober. Sambil nunggu, putar dulu lagunya di bawah ya 🎧",
+
   // First screen
   introLine: "Malam ini ada 21 bintang di langit, dan semuanya buat kamu.",
-  introHint: "Nyalakan suaranya 🔊, terus ketuk tombol di bawah ya.",
+  introHint: "Putar lagunya di bawah 🎧, terus ketuk tombolnya ya.",
 
   // ── The 21 stars ──────────────────────────────────────────
   // Each star opens a small card. Tapping all 21 joins them into a heart.
@@ -38,7 +43,7 @@ window.BDAY = {
     { title: "Pengingat",         text: "Kamu nggak harus sempurna buat disayang. Aku sayang kamu apa adanya." },
     { title: "Harapan",           text: "Semoga mimpi-mimpi kamu makin dekat, satu langkah demi satu langkah." },
     { title: "Harapan",           text: "Semoga kamu selalu dikelilingi orang-orang yang sayang sama kamu." },
-    { title: "Lagu buat kamu",    text: "Serta Mulia, Sal Priadi. Nanti putar di bawah surat ya 🎧" },
+    { title: "Lagu buat kamu",    text: "Serta Mulia, Sal Priadi. Lagu ini buat kamu. Udah diputar di bawah belum? 🎧" },
     { title: "Hampir",            text: "Tinggal satu bintang lagi…", photo: "01-mode-serius.jpg" },
     { title: "Bintang ke-21",     text: "Satu bintang buat tiap tahun umur kamu. Selamat ulang tahun, sayang. Love u 💛" }
   ],
@@ -46,9 +51,18 @@ window.BDAY = {
   // Shown when the heart is complete
   heartLine: "21 bintang, satu hati.",
 
+  // After the heart is complete a 22nd star keeps falling across the sky until she catches it
+  secretHint: "Psst… ada bintang jatuh. Coba tangkap! 🌠",
+  secret: {
+    title: "Ketangkep! 🌠",
+    text: "Yang ini bonus, nggak masuk hitungan 21. Soalnya bintang paling terang buat aku ya kamu, sayang ✨"
+  },
+
   // ── The cake ──────────────────────────────────────────────
   cakeLine: "Tutup mata, bikin satu permohonan, terus tiup lilinnya.",
   afterBlow: "Semoga permohonanmu terkabul. 🌅",
+  // She can write her wish and send it up to the stars. It isn't saved or sent anywhere.
+  wishLine: "Mau tulis permohonanmu? Tenang, nggak disimpen di mana-mana, aku juga nggak bisa baca 🤫",
 
   // ── The letter ────────────────────────────────────────────
   letterTitle: "Untuk Karen sayang,",
@@ -61,6 +75,10 @@ window.BDAY = {
   ],
 
   // Photos shown under the letter as a little "constellation" of moons (files in photos/), up to 5
+  // The last surprise at the end of the letter: these words drawn in stars, then the line under them
+  finaleLines: ["love u,", "sayang"],
+  finaleSign: "— Daniel",
+
   photosTitle: "Bintang-bintang favoritku ✦",
   photos: [
     { file: "03-senyum-lega.jpg",   pos: "85% center" },
@@ -71,10 +89,9 @@ window.BDAY = {
   ],
 
   // ── Music ─────────────────────────────────────────────────
-  // The night sky plays music/night.mp3 and the cake plays music/song.mp3
-  // ("Selamat Ulang Tahun" as a lullaby). Both are original renders, free to use.
-  // A Spotify song for the letter: the ID at the end of open.spotify.com/track/<ID>. "" hides it.
-  // Now: "Serta Mulia" by Sal Priadi.
-  spotifyTrack: "1CVUWAC845LKEDHH0l8XG2",
-  spotifyNote: "Serta Mulia, Sal Priadi. Putar sambil baca suratnya ya 🎧"
+  // A Spotify song that plays from the first screen in a small player at the bottom:
+  // the ID at the end of open.spotify.com/track/<ID>. Now: "Serta Mulia" by Sal Priadi.
+  // If it is "" (or Spotify stops), the page uses its own music: music/night.mp3, and
+  // music/song.mp3 ("Selamat Ulang Tahun" as a lullaby) at the cake.
+  spotifyTrack: "1CVUWAC845LKEDHH0l8XG2"
 };

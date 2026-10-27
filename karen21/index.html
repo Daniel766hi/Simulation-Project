@@ -175,7 +175,8 @@
   .card .row .btn.ghost { flex: 0 0 auto; padding-left: 22px; padding-right: 22px; }
 
   /* Cake scene */
-  #cake { justify-content: center; text-align: center; }
+  #cake { justify-content: safe center; text-align: center; overflow-y: auto; }
+  #cake.wishing .cake-wrap { width: min(52vw, 210px); transition: width .8s ease; }
   #cake h2 { padding: 0 34px; font-family: var(--serif); font-weight: 400; font-size: clamp(30px, 9vw, 42px); margin: 0 0 4px; line-height: 1.1; }
   #cake h2 em { color: var(--gold); }
   .cake-line { color: var(--muted); font-size: 15px; max-width: 300px; margin: 6px auto 0; line-height: 1.5; min-height: 46px; }
@@ -244,9 +245,6 @@
   .moon-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .moon-photo:active { transform: translate(-50%, -50%) scale(.95); }
 
-  .spotify { margin-top: 34px; }
-  .spotify p { text-align: center; color: #fff; font-weight: 700; margin: 0 0 10px; text-shadow: 0 1px 10px rgba(80,40,90,.4); }
-  .spotify iframe { width: 100%; height: 152px; border: 0; border-radius: 14px; }
 
   .end { text-align: center; margin: 46px 0 10px; color: #4a2e45; }
   .end .big { font-family: var(--serif); font-size: 28px; line-height: 1.2; margin-bottom: 18px; color: #3c2340; }
@@ -269,6 +267,70 @@
   #sound.off { opacity: .55; }
   body.dawn #sound { background: rgba(70, 35, 80, .35); }
 
+
+  /* ── Spotify mini player, docked at the bottom on every screen ── */
+  #spot {
+    position: fixed; z-index: 6; left: 50%; bottom: calc(var(--safe-b) + 10px); transform: translateX(-50%);
+    width: min(calc(100% - 24px), 440px); height: 80px; border-radius: 14px; overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0,0,0,.4), 0 0 0 1px rgba(255,255,255,.12);
+    transition: opacity .6s, transform .6s;
+  }
+  #spot iframe { width: 100%; height: 80px; border: 0; display: block; }
+  #spot.gone { opacity: 0; pointer-events: none; transform: translate(-50%, 30px); }
+  body.has-spot .scene { padding-bottom: calc(var(--safe-b) + 100px); }
+  body.has-spot #letter .letter-inner { padding-bottom: 110px; }
+
+  /* ── Countdown ── */
+  #wait { justify-content: center; text-align: center; }
+  #wait .eyebrow { margin-bottom: 14px; }
+  #wait h1 { font-family: var(--serif); font-weight: 400; font-size: clamp(34px, 10vw, 48px); margin: 0 0 6px; line-height: 1.1; }
+  #wait h1 em { color: var(--gold); }
+  .clock { display: flex; gap: 10px; justify-content: center; margin: 26px 0 18px; }
+  .clock div { width: 84px; padding: 14px 0 10px; border-radius: 18px; background: rgba(255,255,255,.07); box-shadow: 0 0 0 1px rgba(255,220,160,.2) inset; }
+  .clock b { display: block; font-family: var(--serif); font-size: 40px; font-weight: 500; color: var(--gold); line-height: 1; font-variant-numeric: tabular-nums; }
+  .clock span { font-size: 11px; letter-spacing: .18em; text-transform: uppercase; color: var(--muted); }
+  .wait-note { color: var(--muted); font-size: 15px; line-height: 1.55; max-width: 310px; margin: 0 auto; }
+
+  /* ── The secret falling star ── */
+  #secret {
+    position: fixed; z-index: 4; width: 64px; height: 64px; margin: -32px 0 0 -32px; border: 0; padding: 0;
+    background: none; display: none; left: 0; top: 0;
+  }
+  #secret.fly { display: block; }
+  #secret::after {
+    content: ""; position: absolute; right: 50%; top: 50%; width: 120px; height: 3px; transform-origin: right center;
+    transform: rotate(var(--ang, 20deg)); border-radius: 3px;
+    background: linear-gradient(90deg, transparent, rgba(255, 220, 150, .9));
+  }
+  #secret svg { position: absolute; inset: 14px; width: 36px; height: 36px; filter: drop-shadow(0 0 10px #ffd27a) drop-shadow(0 0 4px #fff); animation: spin 2s linear infinite; }
+  #secret path { fill: #fff3cf; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .sky-top .sub.psst { color: var(--gold); font-weight: 800; }
+
+  /* ── Wish ── */
+  .wish { width: min(100%, 340px); display: flex; flex-direction: column; gap: 10px; align-items: stretch; }
+  .wish label { font-size: 14px; color: #fff; line-height: 1.45; text-align: center; }
+  .wish textarea {
+    font: 16px/1.5 var(--sans); color: #3b2f3a; background: rgba(255,250,241,.95); border: 0; border-radius: 16px;
+    padding: 12px 14px; resize: none; height: 78px; box-shadow: 0 6px 20px rgba(60,30,70,.25);
+  }
+  .wish .row { display: flex; gap: 10px; }
+  .wish .row .btn { flex: 1; padding: 12px 10px; font-size: 15px; white-space: nowrap; }
+  .wish-fly {
+    position: fixed; z-index: 9; max-width: 300px; padding: 10px 14px; border-radius: 14px; pointer-events: none;
+    background: rgba(255,250,241,.95); color: #3b2f3a; font: 15px/1.4 var(--sans); text-align: center;
+    transition: transform 2.2s cubic-bezier(.5,0,.2,1), opacity 2.2s ease, border-radius 2.2s, filter 2.2s;
+  }
+
+  /* ── Finale: "love u" written in stars ── */
+  #finale { position: fixed; inset: 0; z-index: 30; background: #050717; opacity: 0; visibility: hidden; transition: opacity 1.2s, visibility 0s 1.2s; }
+  #finale.on { opacity: 1; visibility: visible; transition: opacity 1.2s; }
+  #finale canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+  #finale .fin-bottom { position: absolute; left: 0; right: 0; bottom: calc(var(--safe-b) + 28px); text-align: center; opacity: 0; transition: opacity 1.5s; }
+  #finale.done .fin-bottom { opacity: 1; }
+  #finale .fin-bottom p { font-family: var(--hand); font-size: 30px; color: #ffd98a; margin: 0 0 14px; }
+  .end .btn.surprise { display: block; margin: 0 auto 12px; }
+
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .2s !important; }
   }
@@ -281,8 +343,21 @@
 <canvas id="stars" aria-hidden="true"></canvas>
 <button id="sound" aria-label="Musik">♫</button>
 
+<!-- 0. Countdown to midnight -->
+<section class="scene" id="wait">
+  <div class="moon"></div>
+  <div class="eyebrow">Sebentar lagi…</div>
+  <h1>Sabar ya, <em data-name></em></h1>
+  <div class="clock" aria-live="polite">
+    <div><b id="cH">00</b><span>jam</span></div>
+    <div><b id="cM">00</b><span>menit</span></div>
+    <div><b id="cS">00</b><span>detik</span></div>
+  </div>
+  <p class="wait-note" id="waitNote"></p>
+</section>
+
 <!-- 1. Intro -->
-<section class="scene on" id="intro">
+<section class="scene" id="intro">
   <div class="moon fade-up"></div>
   <div class="eyebrow fade-up" style="animation-delay:.3s">Selamat ulang tahun</div>
   <h1 class="fade-up" style="animation-delay:.6s"><span data-name></span> <em>21</em></h1>
@@ -393,7 +468,15 @@
     <div class="mic-note" id="micNote"></div>
   </div>
   <div class="cake-actions hidden" id="afterActions">
-    <button class="btn" id="toLetter">Ada surat untukmu 💌</button>
+    <div class="wish" id="wish">
+      <label for="wishText" id="wishLabel"></label>
+      <textarea id="wishText" maxlength="160" placeholder="Aku ingin…"></textarea>
+      <div class="row">
+        <button class="btn ghost" id="wishSkip">Simpan di hati</button>
+        <button class="btn" id="wishSend">Terbangkan ✨</button>
+      </div>
+    </div>
+    <button class="btn hidden" id="toLetter">Ada surat untukmu 💌</button>
   </div>
 </section>
 
@@ -415,14 +498,11 @@
     <div class="moons-title reveal" id="moonsTitle"></div>
     <div class="moons reveal" id="moons"><svg id="moonLines"></svg></div>
 
-    <div class="spotify hidden reveal" id="spotify">
-      <p id="spotifyNote"></p>
-      <iframe id="spotifyFrame" title="Spotify" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
-    </div>
 
     <div class="end reveal">
       <div class="big">Selamat ulang tahun ke-21,<br><span data-name></span>. 💛</div>
-      <button class="btn ghost" id="replay">Lihat bintangnya lagi ✨</button>
+      <button class="btn surprise" id="toFinale">Satu kejutan terakhir ✨</button>
+      <button class="btn ghost" id="replay">Lihat bintangnya lagi</button>
       <small id="footer"></small>
     </div>
   </div>
@@ -430,7 +510,21 @@
 
 <div id="lightbox"><img alt=""></div>
 
+<button id="secret" aria-label="Bintang jatuh"><svg viewBox="-10 -10 20 20" aria-hidden="true"><path d="M0 -10 C1 -2 2 -1 10 0 C2 1 1 2 0 10 C-1 2 -2 1 -10 0 C-2 -1 -1 -2 0 -10Z"/></svg></button>
+
+<div id="spot" class="hidden"><div id="spotEmbed"></div></div>
+
+<div id="finale" aria-live="polite">
+  <canvas id="finCanvas"></canvas>
+  <div class="fin-bottom"><p id="finSign"></p><button class="btn ghost" id="finClose">Tutup</button></div>
+</div>
+
 <script src="config.js"></script>
+<script>
+  // Spotify calls this when its player API has loaded; app.js may not be running yet, so keep it for later.
+  window.onSpotifyIframeApiReady = (api) => { window.spotifyApi = api; document.dispatchEvent(new Event("spotify-ready")); };
+</script>
+<script src="https://open.spotify.com/embed/iframe-api/v1" async></script>
 <script src="app.js"></script>
 </body>
 </html>

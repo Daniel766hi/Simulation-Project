@@ -34,6 +34,7 @@
   function play(which) {
     track = which;
     sync();
+    soundBtn();
   }
   function sync() {
     for (const a of [night, song]) {
@@ -46,6 +47,40 @@
   }
   song.addEventListener("ended", () => { if (track === song) play(night); });
   $("#sound").addEventListener("click", () => { soundOn = !soundOn; sync(); });
+
+  // With a Spotify song set, it plays from the first screen in a small player docked at the bottom.
+  // Spotify's player only starts after a tap, and on a phone that isn't logged in to Spotify it plays
+  // a 30-second preview; when it stops on its own, the music-box loop takes over.
+  const useSpotify = !!C.spotifyTrack;
+  let spot = null, spotPlaying = false, spotStarted = false;
+  function initSpotify(api) {
+    $("#spot").classList.remove("hidden");
+    document.body.classList.add("has-spot");
+    api.createController($("#spotEmbed"), { uri: `spotify:track:${C.spotifyTrack}`, width: "100%", height: 80 }, (c) => {
+      spot = c;
+      c.addListener("playback_update", (e) => {
+        const { isPaused, position, duration } = e.data;
+        if (!isPaused) {
+          spotStarted = spotPlaying = true;
+          if (track) { track = null; sync(); }
+        } else {
+          const ended = spotPlaying && duration > 0 && position >= duration - 1500;
+          spotPlaying = false;
+          if (ended) play(night);
+        }
+        soundBtn();
+      });
+    });
+  }
+  if (useSpotify) {
+    if (window.spotifyApi) initSpotify(window.spotifyApi);
+    else document.addEventListener("spotify-ready", () => initSpotify(window.spotifyApi), { once: true });
+  }
+  // the ♫ button controls the page's own music, so it only shows while that music is in use
+  function soundBtn() {
+    const id = $(".scene.on")?.id;
+    $("#sound").classList.toggle("show", id !== "intro" && id !== "wait" && (!useSpotify || !spot || !!track));
+  }
   // pause while the page is hidden (phone locked, app switched)
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) [night, song].forEach((a) => a.pause());
@@ -119,7 +154,7 @@
   // ── Scenes ───────────────────────────────────────
   function show(id) {
     $$(".scene").forEach((s) => s.classList.toggle("on", s.id === id));
-    $("#sound").classList.toggle("show", id !== "intro");
+    soundBtn();
   }
 
   // ── The heart of 21 stars ────────────────────────
@@ -284,6 +319,8 @@
   function complete(celebrate) {
     field.classList.add("complete");
     $("#done").classList.remove("hidden");
+    clearTimeout(secretTimer);
+    secretTimer = setTimeout(flySecret, celebrate ? 3500 : 1500);
     if (!celebrate) return;
     const r = field.getBoundingClientRect();
     burst(r.left + r.width / 2, r.top + r.height * 0.45, 120);
@@ -292,10 +329,16 @@
 
   // ── Intro → sky ──────────────────────────────────
   $("#go").addEventListener("click", () => {
-    // start the loop inside the tap so phones allow it; prime the birthday song too
-    play(night);
-    song.muted = true;
-    song.play().then(() => { song.pause(); song.currentTime = 0; song.muted = false; }).catch(() => { song.muted = false; });
+    // Unlock both <audio> elements inside the tap so phones let them play later without another tap.
+    for (const a of [night, song]) {
+      a.muted = true;
+      a.play().then(() => { if (track !== a) { a.pause(); a.currentTime = 0; } a.muted = false; }).catch(() => { a.muted = false; });
+    }
+    if (useSpotify && spot) {
+      if (!spotPlaying) spot.play();
+      // if Spotify can't start by itself (some phones need a tap inside its player), use the music box
+      setTimeout(() => { if (!spotStarted) play(night); }, 2500);
+    } else play(night);
     show("sky");
     requestAnimationFrame(() => {
       layout();
@@ -309,8 +352,7 @@
   let blown = false, micStream = null, micRAF = 0;
   $("#toCake").addEventListener("click", () => {
     show("cake");
-    song.currentTime = 0;
-    play(song);
+    if (!spotPlaying) { song.currentTime = 0; play(song); }
   });
   function blowOut() {
     if (blown) return;
@@ -323,6 +365,7 @@
       $("#cakeLine").textContent = C.afterBlow;
       $("#cakeActions").classList.add("hidden");
       $("#afterActions").classList.remove("hidden");
+      $("#cake").classList.add("wishing");
       const r = $("#cakeWrap").getBoundingClientRect();
       burst(r.left + r.width / 2, r.top + r.height * 0.15, 140);
       if (!reduced) [0, 400, 900, 1500].forEach((d) => setTimeout(() => shoot(true), d));
@@ -428,13 +471,6 @@
   })();
   $("#lightbox").addEventListener("click", () => $("#lightbox").classList.remove("on"));
 
-  if (C.spotifyTrack) {
-    $("#spotify").classList.remove("hidden");
-    $("#spotifyNote").textContent = C.spotifyNote;
-    $("#spotifyFrame").src = `https://open.spotify.com/embed/track/${C.spotifyTrack}?utm_source=generator&theme=0`;
-    // the page's own music pauses when she taps play in the Spotify player (the iframe takes focus)
-    addEventListener("blur", () => { if (document.activeElement === $("#spotifyFrame")) { track = null; sync(); } });
-  }
 
   $("#replay").addEventListener("click", () => {
     blown = false;
@@ -443,6 +479,9 @@
     $("#cakeLine").textContent = C.cakeLine;
     $("#cakeActions").classList.remove("hidden");
     $("#afterActions").classList.add("hidden");
+    $("#cake").classList.remove("wishing");
+    $("#wish").classList.remove("hidden");
+    $("#toLetter").classList.add("hidden");
     $("#mic").classList.remove("hidden");
     $("#micNote").textContent = "";
     document.body.classList.remove("dawn");
@@ -450,5 +489,166 @@
     play(night);
     show("sky");
     requestAnimationFrame(() => { layout(); refresh(-1); });
+  });
+
+  // ── Countdown: the page opens at midnight on her birthday ──
+  // Add ?lihat to the link to skip it (for checking the page beforehand).
+  function countdown() {
+    const at = C.opensAt ? new Date(C.opensAt).getTime() : 0;
+    if (!at || Date.now() >= at || /[?&]lihat\b/.test(location.search)) { show("intro"); return; }
+    $("#waitNote").textContent = C.waitNote;
+    show("wait");
+    const two = (n) => String(n).padStart(2, "0");
+    const tick = () => {
+      const left = Math.max(0, Math.ceil((at - Date.now()) / 1000));
+      $("#cH").textContent = two(Math.floor(left / 3600));
+      $("#cM").textContent = two(Math.floor(left / 60) % 60);
+      $("#cS").textContent = two(left % 60);
+      if (left > 0) return setTimeout(tick, 250);
+      burst(W / 2, H * 0.4, 160);
+      if (!reduced) [0, 300, 700, 1200].forEach((d) => setTimeout(() => shoot(true), d));
+      setTimeout(() => show("intro"), 1200);
+    };
+    tick();
+  }
+  countdown();
+
+  // ── The secret falling star: a 22nd star that crosses the sky until she catches it ──
+  let secretTimer = 0, caught = false, secretAnim = null;
+  function flySecret() {
+    if (caught) return;
+    if ($("#sky").classList.contains("on") && !sheet.classList.contains("on")) {
+      const el = $("#secret");
+      const fromLeft = Math.random() < 0.5;
+      const x0 = fromLeft ? -40 : W + 40, x1 = fromLeft ? W + 40 : -40;
+      const y0 = H * (0.14 + Math.random() * 0.08), y1 = y0 + H * (0.18 + Math.random() * 0.1);
+      el.style.setProperty("--ang", `${(Math.atan2(y1 - y0, x1 - x0) * 180) / Math.PI}deg`);
+      el.classList.add("fly");
+      secretAnim = el.animate([{ transform: `translate(${x0}px, ${y0}px)` }, { transform: `translate(${x1}px, ${y1}px)` }],
+        { duration: 5200, easing: "linear" });
+      secretAnim.onfinish = () => el.classList.remove("fly");
+      const sub = $("#skySub");
+      sub.textContent = C.secretHint;
+      sub.classList.add("psst");
+    }
+    secretTimer = setTimeout(flySecret, 8500);
+  }
+  $("#secret").addEventListener("click", () => {
+    caught = true;
+    clearTimeout(secretTimer);
+    const r = $("#secret").getBoundingClientRect();
+    secretAnim?.cancel();
+    $("#secret").classList.remove("fly");
+    burst(r.left + r.width / 2, r.top + r.height / 2, 90);
+    const sub = $("#skySub");
+    sub.classList.remove("psst");
+    sub.textContent = "Bintang rahasianya ketangkep ✨";
+    current = -1;
+    justOpened = -1;
+    $("#cardKicker").textContent = "Bintang rahasia";
+    $("#cardTitle").textContent = C.secret.title;
+    $("#cardText").textContent = C.secret.text;
+    $("#cardPhoto").classList.add("hidden");
+    $("#nextStar").classList.add("hidden");
+    setTimeout(() => sheet.classList.add("on"), 500);
+  });
+
+  // ── The wish: written, then sent up into the sky. It isn't saved or sent anywhere. ──
+  $("#wishLabel").textContent = C.wishLine;
+  function wishDone() {
+    $("#wish").classList.add("hidden");
+    $("#cake").classList.remove("wishing");
+    $("#toLetter").classList.remove("hidden");
+  }
+  $("#wishSkip").addEventListener("click", () => {
+    const r = $("#wishSkip").getBoundingClientRect();
+    burst(r.left + r.width / 2, r.top, 40);
+    wishDone();
+  });
+  $("#wishSend").addEventListener("click", () => {
+    const ta = $("#wishText");
+    const text = ta.value.trim();
+    if (!text) { ta.focus(); return; }
+    ta.blur();
+    const r = ta.getBoundingClientRect();
+    const fly = Object.assign(document.createElement("div"), { className: "wish-fly", textContent: text });
+    Object.assign(fly.style, { left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px` });
+    document.body.appendChild(fly);
+    ta.value = "";
+    wishDone();
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      fly.style.transform = `translate(${W / 2 - r.left - r.width / 2}px, ${-r.top + 40}px) scale(.04)`;
+      fly.style.opacity = "0";
+      fly.style.borderRadius = "50%";
+    }));
+    setTimeout(() => {
+      fly.remove();
+      burst(W / 2, 60, 120);
+      if (!reduced) [0, 350].forEach((d) => setTimeout(() => shoot(true), d));
+    }, 2000);
+  });
+
+  // ── Finale: the words written in stars ──
+  let finRAF = 0;
+  $("#finSign").textContent = C.finaleSign;
+  $("#toFinale").addEventListener("click", async () => {
+    const fin = $("#finale");
+    fin.classList.remove("done");
+    fin.classList.add("on");
+    try { await document.fonts.load("700 80px Caveat"); } catch (e) {}
+    const cv2 = $("#finCanvas"), g = cv2.getContext("2d");
+    const w = innerWidth, h = innerHeight, r = Math.min(2, devicePixelRatio || 1);
+    cv2.width = w * r; cv2.height = h * r;
+    g.setTransform(r, 0, 0, r, 0, 0);
+    // draw the words and a heart off-screen, then use their pixels as the stars' targets
+    const off = document.createElement("canvas");
+    off.width = w; off.height = h;
+    const o = off.getContext("2d");
+    o.fillStyle = "#fff"; o.textAlign = "center"; o.textBaseline = "middle";
+    const lines = C.finaleLines;
+    const fs = Math.min(w / 4, 120);
+    o.font = `700 ${fs}px Caveat, cursive`;
+    const top = h * 0.3;
+    lines.forEach((t, i) => o.fillText(t, w / 2, top + i * fs * 1.05));
+    const hs = Math.min(w, 420) / 140, hy = top + lines.length * fs * 1.05 + 10 * hs;
+    o.beginPath();
+    for (let i = 0; i <= 60; i++) {
+      const t = (i / 60) * Math.PI * 2;
+      const x = w / 2 + 16 * Math.sin(t) ** 3 * hs;
+      const y = hy - (13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t)) * hs;
+      i ? o.lineTo(x, y) : o.moveTo(x, y);
+    }
+    o.fill();
+    const px = o.getImageData(0, 0, w, h).data;
+    const step = 3, pts = [];
+    for (let y = 0; y < h; y += step) for (let x = 0; x < w; x += step) if (px[(y * w + x) * 4 + 3] > 128) pts.push([x, y]);
+    const parts = pts.map(([tx, ty], i) => ({
+      sx: Math.random() * w, sy: Math.random() * h, tx: tx + Math.random() * 2, ty: ty + Math.random() * 2,
+      d: Math.random() * 1400, s: 1 + Math.random() * 1.1, p: Math.random() * 6, heart: ty > hy - 15 * hs,
+    }));
+    const t0 = performance.now();
+    cancelAnimationFrame(finRAF);
+    const draw = (now) => {
+      const t = now - t0;
+      g.clearRect(0, 0, w, h);
+      for (const q of parts) {
+        const k = Math.min(1, Math.max(0, (t - q.d) / 2000));
+        const e = 1 - (1 - k) ** 3;
+        const x = q.sx + (q.tx - q.sx) * e, y = q.sy + (q.ty - q.sy) * e;
+        g.globalAlpha = (0.35 + 0.65 * e) * (0.7 + 0.3 * Math.sin(now / 400 + q.p));
+        g.fillStyle = q.heart ? "#ff9fb4" : "#ffe1a0";
+        g.beginPath();
+        g.arc(x, y, q.s, 0, 7);
+        g.fill();
+      }
+      g.globalAlpha = 1;
+      if (t > 3600 && !fin.classList.contains("done")) fin.classList.add("done");
+      finRAF = requestAnimationFrame(draw);
+    };
+    finRAF = requestAnimationFrame(draw);
+  });
+  $("#finClose").addEventListener("click", () => {
+    $("#finale").classList.remove("on");
+    setTimeout(() => cancelAnimationFrame(finRAF), 1200);
   });
 })();
