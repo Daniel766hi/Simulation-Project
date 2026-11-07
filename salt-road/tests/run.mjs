@@ -156,6 +156,34 @@ const SUITES = {
     ok(await p.evaluate(() => window.__saltRoad.rime().flags.done), "the Rime's ending survives a reload");
     await noErrors(p); await p.done();
   },
+  async weir() {   // Act III, part 2: the Rime stair down, Lowwater, Dace's gate, Provost Merrow and the wheel
+    const p = await open(); await p.start(); await setup(p, 10, ["ilse", "maru", "rook"], 25); await p.clear();
+    ok(await p.evaluate(() => { const R = window.__saltRoad; R.state().flags.rimeHint = true; return R.tile(100, 187) !== 10 || !R.warps().some(w => w.x === 100 && w.y === 187 && w.req && w.req()); }), "the stair below the Rime stays shut until Isolde lets go");
+    await p.evaluate(() => { const R = window.__saltRoad, f = R.state().flags; f.rimeArrived = f.rimeQuest = f.rimeGate = f.rimeDone = f.isoldeDead = true; f.rimeChoice = "river"; R.tp(100, 184); R.clearField(); });
+    await p.waitForTimeout(300); await p.clear(); await p.keyboard.down("s"); await p.waitForTimeout(1600); await p.keyboard.up("s"); await p.waitForTimeout(500);
+    ok(await p.evaluate(() => window.__saltRoad.state().py / 16 >= 191) && /wall of new stone/.test(await p.evaluate(() => (window.__saltRoad.dlg() || {}).text || "")), "the wet stair leads down to the walled-up riverbed");
+    await p.clear();
+    await p.evaluate(() => { window.__saltRoad.tp(46, 225); window.__saltRoad.open(window.__saltRoad.talkTo("tull")); }); await p.waitForTimeout(400);
+    for (let i = 0; i < 14 && await p.isVisible("#dialog"); i++) { await p.keyboard.press("e"); await p.waitForTimeout(200); if (await p.isVisible("#opts button")) { await p.keyboard.press("1"); await p.waitForTimeout(200); } }
+    ok(await p.evaluate(() => window.__saltRoad.weir().flags.quest && !window.__saltRoad.weir().flags.gate), "Gran Tull asks for Lowwater's word to be carried to the wall");
+    await p.clear(); await p.evaluate(() => { window.__saltRoad.tp(92, 205); window.__saltRoad.open(window.__saltRoad.talkTo("dace")); }); await p.waitForTimeout(400);
+    for (let i = 0; i < 10 && await p.isVisible("#dialog"); i++) { await p.keyboard.press("e"); await p.waitForTimeout(200); if (await p.isVisible("#opts button")) { await p.keyboard.press("2"); await p.waitForTimeout(200); } }
+    ok(await p.evaluate(() => window.__saltRoad.weir().flags.gate && window.__saltRoad.tile(96, 206) !== 36), "Dace opens the gate to the crest");
+    await p.clear(); await p.evaluate(() => window.__saltRoad.tp(128, 206)); await p.waitForTimeout(500); await p.clear(); await p.keyboard.press("e"); await p.waitForTimeout(300);
+    for (let i = 0; i < 10 && (await p.evaluate(() => window.__saltRoad.mode())) !== "battle"; i++) { await p.keyboard.press("e"); await p.waitForTimeout(250); if (await p.isVisible("#opts button")) { await p.keyboard.press("1"); await p.waitForTimeout(250); } }
+    ok(/Provost Merrow/.test(await p.evaluate(() => window.__saltRoad.battleState() || "")), "Provost Merrow waits in the sluice house");
+    const ph = await p.evaluate(() => window.__saltRoad.bossPhaseTest()); ok(ph && ph.after.phase2, "he opens the sluice at half health");
+    await p.evaluate(() => window.__saltRoad.forceWin()); await p.waitForTimeout(400); await p.evaluate(() => window.__saltRoad.cont()); await p.waitForTimeout(700);
+    for (let i = 0; i < 8 && !(await p.isVisible("#opts button")); i++) { await p.keyboard.press("e"); await p.waitForTimeout(250); }
+    await p.keyboard.press("1"); await p.waitForTimeout(300); for (let i = 0; i < 4; i++) { await p.keyboard.press("e"); await p.waitForTimeout(250); }
+    const r = await p.evaluate(() => ({ f: window.__saltRoad.weir().flags, relics: window.__saltRoad.state().relics || [], breach: window.__saltRoad.tile(128, 207), bridge: window.__saltRoad.tile(128, 224) }));
+    ok(r.f.done && r.f.choice === "free" && r.relics.includes("sluicekey"), "the wheel is broken, with the Provost's key as a relic");
+    ok(r.breach === 3 && r.bridge === 12, "the river runs through a breach in the wall, bridged where the road crosses");
+    await p.clear(); ok(!(await p.evaluate(() => window.__saltRoad.reach())).length, "every story spot is still reachable");
+    await p.reload(); await p.waitForTimeout(700); await p.start();
+    ok(await p.evaluate(() => window.__saltRoad.weir().flags.done && window.__saltRoad.tile(128, 207) === 3), "the river still runs after a reload");
+    await noErrors(p); await p.done();
+  },
   async reading() {   // cutscene lines wait to be read, statuses say how long they last, the font setting
     const p = await open(); await p.start();
     const line = () => p.evaluate(() => document.querySelector("#cineBox .tx").textContent);
