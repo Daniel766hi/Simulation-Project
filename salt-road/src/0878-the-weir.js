@@ -216,7 +216,7 @@
     { id: "w1", x: 108, y: 214, group: ["bailiff", "lockhound"], minStage: 10 }, { id: "w2", x: 70, y: 206, group: ["lockhound", "lockhound"], minStage: 10 },
     { id: "w3", x: 150, y: 220, group: ["reedlurk", "reedlurk"], minStage: 10 }, { id: "w4", x: 118, y: 230, group: ["silteel", "reedlurk"], minStage: 10 },
     { id: "w5", x: 44, y: 204, group: ["bailiff", "bailiff", "lockhound"], minStage: 10, elite: true }, { id: "w6", x: 104, y: 234, group: ["silteel", "silteel"], minStage: 10 },
-    { id: "w7", x: 158, y: 232, group: ["reedlurk", "silteel", "silteel"], minStage: 10, elite: true },
+    { id: "w7", x: 148, y: 222, group: ["reedlurk", "silteel", "silteel"], minStage: 10, elite: true },
   );
   LORE.push(
     { id: 26, x: 86, y: 215, title: "The Company's Notice", text: "Painted on the yard wall in fresh white: \"THE RIVER IS A HAZARD. THE SLUICE COMPANY HOLDS IT FOR YOUR SAFETY. ONE CUP PER HEAD PER DAY, AT THE GATE, AT DAWN. RATES AS POSTED.\" The rates have been painted over three times." },
