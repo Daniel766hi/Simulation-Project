@@ -184,6 +184,22 @@ const SUITES = {
     ok(await p.evaluate(() => window.__saltRoad.weir().flags.done && window.__saltRoad.tile(128, 207) === 3), "the river still runs after a reload");
     await noErrors(p); await p.done();
   },
+  async audio() {   // the recorded score from salt-road/audio: it loads, plays per scene, and the synthesised score covers the rest
+    const p = await open(); await p.start(); await p.waitForTimeout(800);
+    const r = await p.evaluate(() => window.__saltRoad.recorded());
+    if (!r.ready) { ok(true, "no salt-road/audio folder: the synthesised score plays (nothing to check)"); await noErrors(p); await p.done(); return; }
+    ok(r.style === "recorded" && r.music.length >= 10, `the recorded score is on by default (${r.music.length} tracks, ${r.sfx.length} sounds)`);
+    await p.mouse.click(640, 400); await p.waitForTimeout(200);
+    await p.evaluate(() => window.__saltRoad.battle(["jackal"])); await p.waitForTimeout(900);
+    ok(/^rec:/.test(await p.evaluate(() => window.__saltRoad.music() || "")), "a battle plays a recording");
+    await p.evaluate(() => window.__saltRoad.flee()); await p.waitForTimeout(300); await p.clear();
+    await p.keyboard.press("Escape"); await p.click("#pauseMain [data-a=settings]"); await p.waitForTimeout(300);
+    ok(await p.isVisible('[data-set="musicStyle"][data-v="recorded"].on') && await p.isVisible("details.credits"), "Settings offers Recorded, with the credits");
+    await p.click('[data-set="musicStyle"][data-v="classic"]'); await p.waitForTimeout(300);
+    ok(!/^rec:/.test(await p.evaluate(() => window.__saltRoad.music() || "")), "Classic switches back to the synthesised score");
+    await p.keyboard.press("Escape"); await p.keyboard.press("Escape");
+    await noErrors(p); await p.done();
+  },
   async reading() {   // cutscene lines wait to be read, statuses say how long they last, the font setting
     const p = await open(); await p.start();
     const line = () => p.evaluate(() => document.querySelector("#cineBox .tx").textContent);
