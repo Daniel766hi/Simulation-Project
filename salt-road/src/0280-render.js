@@ -1,4 +1,5 @@
   // ================================================================== RENDER
+  let noRainAt = (tx, ty) => false;   // places the Act II rain does not fall (later regions add theirs)
   const canvas = $("game"), ctx = canvas.getContext("2d");
   const buf = document.createElement("canvas"); buf.width = VIEW_W; buf.height = VIEW_H;
   const g = buf.getContext("2d");
@@ -133,7 +134,7 @@
       g.fillStyle = "rgba(10,14,40,.45)"; g.fillRect(0, 0, VIEW_W, VIEW_H);
       if ((time % 5) < 0.12 && !REDUCED) { g.fillStyle = "rgba(220,240,255,.35)"; g.fillRect(0, 0, VIEW_W, VIEW_H); }
     }
-    if (G.stage >= 7 && ![T.DARK, T.ABYSS, T.SPIRE, T.FLOOR].includes(here)) {
+    if (G.stage >= 7 && ![T.DARK, T.ABYSS, T.SPIRE, T.FLOOR].includes(here) && !noRainAt(Math.floor(G.px / TILE), Math.floor(G.py / TILE))) {
       g.fillStyle = "rgba(20,30,60,.22)"; g.fillRect(0, 0, VIEW_W, VIEW_H);
       if (!REDUCED) { g.fillStyle = "rgba(180,200,240,.5)"; for (let i = 0; i < 70; i++) { const x = (hash(i, 7) * (VIEW_W + 60) - time * 40) % (VIEW_W + 60), y = (hash(i, 9) * VIEW_H + time * 220) % VIEW_H; g.fillRect(Math.round((x + VIEW_W + 60) % (VIEW_W + 60)), Math.round(y), 1, 5); } }
     }
