@@ -78,6 +78,8 @@
   };
   WARPS.push({ x: RIME.gate[0], y: RIME.gate[1], to: RIME.land, req: rimeOpen, msg: "A stair cut into the south rim of the old seabed, iced over and humming faintly, like a held note. (Chapter X)" },
     { x: RIME.land[0], y: RIME.land[1] - 1, to: [RIME.gate[0], RIME.gate[1] - 1] });
+  const _noRainRime = noRainAt;   // it snows in the Rime, it does not rain
+  noRainAt = (tx, ty) => (ty >= RIME.y0 && ty <= RIME.y1) || _noRainRime(tx, ty);
   const _regionOfRime = regionOf;
   regionOf = function (x, y) { return y >= RIME.y0 ? "rime" : _regionOfRime(x, y); };
   REGION_LINKS.rime = { drysea: [RIME.land[0], RIME.land[1] - 1] }; REGION_LINKS.drysea.rime = RIME.gate;

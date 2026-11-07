@@ -91,6 +91,8 @@
   };
   WARPS.push({ x: WEIR.gate[0], y: WEIR.gate[1], to: WEIR.land, req: weirOpen, msg: "A cut in the Rime's south wall where the meltwater went down. The water's gone from it now: only a wet stair and, far below, the sound of a wall with a river behind it. (After the Rime)" },
     { x: WEIR.land[0], y: WEIR.land[1] - 1, to: [WEIR.gate[0], WEIR.gate[1] - 1] });
+  const _noRainWeir = noRainAt;   // the Rime keeps the rain off the riverbed: whatever water it gets comes down from the ice
+  noRainAt = (tx, ty) => (ty >= WEIR.y0 && ty <= WEIR.y1) || _noRainWeir(tx, ty);
   const _regionOfWeir = regionOf;
   regionOf = function (x, y) { return y >= WEIR.y0 ? "weir" : _regionOfWeir(x, y); };
   REGION_LINKS.weir = { rime: [WEIR.land[0], WEIR.land[1] - 1] }; REGION_LINKS.rime.weir = WEIR.gate;
