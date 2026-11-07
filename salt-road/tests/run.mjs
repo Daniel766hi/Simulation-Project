@@ -15,7 +15,7 @@ import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
 const { chromium } = require(process.env.PLAYWRIGHT || "playwright");
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
-const server = createServer((q, r) => { try { const f = join(root, decodeURIComponent(q.url.split("?")[0])); r.writeHead(200, { "content-type": { ".html": "text/html", ".js": "text/javascript" }[extname(f)] || "application/octet-stream" }); r.end(readFileSync(f)); } catch { r.writeHead(404); r.end(); } });
+const server = createServer((q, r) => { try { const f = join(root, decodeURIComponent(q.url.split("?")[0])), body = readFileSync(f); r.writeHead(200, { "content-type": { ".html": "text/html", ".js": "text/javascript", ".json": "application/json", ".ogg": "audio/ogg" }[extname(f)] || "application/octet-stream" }); r.end(body); } catch { r.writeHead(404); r.end(); } });
 await new Promise(res => server.listen(0, res));
 const URL = `http://localhost:${server.address().port}/salt-road.html?skipprologue`;
 const browser = await chromium.launch();
