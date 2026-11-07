@@ -38,7 +38,7 @@ buttons. They need Playwright (`npm i -D playwright && npx playwright install ch
 where it is installed.
 
 ```
-node salt-road/tests/run.mjs                 # every suite: battles scenes saves phone kessa deep comfort
+node salt-road/tests/run.mjs                 # every suite: battles scenes saves phone kessa deep comfort rime weir reading
 node salt-road/tests/run.mjs saves kessa     # some of them
 node salt-road/tests/balance.mjs             # boss win rates per chapter (N, DIFF, ONLY, PATCH: see the file)
 ```
