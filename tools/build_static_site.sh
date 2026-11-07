@@ -8,5 +8,7 @@ mkdir -p public/vendor
 cp index.html abm.html bass.html m5.html tetris.html salt-road.html public/
 cp vendor/chart.umd.min.js vendor/chart.js.LICENSE.md public/vendor/
 cp -r birthday public/birthday
+# The Salt Road's recorded music and sound, when present (the game falls back to its synthesised score without them)
+if [ -d salt-road/audio ]; then mkdir -p public/salt-road && cp -r salt-road/audio public/salt-road/audio; fi
 touch public/.nojekyll
 echo "built public/: $(ls public | tr '\n' ' ')"
