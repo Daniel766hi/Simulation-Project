@@ -184,6 +184,33 @@ const SUITES = {
     ok(await p.evaluate(() => window.__saltRoad.weir().flags.done && window.__saltRoad.tile(128, 207) === 3), "the river still runs after a reload");
     await noErrors(p); await p.done();
   },
+  async cistern() {   // Act III, part 3: the sinkhole, Ivo, Marta's tally key, Proprietor Vane, and the end of Act III
+    const p = await open(); await p.start(); await setup(p, 10, ["ilse", "maru", "rook"], 26); await p.clear();
+    await p.evaluate(() => { const R = window.__saltRoad, f = R.state().flags; f.rimeHint = f.weirHint = true; f.rimeArrived = f.rimeQuest = f.rimeGate = f.rimeDone = f.isoldeDead = true; f.rimeChoice = "river";
+      f.weirArrived = f.weirQuest = f.weirGate = f.weirDone = f.merrowDead = true; f.weirChoice = "commons"; R.tp(110, 235); R.clearField(); });
+    await p.waitForTimeout(300); await p.clear(); await p.keyboard.down("s"); await p.waitForTimeout(1400); await p.keyboard.up("s"); await p.waitForTimeout(500);
+    ok(await p.evaluate(() => window.__saltRoad.state().py / 16 >= 241) && /under the Dry Sea/.test(await p.evaluate(() => (window.__saltRoad.dlg() || {}).text || "")), "the sinkhole leads down into the cistern");
+    await p.clear();
+    await p.evaluate(() => { window.__saltRoad.tp(25, 254); window.__saltRoad.open(window.__saltRoad.talkTo("ivo")); }); await p.waitForTimeout(400);
+    for (let i = 0; i < 14 && await p.isVisible("#dialog"); i++) { await p.keyboard.press("e"); await p.waitForTimeout(200); if (await p.isVisible("#opts button")) { await p.keyboard.press("1"); await p.waitForTimeout(200); } }
+    ok(await p.evaluate(() => window.__saltRoad.cistern().flags.quest), "Old Ivo sends the courier to the surveyor");
+    await p.clear(); await p.evaluate(() => { window.__saltRoad.tp(150, 249); window.__saltRoad.open(window.__saltRoad.talkTo("marta")); }); await p.waitForTimeout(400);
+    for (let i = 0; i < 10 && await p.isVisible("#dialog"); i++) { await p.keyboard.press("e"); await p.waitForTimeout(200); if (await p.isVisible("#opts button")) { await p.keyboard.press("1"); await p.waitForTimeout(200); } }
+    ok(await p.evaluate(() => window.__saltRoad.cistern().flags.gate && window.__saltRoad.tile(54, 272) !== 36), "Marta's tally key opens the ledger vault");
+    await p.clear(); await p.evaluate(() => window.__saltRoad.tp(35, 278)); await p.waitForTimeout(500); await p.clear(); await p.keyboard.press("e"); await p.waitForTimeout(300);
+    for (let i = 0; i < 10 && (await p.evaluate(() => window.__saltRoad.mode())) !== "battle"; i++) { await p.keyboard.press("e"); await p.waitForTimeout(250); if (await p.isVisible("#opts button")) { await p.keyboard.press("1"); await p.waitForTimeout(250); } }
+    ok(/Proprietor Vane/.test(await p.evaluate(() => window.__saltRoad.battleState() || "")), "Proprietor Vane waits in the ledger vault");
+    const ph = await p.evaluate(() => window.__saltRoad.bossPhaseTest()); ok(ph && ph.after.phase2, "the account opens at half health");
+    await p.evaluate(() => window.__saltRoad.forceWin()); await p.waitForTimeout(400); await p.evaluate(() => window.__saltRoad.cont()); await p.waitForTimeout(700);
+    for (let i = 0; i < 8 && !(await p.isVisible("#opts button")); i++) { await p.keyboard.press("e"); await p.waitForTimeout(250); }
+    await p.keyboard.press("2"); await p.waitForTimeout(300); for (let i = 0; i < 4; i++) { await p.keyboard.press("e"); await p.waitForTimeout(250); }
+    const r = await p.evaluate(() => ({ f: window.__saltRoad.cistern().flags, relics: window.__saltRoad.state().relics || [], ach: window.__saltRoad.ach() }));
+    ok(r.f.done && r.f.choice === "trust" && r.relics.includes("abacus"), "the cistern is held in trust, with Vane's abacus as a relic");
+    await p.clear(); ok(!(await p.evaluate(() => window.__saltRoad.reach())).length, "every story spot is still reachable");
+    await p.reload(); await p.waitForTimeout(700); await p.start();
+    ok(await p.evaluate(() => window.__saltRoad.cistern().flags.done && window.__saltRoad.state().flags.weirChoice === "commons"), "Act III's choices survive a reload");
+    await noErrors(p); await p.done();
+  },
   async audio() {   // the recorded score from salt-road/audio: it loads, plays per scene, and the synthesised score covers the rest
     const p = await open(); await p.start(); await p.waitForTimeout(800);
     const r = await p.evaluate(() => window.__saltRoad.recorded());
