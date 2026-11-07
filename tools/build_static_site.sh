@@ -13,5 +13,7 @@ cp -r karen21 public/karen21
 # The gift page used to live at /birthday/; keep that address working by redirecting it.
 mkdir -p public/birthday
 printf '%s\n' '<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=../sherryn/"><a href="../sherryn/">Open</a>' > public/birthday/index.html
+# The Salt Road's recorded music and sound, when present (the game falls back to its synthesised score without them)
+if [ -d salt-road/audio ]; then mkdir -p public/salt-road && cp -r salt-road/audio public/salt-road/audio; fi
 touch public/.nojekyll
 echo "built public/: $(ls public | tr '\n' ' ')"
