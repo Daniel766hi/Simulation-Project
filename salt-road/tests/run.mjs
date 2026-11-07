@@ -211,6 +211,40 @@ const SUITES = {
     ok(await p.evaluate(() => window.__saltRoad.cistern().flags.done && window.__saltRoad.state().flags.weirChoice === "commons"), "Act III's choices survive a reload");
     await noErrors(p); await p.done();
   },
+  async secrets() {   // Act III's hidden foes, favours and fish
+    const p = await open(); await p.start(); await setup(p, 10, ["ilse", "maru", "rook"], 28); await p.clear();
+    await p.evaluate(() => { const R = window.__saltRoad, f = R.state().flags; f.rimeHint = f.weirHint = f.cisHint = true;
+      for (const k of ["rimeArrived", "rimeQuest", "rimeGate", "rimeDone", "isoldeDead", "weirArrived", "weirQuest", "weirGate", "weirDone", "merrowDead", "cisArrived", "cisQuest", "cisGate", "cisDone", "vaneDead"]) f[k] = true;
+      f.rimeChoice = "river"; f.weirChoice = "free"; f.cisChoice = "open"; R.clearField(); });
+    const talk = async (id, x, y, pick = "1") => { await p.clear(); await p.evaluate(([id, x, y]) => { window.__saltRoad.tp(x, y); window.__saltRoad.open(window.__saltRoad.talkTo(id)); }, [id, x, y]); await p.waitForTimeout(300);
+      for (let i = 0; i < 8 && await p.isVisible("#dialog"); i++) { await p.keyboard.press("e"); await p.waitForTimeout(200); if (await p.isVisible("#opts button")) { await p.keyboard.press(pick); await p.waitForTimeout(200); } } };
+    const press = async (x, y) => { await p.clear(); await p.evaluate(([x, y]) => { window.__saltRoad.clearField(); window.__saltRoad.tp(x, y); }, [x, y]); await p.waitForTimeout(250); await p.keyboard.press("e"); await p.waitForTimeout(300); };
+    const S = await p.evaluate(() => window.__saltRoad.act3secrets());
+    ok(S.fish.length === 6, "six new fish live in Act III's waters");
+    await talk("brannoc", 64, 159); await press(S.spots.pick.x + 1, S.spots.pick.y); await talk("brannoc", 64, 159);
+    ok(await p.evaluate(() => window.__saltRoad.state().flags.pickDone), "Brannoc's father's pick comes home");
+    await talk("pip", 58, 231); await p.evaluate(() => { const f = window.__saltRoad.state().flags; f.fishLog = { ...(f.fishLog || {}), trout: 1 }; }); await talk("pip", 58, 231);
+    ok(await p.evaluate(() => window.__saltRoad.state().flags.fishDone), "Pip gets a living fish");
+    await talk("wick", 33, 260); for (const [x, y] of S.spots.lamps) await press(x, y + 1); await talk("wick", 33, 260);
+    ok(await p.evaluate(() => window.__saltRoad.state().flags.lampDone), "Wick's three lamps are lit");
+    const fight = async (x, y, name) => {
+      await press(x + 1, y); for (let i = 0; i < 12 && (await p.evaluate(() => window.__saltRoad.mode())) !== "battle"; i++) { if (await p.isVisible("#cardBtn")) { await p.click("#cardBtn"); await press(x + 1, y); } else await p.keyboard.press("e"); await p.waitForTimeout(300); }
+      const st = await p.evaluate(() => window.__saltRoad.battleState() || ""); const ph = await p.evaluate(() => window.__saltRoad.bossPhaseTest());
+      await p.evaluate(() => window.__saltRoad.forceWin()); await p.waitForTimeout(400); await p.evaluate(() => window.__saltRoad.cont()); await p.waitForTimeout(700); await p.clear();
+      return name.test(st) && ph && ph.after.phase2;
+    };
+    await press(S.spots.hart.x + 1, S.spots.hart.y);
+    ok(/tracks/.test(await p.evaluate(() => (window.__saltRoad.dlg() || {}).text || "")) && (await p.evaluate(() => window.__saltRoad.mode())) !== "battle", "by day the Hart leaves only tracks");
+    await p.evaluate(() => { window.__saltRoad.state().clock = 0.75; });
+    ok(await fight(S.spots.hart.x, S.spots.hart.y, /White Hart/), "at night the White Hart fights, and changes at half health");
+    ok(await fight(S.spots.silt.x, S.spots.silt.y, /Old Silt/), "Old Silt rises in the reeds");
+    ok(await fight(S.spots.clerk.x, S.spots.clerk.y, /First Clerk/), "the First Clerk waits behind the vault wall");
+    const r = await p.evaluate(() => ({ relics: window.__saltRoad.state().relics || [], ach: window.__saltRoad.ach() }));
+    ok(["hartcrown", "siltpearl", "firstpen"].every(k => r.relics.includes(k)), "each hidden foe leaves a relic");
+    ok(await p.evaluate(() => /Iron Clerk/.test(window.__saltRoad.sim().MONSTERS.clerk.name)), "the Iron Clerk is still the Iron Clerk");
+    await p.clear(); ok(!(await p.evaluate(() => window.__saltRoad.reach())).length, "every story spot is still reachable");
+    await noErrors(p); await p.done();
+  },
   async audio() {   // the recorded score from salt-road/audio: it loads, plays per scene, and the synthesised score covers the rest
     const p = await open(); await p.start(); await p.waitForTimeout(800);
     const r = await p.evaluate(() => window.__saltRoad.recorded());
