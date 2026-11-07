@@ -38,6 +38,8 @@ Converted from the MP3 download to Ogg Vorbis, stereo, 44.1 kHz, `-q:a 2` (about
 | `music/cine_lullaby.ogg` | Industrial Music Box | Kevin MacLeod | [CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/) | https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1100812 | converted; trimmed to 40 s from the start; 2 s fade-out |
 | `music/cine_deep.ogg` | Ossuary 6 - Air | Kevin MacLeod | [CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/) | https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1500048 | converted; trimmed to 30 s from the start; 2 s fade-out |
 
+The `gain` in manifest.json levels each track with the others and with the synthesised score (from its mean loudness, measured with ffmpeg volumedetect); the files themselves are not changed for it.
+
 ## Sound effects
 
 Converted to Ogg Vorbis, mono, 44.1 kHz, 64 kbps.

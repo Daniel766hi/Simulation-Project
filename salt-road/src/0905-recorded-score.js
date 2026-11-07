@@ -5,7 +5,7 @@
   // opened on its own, or offline), nothing changes: the synthesised score plays as before.
   const REC = { base: "salt-road/audio/", music: {}, sfx: {}, ready: false };
   const RecPlay = { els: {}, cur: null, bufs: {}, loading: {} };
-  const REC_GAIN = 0.42, REC_SFX_GAIN = 0.7;
+  const REC_GAIN = 0.3, REC_SFX_GAIN = 0.7;
   // the score's own keys for each region, boss and scene; any missing in the folder falls back to the synthesised score
   const recKey = name => {
     if (!name) return null;
@@ -34,7 +34,7 @@
     RecPlay.cur = k;
     try { e.a.currentTime = 0; } catch { /* not loaded yet */ }
     const p = e.a.play(); if (p && p.catch) p.catch(() => { /* the browser wants a gesture first; the next play() will start it */ });
-    e.g.gain.setTargetAtTime(REC_GAIN, Music.ctx.currentTime, 0.25);
+    e.g.gain.setTargetAtTime(REC.music[k].gain || REC_GAIN, Music.ctx.currentTime, 0.25);
     return true;
   }
   function recStop() { if (!RecPlay.cur) return; const k = RecPlay.cur; RecPlay.cur = null; recFadeOut(k); }
