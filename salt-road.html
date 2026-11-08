@@ -15269,28 +15269,50 @@
     if (k === "cine_deep" && !REC.music.cine_deep) k = "deep";
     return REC.music[k] ? k : null;
   };
+  // each track has two players: near the end of one, the other starts from the top and they cross-fade, so a full
+  // recording loops without the gap a plain loop leaves
+  const REC_XF = 3;
   function recEl(k) {
     let e = RecPlay.els[k]; if (e) return e;
-    const a = new Audio(REC.base + REC.music[k].file); a.loop = true; a.preload = "auto";
-    const g = Music.ctx.createGain(); g.gain.value = 0;
-    try { Music.ctx.createMediaElementSource(a).connect(g); g.connect(Music.bus); } catch { return null; }
-    return (RecPlay.els[k] = { a, g });
+    const pair = [];
+    for (let i = 0; i < 2; i++) {
+      const a = new Audio(REC.base + REC.music[k].file); a.loop = true; a.preload = i ? "none" : "auto";
+      const g = Music.ctx.createGain(); g.gain.value = 0;
+      try { Music.ctx.createMediaElementSource(a).connect(g); g.connect(Music.bus); } catch { return null; }
+      pair.push({ a, g });
+    }
+    return (RecPlay.els[k] = { pair, i: 0 });
   }
+  const recLevel = k => REC.music[k].gain || REC_GAIN;
   function recFadeOut(k) {
     const o = RecPlay.els[k]; if (!o) return;
-    o.g.gain.setTargetAtTime(0, Music.ctx.currentTime, 0.35);
-    setTimeout(() => { if (RecPlay.cur !== k) o.a.pause(); }, 2200);
+    for (const p of o.pair) p.g.gain.setTargetAtTime(0, Music.ctx.currentTime, 0.35);
+    setTimeout(() => { if (RecPlay.cur !== k) for (const p of o.pair) p.a.pause(); }, 2200);
   }
+  const recPlayEl = a => { const p = a.play(); if (p && p.catch) p.catch(() => { /* the browser wants a gesture first; the next play() will start it */ }); };
   function recStart(k) {
     if (RecPlay.cur === k) return true;
     const e = recEl(k); if (!e) return false;
     if (RecPlay.cur) recFadeOut(RecPlay.cur);
     RecPlay.cur = k;
-    try { e.a.currentTime = 0; } catch { /* not loaded yet */ }
-    const p = e.a.play(); if (p && p.catch) p.catch(() => { /* the browser wants a gesture first; the next play() will start it */ });
-    e.g.gain.setTargetAtTime(REC.music[k].gain || REC_GAIN, Music.ctx.currentTime, 0.25);
+    const p = e.pair[e.i];
+    try { p.a.currentTime = 0; } catch { /* not loaded yet */ }
+    recPlayEl(p.a);
+    p.g.gain.setTargetAtTime(recLevel(k), Music.ctx.currentTime, 0.25);
     return true;
   }
+  setInterval(() => {   // the cross-fade at the end of each pass
+    const k = RecPlay.cur, e = k && RecPlay.els[k]; if (!e || !Music.ctx) return;
+    const cur = e.pair[e.i], d = cur.a.duration;
+    if (!d || !isFinite(d) || d < REC_XF * 4 || cur.a.paused || cur.a.currentTime < d - REC_XF) return;
+    const nxt = e.pair[1 - e.i], t = Music.ctx.currentTime;
+    try { nxt.a.currentTime = 0; } catch { /* not loaded yet */ }
+    recPlayEl(nxt.a);
+    nxt.g.gain.cancelScheduledValues(t); nxt.g.gain.setValueAtTime(0, t); nxt.g.gain.linearRampToValueAtTime(recLevel(k), t + REC_XF);
+    cur.g.gain.cancelScheduledValues(t); cur.g.gain.setValueAtTime(cur.g.gain.value, t); cur.g.gain.linearRampToValueAtTime(0, t + REC_XF);
+    const old = cur.a; setTimeout(() => old.pause(), REC_XF * 1000 + 200);
+    e.i = 1 - e.i;
+  }, 200);
   function recStop() { if (!RecPlay.cur) return; const k = RecPlay.cur; RecPlay.cur = null; recFadeOut(k); }
   const recOn = () => REC.ready && SETTINGS.musicStyle === "recorded";
   const _playRec = Music.play;
@@ -15366,12 +15388,25 @@
     (note || row).after(sfxRow);
     const all = [...Object.entries(REC.music).map(([k, m]) => ["Music", k, m]), ...Object.entries(REC.sfx).filter(([, m]) => m).map(([k, m]) => ["Sound", k, m])];
     const cr = document.createElement("details"); cr.className = "credits"; cr.style.margin = "4px 0 10px";
-    cr.innerHTML = `<summary>Music and sound credits (${all.length})</summary><ul class="dim" style="font-size:12px;margin:6px 0 0;padding-left:18px">${all.map(([kind, k, m]) =>
-      `<li>${kind}, ${escRec(k)}: "${escRec(m.title)}" by ${escRec(m.author)}, ${escRec(m.license)}${m.url ? ` (<a href="${escRec(m.url)}" target="_blank" rel="noopener">source</a>)` : ""}</li>`).join("")}</ul>`;
+    cr.innerHTML = `<summary>Music room and credits (${all.length})</summary><ul class="dim" style="font-size:12px;margin:6px 0 0;padding-left:18px">${all.map(([kind, k, m]) =>
+      `<li>${kind === "Music" ? `<button type="button" class="recplay" data-recplay="${escRec(k)}" aria-label="Listen to ${escRec(m.title)}" style="min-width:0;padding:0 6px;margin-right:4px">${RecPlay.cur === k ? "■" : "▶"}</button>` : ""}${kind}, ${escRec(k)}: "${escRec(m.title)}" by ${escRec(m.author)}, ${escRec(m.license)}${m.url ? ` (<a href="${escRec(m.url)}" target="_blank" rel="noopener">source</a>)` : ""}</li>`).join("")}</ul>`;
     sfxRow.after(cr);
     if (focusKey === "musicStyle" || focusKey === "sfxStyle") { const f = panel.querySelector(`[data-set="${focusKey}"].on`); if (f) f.focus({ preventScroll: true }); }
   };
-  setTimeout(() => Object.assign(window.__saltRoad || (window.__saltRoad = {}), { recorded: () => ({ ready: REC.ready, music: Object.keys(REC.music), sfx: Object.keys(REC.sfx).filter(k => REC.sfx[k]), playing: RecPlay.cur, style: SETTINGS.musicStyle }) }), 0);
+  // the Music Room: any recording in the credits can be played from the pause menu; the scene's own music comes back
+  // when the game goes on
+  let recPreview = false;
+  document.addEventListener("click", ev => {
+    const b = ev.target.closest && ev.target.closest("[data-recplay]"); if (!b || !REC.ready || !Music.ctx) return;
+    const k = b.dataset.recplay; if (!REC.music[k]) return;
+    if (RecPlay.cur === k && recPreview) { recPreview = false; Music.track = null; Music.play(Music.wanted); }
+    else { if (Music.ctx.state === "suspended") Music.ctx.resume(); recStart(k); Music.track = "rec:" + k; recPreview = true; Music.volumes(); }
+    const open = b.closest("details"); showSettings(); const d = $("pausePanel") && $("pausePanel").querySelector("details.credits"); if (d && open) d.open = true;
+  });
+  const _volumesRec = Music.volumes;
+  Music.volumes = function () { _volumesRec.call(this); if (recPreview && this.ctx) this.bus.gain.setTargetAtTime(0.5 * SETTINGS.music, this.ctx.currentTime, 0.05); };
+  setInterval(() => { if (recPreview && !paused) { recPreview = false; Music.track = null; Music.play(Music.wanted); } }, 300);
+  setTimeout(() => Object.assign(window.__saltRoad || (window.__saltRoad = {}), { recSeekEnd: secs => { const e = RecPlay.els[RecPlay.cur]; if (!e) return null; const a = e.pair[e.i].a; if (!a.duration || !isFinite(a.duration)) return null; a.currentTime = Math.max(0, a.duration - secs); return e.i; }, recPass: () => { const e = RecPlay.els[RecPlay.cur]; return e ? e.i : null; }, recorded: () => ({ ready: REC.ready, music: Object.keys(REC.music), sfx: Object.keys(REC.sfx).filter(k => REC.sfx[k]), playing: RecPlay.cur, style: SETTINGS.musicStyle }) }), 0);
   // ================================================================== A FINISHED GAME STAYS FINISHED
   // At an ending the game hands its gear and tempering back as coin (for New Game+) and deletes the save. Daily
   // tasks, gifts and renown kept saving afterwards, which wrote that stripped game back: a reload offered "Continue"
