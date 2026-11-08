@@ -59,7 +59,7 @@
       if (kind === "miss") this.noise(t, 0.15, 0.2, 4000, "highpass", S);
       if (kind === "step") this.noise(t, 0.04, 0.05, 700, "lowpass", S);
       if (kind === "dash") { this.noise(t, 0.22, 0.3, 1800, "bandpass", S); this.tone(260, t, 0.06, "sine", 0.06, 0.005, 0.12, S); this.tone(520, t + 0.03, 0.05, "sine", 0.04, 0.005, 0.1, S); }
-      if (kind === "item") [784, 988, 1175, 1568].forEach((f, i) => this.tone(f, t + i * 0.06, 0.06, "triangle", 0.1, 0.005, 0.15, S));
+      if (kind === "item" || kind === "chest") [784, 988, 1175, 1568].forEach((f, i) => this.tone(f, t + i * 0.06, 0.06, "triangle", 0.1, 0.005, 0.15, S));
       if (kind === "bleed") this.noise(t, 0.25, 0.25, 300, "lowpass", S);
       if (kind === "encounter") { [220, 262, 330, 440].forEach((f, i) => this.tone(f, t + i * 0.05, 0.05, "sawtooth", 0.06, 0.005, 0.1, S)); this.noise(t, 0.4, 0.2, 600, "lowpass", S); }
       if (kind === "victory") [523, 659, 784, 1047, 784, 1047].forEach((f, i) => this.tone(f, t + i * 0.12, 0.1, "square", 0.07, 0.005, 0.25, S));

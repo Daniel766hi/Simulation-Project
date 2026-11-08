@@ -15,7 +15,12 @@ import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
 const { chromium } = require(process.env.PLAYWRIGHT || "playwright");
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
-const server = createServer((q, r) => { try { const f = join(root, decodeURIComponent(q.url.split("?")[0])), body = readFileSync(f); r.writeHead(200, { "content-type": { ".html": "text/html", ".js": "text/javascript", ".json": "application/json", ".ogg": "audio/ogg" }[extname(f)] || "application/octet-stream" }); r.end(body); } catch { r.writeHead(404); r.end(); } });
+const server = createServer((q, r) => { try {   // with byte ranges, like a real host, so audio knows its length and can seek
+  const f = join(root, decodeURIComponent(q.url.split("?")[0])), body = readFileSync(f), type = { ".html": "text/html", ".js": "text/javascript", ".json": "application/json", ".ogg": "audio/ogg" }[extname(f)] || "application/octet-stream";
+  const m = /bytes=(\d*)-(\d*)/.exec(q.headers.range || "");
+  if (m) { const s = m[1] ? +m[1] : 0, e = m[2] ? Math.min(+m[2], body.length - 1) : body.length - 1; r.writeHead(206, { "content-type": type, "accept-ranges": "bytes", "content-range": `bytes ${s}-${e}/${body.length}`, "content-length": e - s + 1 }); r.end(body.subarray(s, e + 1)); }
+  else { r.writeHead(200, { "content-type": type, "accept-ranges": "bytes", "content-length": body.length }); r.end(body); }
+} catch { r.writeHead(404); r.end(); } });
 await new Promise(res => server.listen(0, res));
 const URL = `http://localhost:${server.address().port}/salt-road.html?skipprologue`;
 const browser = await chromium.launch();
@@ -253,9 +258,16 @@ const SUITES = {
     await p.mouse.click(640, 400); await p.waitForTimeout(200);
     await p.evaluate(() => window.__saltRoad.battle(["jackal"])); await p.waitForTimeout(900);
     ok(/^rec:/.test(await p.evaluate(() => window.__saltRoad.music() || "")), "a battle plays a recording");
+    await p.waitForTimeout(1500); const pass0 = await p.evaluate(() => window.__saltRoad.recSeekEnd(1)); await p.waitForTimeout(1200);
+    ok(pass0 !== null && (await p.evaluate(() => window.__saltRoad.recPass())) === 1 - pass0, "at the end of a pass the track cross-fades into its next pass");
     await p.evaluate(() => window.__saltRoad.flee()); await p.waitForTimeout(300); await p.clear();
     await p.keyboard.press("Escape"); await p.click("#pauseMain [data-a=settings]"); await p.waitForTimeout(300);
     ok(await p.isVisible('[data-set="musicStyle"][data-v="recorded"].on') && await p.isVisible("details.credits"), "Settings offers Recorded, with the credits");
+    await p.click("details.credits summary"); await p.click('[data-recplay="cathedral"]'); await p.waitForTimeout(400);
+    ok((await p.evaluate(() => window.__saltRoad.music())) === "rec:cathedral", "the music room plays a chosen track");
+    await p.keyboard.press("Escape"); await p.keyboard.press("Escape"); await p.waitForTimeout(600);
+    ok((await p.evaluate(() => window.__saltRoad.music())) !== "rec:cathedral", "the scene's own music comes back after the pause menu");
+    await p.keyboard.press("Escape"); await p.click("#pauseMain [data-a=settings]"); await p.waitForTimeout(300);
     await p.click('[data-set="musicStyle"][data-v="classic"]'); await p.waitForTimeout(300);
     ok(!/^rec:/.test(await p.evaluate(() => window.__saltRoad.music() || "")), "Classic switches back to the synthesised score");
     await p.keyboard.press("Escape"); await p.keyboard.press("Escape");
