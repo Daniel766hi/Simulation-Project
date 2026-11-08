@@ -82,7 +82,7 @@
     G.flags.chests = G.flags.chests || {};
     for (const c of CHESTS) {
       if (G.flags.chests[c.id] || !near({ x: c.x * TILE + 8, y: c.y * TILE + 8 }, 13)) continue;
-      G.flags.chests[c.id] = true; burst(c.x * TILE + 8, c.y * TILE, "#ffcf4a", 20); Music.sound("item");
+      G.flags.chests[c.id] = true; burst(c.x * TILE + 8, c.y * TILE, "#ffcf4a", 20); Music.sound("chest");
       if (c.item) { G.items[c.item] = (G.items[c.item] || 0) + 1; toast(`Treasure! Found ${ITEMS[c.item].name}.`); } else { G.coins += c.coins; toast(`Treasure! +${c.coins} coin`); }
       save(); updateHud();
     }

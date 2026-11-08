@@ -6,8 +6,8 @@
       "author": "Kevin MacLeod",
       "license": "CC-BY 4.0",
       "url": "https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1400039",
-      "seconds": 70.0,
-      "gain": 0.191
+      "seconds": 164.8,
+      "gain": 0.204
     },
     "boss": {
       "file": "music/boss.ogg",
@@ -15,8 +15,8 @@
       "author": "Kevin MacLeod",
       "license": "CC-BY 4.0",
       "url": "https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1100875",
-      "seconds": 70.0,
-      "gain": 0.376
+      "seconds": 153.4,
+      "gain": 0.324
     },
     "village": {
       "file": "music/village.ogg",
@@ -24,8 +24,8 @@
       "author": "Kevin MacLeod",
       "license": "CC-BY 4.0",
       "url": "https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1700007",
-      "seconds": 70.0,
-      "gain": 0.279
+      "seconds": 214.7,
+      "gain": 0.272
     },
     "flats": {
       "file": "music/flats.ogg",
@@ -33,8 +33,8 @@
       "author": "Kevin MacLeod",
       "license": "CC-BY 4.0",
       "url": "https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1100877",
-      "seconds": 52.0,
-      "gain": 0.569
+      "seconds": 238.8,
+      "gain": 0.479
     },
     "deep": {
       "file": "music/deep.ogg",
@@ -42,8 +42,8 @@
       "author": "Kevin MacLeod",
       "license": "CC-BY 4.0",
       "url": "https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1300029",
-      "seconds": 52.0,
-      "gain": 0.724
+      "seconds": 280.9,
+      "gain": 0.473
     },
     "cathedral": {
       "file": "music/cathedral.ogg",
@@ -51,8 +51,8 @@
       "author": "Kevin MacLeod",
       "license": "CC-BY 4.0",
       "url": "https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1600052",
-      "seconds": 52.0,
-      "gain": 0.603
+      "seconds": 193.4,
+      "gain": 0.582
     },
     "final": {
       "file": "music/final.ogg",
@@ -60,7 +60,7 @@
       "author": "Kevin MacLeod",
       "license": "CC-BY 4.0",
       "url": "https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1500085",
-      "seconds": 70.0,
+      "seconds": 270.0,
       "gain": 0.292
     },
     "ending": {
@@ -69,8 +69,8 @@
       "author": "Kevin MacLeod",
       "license": "CC-BY 4.0",
       "url": "https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1700004",
-      "seconds": 60.0,
-      "gain": 0.575
+      "seconds": 200.5,
+      "gain": 0.603
     },
     "cine_grief": {
       "file": "music/cine_grief.ogg",
@@ -78,7 +78,7 @@
       "author": "Kevin MacLeod",
       "license": "CC-BY 4.0",
       "url": "https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1100208",
-      "seconds": 40.0,
+      "seconds": 89.8,
       "gain": 2.5
     },
     "cine_dread": {
@@ -87,8 +87,8 @@
       "author": "Kevin MacLeod",
       "license": "CC-BY 4.0",
       "url": "https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1600035",
-      "seconds": 30.0,
-      "gain": 1.122
+      "seconds": 253.9,
+      "gain": 1.096
     },
     "coast": {
       "file": "music/coast.ogg",
@@ -96,8 +96,8 @@
       "author": "Kevin MacLeod",
       "license": "CC-BY 4.0",
       "url": "https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1600010",
-      "seconds": 52.0,
-      "gain": 1.396
+      "seconds": 246.3,
+      "gain": 1.072
     },
     "marsh": {
       "file": "music/marsh.ogg",
@@ -105,8 +105,8 @@
       "author": "Kevin MacLeod",
       "license": "CC-BY 4.0",
       "url": "https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1600007",
-      "seconds": 52.0,
-      "gain": 0.646
+      "seconds": 226.6,
+      "gain": 0.617
     },
     "city": {
       "file": "music/city.ogg",
@@ -114,8 +114,8 @@
       "author": "Kevin MacLeod",
       "license": "CC-BY 4.0",
       "url": "https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1500064",
-      "seconds": 52.0,
-      "gain": 0.376
+      "seconds": 207.3,
+      "gain": 0.38
     },
     "grove": {
       "file": "music/grove.ogg",
@@ -123,8 +123,8 @@
       "author": "Kevin MacLeod",
       "license": "CC-BY 4.0",
       "url": "https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1600044",
-      "seconds": 52.0,
-      "gain": 0.912
+      "seconds": 259.1,
+      "gain": 0.923
     },
     "spire": {
       "file": "music/spire.ogg",
@@ -132,8 +132,8 @@
       "author": "Kevin MacLeod",
       "license": "CC-BY 4.0",
       "url": "https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1200043",
-      "seconds": 52.0,
-      "gain": 0.589
+      "seconds": 328.1,
+      "gain": 0.49
     },
     "oru": {
       "file": "music/oru.ogg",
@@ -141,8 +141,8 @@
       "author": "Kevin MacLeod",
       "license": "CC-BY 4.0",
       "url": "https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1700052",
-      "seconds": 52.0,
-      "gain": 0.363
+      "seconds": 150.4,
+      "gain": 0.394
     },
     "cine_storm": {
       "file": "music/cine_storm.ogg",
@@ -150,8 +150,8 @@
       "author": "Kevin MacLeod",
       "license": "CC-BY 4.0",
       "url": "https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1200063",
-      "seconds": 30.0,
-      "gain": 1.216
+      "seconds": 228.9,
+      "gain": 0.733
     },
     "cine_bell": {
       "file": "music/cine_bell.ogg",
@@ -159,8 +159,8 @@
       "author": "Kevin MacLeod",
       "license": "CC-BY 4.0",
       "url": "https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1100655",
-      "seconds": 30.0,
-      "gain": 1.995
+      "seconds": 366.3,
+      "gain": 1.413
     },
     "cine_lullaby": {
       "file": "music/cine_lullaby.ogg",
@@ -168,7 +168,7 @@
       "author": "Kevin MacLeod",
       "license": "CC-BY 4.0",
       "url": "https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1100812",
-      "seconds": 40.0,
+      "seconds": 101.3,
       "gain": 0.923
     },
     "cine_deep": {
@@ -177,8 +177,8 @@
       "author": "Kevin MacLeod",
       "license": "CC-BY 4.0",
       "url": "https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1500048",
-      "seconds": 30.0,
-      "gain": 2.5
+      "seconds": 244.8,
+      "gain": 1.084
     }
   },
   "sfx": {
