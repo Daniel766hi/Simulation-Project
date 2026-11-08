@@ -8,17 +8,24 @@
     tanks: { x0: 128, y0: 242, x1: 166, y1: 252 }, vault: { x0: 18, y0: 266, x1: 54, y1: 286 }, door: [54, 272], throne: { x: 34, y: 278 }, canal: [109, 111] };
   const cisOpen = () => G.stage >= 10 && !!G.flags.weirDone;
   const cf = () => G.flags;
-  Object.assign(T, { COLUMN: 44, TANK: 45 });
+  Object.assign(T, { COLUMN: 44, TANK: 45, FLAG: 46 });
+  OUTDOOR_SKIP.add(T.FLAG);   // a roof of rock: no night sky down here, the cistern has its own dark
   SOLID.add(T.COLUMN); SOLID.add(T.TANK);
-  Object.assign(VARIANTS, { [T.COLUMN]: 2, [T.TANK]: 2 });
-  Object.assign(MINI, { [T.COLUMN]: "#4a4652", [T.TANK]: "#8a6a2a" });
+  Object.assign(VARIANTS, { [T.COLUMN]: 2, [T.TANK]: 2, [T.FLAG]: 4 });
+  Object.assign(MINI, { [T.COLUMN]: "#4a4652", [T.TANK]: "#8a6a2a", [T.FLAG]: "#5a5866" });
   const _tileCanvasCis = tileCanvas;
   tileCanvas = function (t, v) {
-    if (t !== T.COLUMN && t !== T.TANK) return _tileCanvasCis(t, v);
+    if (t !== T.COLUMN && t !== T.TANK && t !== T.FLAG) return _tileCanvasCis(t, v);
     const key = t * 10 + v; if (tileCache.has(key)) return tileCache.get(key);
     const c = document.createElement("canvas"); c.width = c.height = TILE;
     const g = c.getContext("2d"), px = (x, y, w, h, col) => { g.fillStyle = col; g.fillRect(x, y, w, h); };
-    if (t === T.COLUMN) {   // a cistern column: dressed stone, a waterline, moss where the damp sits
+    if (t === T.FLAG) {   // the cistern floor: big flagstones, mortar dark with damp, a sheen where water stands
+      px(0, 0, 16, 16, "#4e4c58"); px(0, 0, 16, 1, "#5e5c68");
+      const seam = "#2e2c36"; px(0, 7, 16, 1, seam); px(v % 2 ? 5 : 10, 0, 1, 7, seam); px(v % 2 ? 12 : 3, 8, 1, 8, seam);
+      px(1, 1, 3, 1, "#646270"); px(7 + (v % 3), 10, 3, 1, "#646270");
+      if (v === 2) { px(2, 10, 4, 2, "#3e4a58"); px(3, 10, 2, 1, "#6a7a8a"); }
+      if (v === 3) { px(11, 3, 2, 2, "#3e4a3a"); px(12, 3, 1, 1, "#4a6a3a"); }
+    } else if (t === T.COLUMN) {   // a cistern column: dressed stone, a waterline, moss where the damp sits
       px(0, 0, 16, 16, "#2a2830"); px(3, 0, 10, 16, "#5a5662"); px(3, 0, 2, 16, "#7a7682"); px(11, 0, 2, 16, "#3e3a46");
       px(2, 0, 12, 2, "#6a6672"); px(2, 14, 12, 2, "#4a4652");
       px(3, v ? 9 : 10, 10, 1, "#3a5a6a"); px(5, 12, 3, 2, "#4a6a3a");
@@ -36,14 +43,14 @@
     _buildMapCis();
     rect(0, CIS.y0, W - 1, CIS.y1, T.CLIFF);
     rect(1, CIS.y0 + 1, W - 2, CIS.y1 - 1, T.ROCK);
-    const hall = (x0, y0, x1, y1) => rect(x0, y0, x1, y1, T.FLOOR);
+    const hall = (x0, y0, x1, y1) => rect(x0, y0, x1, y1, T.FLAG);
     hall(94, 241, 126, 252);                                   // the entry hall, under the sinkhole
     hall(CIS.nave.x0, CIS.nave.y0, CIS.nave.x1, CIS.nave.y1);  // the great nave
     hall(CIS.camp.x0, CIS.camp.y0, CIS.camp.x1, CIS.camp.y1);  // the lampkeepers' alcove
     hall(CIS.tanks.x0, CIS.tanks.y0, CIS.tanks.x1, CIS.tanks.y1 + 12);   // the tank hall
-    for (let y = 253; y <= 254; y++) for (let x = 100; x <= 120; x++) set(x, y, T.FLOOR);
-    for (let x = 41; x < CIS.nave.x0; x++) for (const y of [257, 258, 259]) set(x, y, T.FLOOR);            // corridor west to the camp
-    for (let x = CIS.vault.x1; x < CIS.nave.x0; x++) for (const y of [271, 272, 273]) set(x, y, T.FLOOR);   // and south-west to the vault
+    for (let y = 253; y <= 254; y++) for (let x = 100; x <= 120; x++) set(x, y, T.FLAG);
+    for (let x = 41; x < CIS.nave.x0; x++) for (const y of [257, 258, 259]) set(x, y, T.FLAG);            // corridor west to the camp
+    for (let x = CIS.vault.x1; x < CIS.nave.x0; x++) for (const y of [271, 272, 273]) set(x, y, T.FLAG);   // and south-west to the vault
     // columns down the nave, in rows, clear of the roads
     for (let y = CIS.nave.y0 + 2; y <= CIS.nave.y1 - 2; y += 4) for (let x = CIS.nave.x0 + 3; x <= CIS.nave.x1 - 3; x += 6) if (![258, 266, 272].some(r => Math.abs(y - r) < 2) && Math.abs(x - 110) > 4) set(x, y, T.COLUMN);
     for (const [x, y] of [[98, 245], [122, 245], [98, 250], [122, 250]]) set(x, y, T.COLUMN);
@@ -54,7 +61,7 @@
     for (let y = 244; y <= CIS.nave.y1; y++) for (let x = CIS.canal[0]; x <= CIS.canal[1]; x++) set(x, y, [258, 266, 272].includes(y) ? T.BRIDGE : T.WATER);
     for (let x = CIS.canal[0] - 1; x <= CIS.canal[1] + 1; x++) set(x, CIS.nave.y1 + 1, T.WATER);
     // puddles and fallen stone
-    for (let i = 0; i < 70; i++) { const x = 2 + Math.floor(cisRnd(i * 7 + 1, 601) * 164), y = 242 + Math.floor(cisRnd(607, i * 3 + 2) * 46); if (get(x, y) === T.FLOOR && Math.abs(x - 110) > 3) set(x, y, cisRnd(i, 611) < 0.6 ? T.SHALLOW : T.BONES); }
+    for (let i = 0; i < 70; i++) { const x = 2 + Math.floor(cisRnd(i * 7 + 1, 601) * 164), y = 242 + Math.floor(cisRnd(607, i * 3 + 2) * 46); if (get(x, y) === T.FLAG && Math.abs(x - 110) > 3) set(x, y, cisRnd(i, 611) < 0.6 ? T.SHALLOW : T.BONES); }
     // the lampkeepers' alcove: lean-tos against the wall, a well of clean water they guard
     const C = CIS.camp; house2(C.x0 + 2, C.y0 + 1, 5); house2(C.x0 + 9, C.y0 + 1, 5); house2(C.x0 + 22, C.y0 + 1, 6); set(C.x0 + 11, C.y0 + 6, T.WELL);
     // the ledger vault: a masonry room, the door of the Guild's counting house

@@ -250,6 +250,15 @@ const SUITES = {
     await p.clear(); ok(!(await p.evaluate(() => window.__saltRoad.reach())).length, "every story spot is still reachable");
     await noErrors(p); await p.done();
   },
+  async atmosphere() {   // footprints in the snow, the cistern's dark, warm light at night
+    const p = await open(); await p.start(); await setup(p, 10, ["ilse"], 20); await p.clear();
+    await p.evaluate(() => { const R = window.__saltRoad, f = R.state().flags; for (const k of ["rimeHint", "weirHint", "cisHint", "rimeArrived", "rimeDone", "weirArrived", "weirDone", "cisArrived"]) f[k] = true; R.tp(100, 166); R.clearField(); });
+    await p.waitForTimeout(300); await p.clear(); await p.keyboard.down("d"); await p.waitForTimeout(700); await p.keyboard.up("d"); await p.waitForTimeout(200);
+    ok((await p.evaluate(() => window.__saltRoad.atmo())).kinds.includes("snow"), "feet leave prints in the Rime's snow");
+    await p.evaluate(() => { window.__saltRoad.tp(66, 258); window.__saltRoad.clearField(); }); await p.waitForTimeout(800); await p.clear();
+    const c = await p.evaluate(() => window.__saltRoad.atmo()); ok(c.cave, "the cistern has its own dark, lit by its lamps");
+    await noErrors(p); await p.done();
+  },
   async audio() {   // the recorded score from salt-road/audio: it loads, plays per scene, and the synthesised score covers the rest
     const p = await open(); await p.start(); await p.waitForTimeout(800);
     const r = await p.evaluate(() => window.__saltRoad.recorded());

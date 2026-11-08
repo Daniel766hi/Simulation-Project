@@ -16,7 +16,7 @@
     clear(XS.hart.x, XS.hart.y, 2, T.SNOW); carve([[XS.hart.x - 2, XS.hart.y], [140, XS.hart.y], [140, 182]], T.SNOW);
     clear(XS.silt.x, XS.silt.y, 2, T.SHALLOW); carve([[XS.silt.x - 2, XS.silt.y], [WEIR.reeds.x0 + 2, XS.silt.y]], T.SHALLOW);
     clear(XS.pick.x, XS.pick.y, 1, T.SNOW); carve([[XS.pick.x + 1, XS.pick.y], [24, XS.pick.y], [24, 168]], T.SNOW);
-    for (const [x, y] of XS.lamps) set(x, y, T.FLOOR);
+    for (const [x, y] of XS.lamps) set(x, y, T.FLAG);
   };
   // ---- the hidden bosses
   Object.assign(MONSTERS, {
