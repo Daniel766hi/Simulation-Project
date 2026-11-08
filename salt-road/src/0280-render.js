@@ -1,5 +1,7 @@
   // ================================================================== RENDER
   let noRainAt = (tx, ty) => false;   // places the Act II rain does not fall (later regions add theirs)
+  let groundFx = (g, ox, oy) => {};
+  let battleSkyFx = (g, area) => {};   // over a battle's backdrop, under its fighters (the hour, the weather)   // marks on the ground under everyone (footprints, ripples); later sections fill it in
   const canvas = $("game"), ctx = canvas.getContext("2d");
   const buf = document.createElement("canvas"); buf.width = VIEW_W; buf.height = VIEW_H;
   const g = buf.getContext("2d");
@@ -49,6 +51,7 @@
       }
     }
     for (const pr of PROPS) if (pr.flat && Math.abs(pr.px - ox - VIEW_W / 2) < VIEW_W && Math.abs(pr.py - oy - VIEW_H / 2) < VIEW_H) drawProp(g, pr, pr.px - ox, pr.py - oy);
+    groundFx(g, ox, oy);
     for (const l of LORE) if (Math.abs(l.x * TILE - ox - VIEW_W / 2) < VIEW_W) drawTablet(g, l.x * TILE + 8 - ox, l.y * TILE + 8 - oy, !(G.flags.lore || []).includes(l.id));
     // the grove pond runs dark until the Mother dies
     if (!G.flags.motherDead) { g.fillStyle = "rgba(40,10,30,.55)"; g.fillRect(58 * TILE - ox, 38 * TILE - oy, 6 * TILE, 5 * TILE); }
@@ -216,6 +219,7 @@
       g.fillStyle = area === "oasis" ? "#2f5a3a" : "#c3b8d8"; for (let i = 0; i < 9; i++) g.fillRect(i * 40 - 10 + (i % 2) * 12, 124 + (i % 3) * 14, 26, 1);
       g.fillStyle = "#f2ead8"; for (const [x, y] of [[40, 140], [230, 150], [150, 132]]) { g.fillRect(x, y, 6, 2); g.fillRect(x + 1, y - 2, 2, 2); }
     }
+    battleSkyFx(g, area);
     const drawOrder = [...B.foes].sort((a, b) => (a.boss ? 0 : 1) - (b.boss ? 0 : 1));
     for (const f of drawOrder) {
       const p = unitPos(f);
