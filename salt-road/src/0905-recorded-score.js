@@ -104,6 +104,16 @@
     }
     return _soundRec(kind);
   };
+  // a recording for a foe falling and for a level gained (the synthesised score has no sound for these)
+  const _damageRec = damage;
+  damage = function (target, amount, o) {
+    const was = target && !target.dead, r = _damageRec.apply(this, arguments);
+    if (was && target.dead && target.side !== "hero" && !SIM.fast) Music.sound("death");
+    return r;
+  };
+  let recLevelT = 0;
+  const _levelUpRec = levelUp;
+  levelUp = function (h) { const r = _levelUpRec.apply(this, arguments); if (battle && !SIM.fast && performance.now() - recLevelT > 1500) { recLevelT = performance.now(); Music.sound("levelup"); } return r; };
   // load the folder's list; the first time it is there, the recorded score becomes the default (Settings can switch back)
   try {
     if (location.protocol !== "file:") fetch(REC.base + "manifest.json", { cache: "no-cache" }).then(r => r.ok ? r.json() : null).then(m => {
