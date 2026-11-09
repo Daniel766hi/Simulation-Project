@@ -15043,7 +15043,45 @@
     g2.fillStyle = `rgba(8,10,34,${0.5 * nt})`; g2.fillRect(-10, -10, VIEW_W + 20, 220);
     for (let i = 0; i < 30; i++) { const a = (0.35 + 0.35 * Math.sin(time * 1.6 + i * 2.1)) * nt; g2.fillStyle = `rgba(220,230,255,${a})`; g2.fillRect((hash(i, 811) * VIEW_W) | 0, (hash(i, 813) * 80) | 0, 1, 1); }
   };
-  setTimeout(() => Object.assign(window.__saltRoad || (window.__saltRoad = {}), { atmo: () => ({ marks: marks.length, kinds: [...new Set(marks.map(m => m.kind))], drips: drips.length, cave: inCistern(), rime: inRime(), bed: inBed() }) }), 0);
+  // ---- people in their weather: long shadows from a low sun, breath on the cold air, dust and spray at a run
+  const puffs = [], kicks = [];
+  const outdoorsHere = () => !OUTDOOR_SKIP.has(tileAt(G.px, G.py)) && !inCistern();
+  const _drawPersonAtmo = drawPerson;
+  drawPerson = function (g2, x, y, o) {
+    if (o && !o.dead && G && !battle && (mode === "play" || mode === "dialog") && g2 === g && outdoorsHere()) {
+      const c = G.clock ?? 0.3, s = Math.sin(Math.PI * 2 * c);
+      if (s > 0.02) {   // the sun is up: the lower it stands, the longer the shadow, cast away from it
+        const len = Math.min(14, 2.5 / s), dirx = -Math.cos(Math.PI * 2 * c), a = 0.16 * Math.min(1, s * 4);
+        g2.save(); g2.translate(Math.round(x), Math.round(y)); g2.fillStyle = `rgba(20,14,40,${a})`;
+        g2.beginPath(); g2.ellipse(dirx * len * 0.55, -0.5, 3 + len * 0.55, 2.2, 0, 0, Math.PI * 2); g2.fill(); g2.restore();
+      }
+      if (inRime() && !REDUCED && puffs.length < 14 && Math.random() < 0.004) puffs.push({ x: x + camX + (o.dir === "left" ? -5 : o.dir === "right" ? 5 : 0), y: y + camY - 17, age: 0, vx: (o.dir === "left" ? -6 : o.dir === "right" ? 6 : (Math.random() - 0.5) * 4) });
+    }
+    return _drawPersonAtmo(g2, x, y, o);
+  };
+  const KICK = { [T.SAND]: "216,180,130", [T.SALT]: "236,232,226", [T.SNOW]: "255,255,255", [T.MUD]: "110,80,50", [T.SHALLOW]: "200,236,250" };
+  const _updateAtmo2 = update;
+  update = function (dt) {
+    _updateAtmo2(dt);
+    for (let i = puffs.length - 1; i >= 0; i--) { const p = puffs[i]; p.age += dt; p.x += p.vx * dt; p.y -= 5 * dt; if (p.age > 1.4) puffs.splice(i, 1); }
+    for (let i = kicks.length - 1; i >= 0; i--) { const k = kicks[i]; k.age += dt; k.x += k.vx * dt; k.y += k.vy * dt; k.vy += 30 * dt; if (k.age > k.life) kicks.splice(i, 1); }
+    if (!G || mode !== "play" || REDUCED || !player.moving || !(player.sprint || player.dashT > 0)) return;
+    const col = KICK[tileAt(G.px, G.py)]; if (!col || Math.random() > (player.dashT > 0 ? 0.9 : 0.35)) return;
+    const d = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }[player.dir] || [0, 1];
+    for (let n = 0; n < (player.dashT > 0 ? 3 : 1); n++) kicks.push({ x: G.px + (Math.random() - 0.5) * 6, y: G.py, vx: -d[0] * (10 + Math.random() * 14) + (Math.random() - 0.5) * 8, vy: -8 - Math.random() * 10, age: 0, life: 0.45 + Math.random() * 0.3, col });
+  };
+  const _groundFxAtmo2 = groundFx;
+  groundFx = function (g2, ox, oy) {
+    _groundFxAtmo2(g2, ox, oy);
+    for (const k of kicks) { const a = 1 - k.age / k.life; g2.fillStyle = `rgba(${k.col},${0.7 * a})`; g2.fillRect(Math.round(k.x - ox), Math.round(k.y - oy), 1 + (k.age < 0.15), 1); }
+  };
+  const _renderWorldAtmo2 = renderWorld;
+  renderWorld = function () {
+    _renderWorldAtmo2();
+    if (!G || !puffs.length) return;
+    for (const p of puffs) { const a = Math.max(0, 0.45 * (1 - p.age / 1.4)), r = 1.5 + p.age * 3; g.fillStyle = `rgba(240,248,255,${a})`; g.beginPath(); g.arc(p.x - camX, p.y - camY, r, 0, Math.PI * 2); g.fill(); }
+  };
+  setTimeout(() => Object.assign(window.__saltRoad || (window.__saltRoad = {}), { atmo: () => ({ puffs: puffs.length, kicks: kicks.length, marks: marks.length, kinds: [...new Set(marks.map(m => m.kind))], drips: drips.length, cave: inCistern(), rime: inRime(), bed: inBed() }) }), 0);
   // ================================================================== COMFORT: CONTROLLERS, KEYS, TEXT SIZE, FLASHES
   // Everything the game reads arrives as a key it already knows. A remapped key, or a controller button, is turned
   // into that key before any other part of the game sees it, so every screen (the road, menus, battles, dialogue,
