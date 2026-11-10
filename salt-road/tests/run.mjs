@@ -257,6 +257,8 @@ const SUITES = {
     ok((await p.evaluate(() => window.__saltRoad.atmo())).kinds.includes("snow"), "feet leave prints in the Rime's snow");
     await p.evaluate(() => { window.__saltRoad.tp(66, 258); window.__saltRoad.clearField(); }); await p.waitForTimeout(800); await p.clear();
     const c = await p.evaluate(() => window.__saltRoad.atmo()); ok(c.cave, "the cistern has its own dark, lit by its lamps");
+    await p.evaluate(() => { window.__saltRoad.tp(58, 44); window.__saltRoad.clearField(); }); await p.waitForTimeout(500);
+    ok((await p.evaluate(() => window.__saltRoad.edges())).cached > 0, "where grass meets a path, the grass frays over it");
     await noErrors(p); await p.done();
   },
   async audio() {   // the recorded score from salt-road/audio: it loads, plays per scene, and the synthesised score covers the rest
