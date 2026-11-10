@@ -36,4 +36,23 @@
     }
     _groundFxEdges(g2, ox, oy);
   };
+  // ---- reflections: someone standing at the water's edge, or in the shallows, shows in it, faint and wavering
+  const REFLECTS = new Set([T.WATER, T.SHALLOW]);
+  let reflecting = false;
+  const _drawPersonRefl = drawPerson;
+  drawPerson = function (g2, x, y, o) {
+    if (o && !o.dead && !reflecting && G && !battle && g2 === g && (mode === "play" || mode === "dialog")) {
+      const wx = x + camX, wy = y + camY, below = get(Math.floor(wx / TILE), Math.floor((wy + 10) / TILE));
+      if (REFLECTS.has(below)) {
+        reflecting = true;
+        const top = Math.max(Math.round(y) + 1, Math.floor((wy + 10) / TILE) * TILE - Math.round(camY));   // only on the water itself
+        g2.save(); g2.beginPath(); g2.rect(Math.round(x) - 14, top, 28, Math.round(y) + 31 - top); g2.clip();
+        g2.globalAlpha = below === T.SHALLOW ? 0.22 : 0.3;
+        g2.translate(Math.round(x + Math.sin(time * 2.4 + wy * 0.05) * 0.8), Math.round(y) + 2); g2.scale(1, -0.9);
+        try { _drawPersonRefl(g2, 0, 0, { ...o, walking: false }); } finally { reflecting = false; g2.restore(); }
+        g2.fillStyle = "rgba(230,250,255,0.18)"; for (let k = 0; k < 3; k++) g2.fillRect(Math.round(x) - 6 + ((time * 6 + k * 5) % 12), Math.round(y) + 5 + k * 6, 4, 1);   // light on the ripples
+      }
+    }
+    return _drawPersonRefl(g2, x, y, o);
+  };
   setTimeout(() => Object.assign(window.__saltRoad || (window.__saltRoad = {}), { edges: on => { if (on !== undefined) edgesOn = !!on; return { on: edgesOn, cached: edgeCache.size }; } }), 0);
