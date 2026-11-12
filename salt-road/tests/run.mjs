@@ -259,6 +259,9 @@ const SUITES = {
     const c = await p.evaluate(() => window.__saltRoad.atmo()); ok(c.cave, "the cistern has its own dark, lit by its lamps");
     await p.evaluate(() => { window.__saltRoad.tp(58, 44); window.__saltRoad.clearField(); }); await p.waitForTimeout(500);
     ok((await p.evaluate(() => window.__saltRoad.edges())).cached > 0, "where grass meets a path, the grass frays over it");
+    await p.keyboard.down("s"); await p.waitForTimeout(150); await p.keyboard.up("s"); await p.waitForTimeout(6500); const lv = await p.evaluate(() => window.__saltRoad.living()); ok(lv.idle > 6 && !lv.look, "with reduced motion, a courier left standing stays still");
+    await p.evaluate(() => window.__saltRoad.battle(["jackal"])); await p.waitForTimeout(100);
+    ok((await p.evaluate(() => window.__saltRoad.living().intro)) < 0.6, "a battle opens with its curtain of bars"); await p.evaluate(() => window.__saltRoad.flee());
     await noErrors(p); await p.done();
   },
   async audio() {   // the recorded score from salt-road/audio: it loads, plays per scene, and the synthesised score covers the rest
