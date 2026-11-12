@@ -22,6 +22,22 @@
     g2.globalCompositeOperation = "destination-in"; g2.drawImage(mk, 0, 0);
     edgeCache.set(key, c); return c;
   }
+  // corners: c is 0 top-left, 1 top-right, 2 bottom-right, 3 bottom-left. "inner" is a small tuft where only the diagonal
+  // neighbour is stronger; "outer" rounds the corner where both sides are the same stronger ground, so it curves
+  function cornerSprite(nt, c, m, outer) {
+    const key = 100000 + nt * 1000 + c * 100 + m * 10 + (outer ? 1 : 0); if (edgeCache.has(key)) return edgeCache.get(key);
+    const cv = document.createElement("canvas"); cv.width = cv.height = TILE; const g2 = cv.getContext("2d");
+    g2.drawImage(tileCanvas(nt, m % (VARIANTS[nt] || 1)), 0, 0);
+    const mk = document.createElement("canvas"); mk.width = mk.height = TILE; const mg = mk.getContext("2d"); mg.fillStyle = "#000";
+    const R = outer ? 5 : 2.6 + hash(nt + m, c) * 1.2;
+    for (let y = 0; y < 6; y++) for (let x = 0; x < 6; x++) {
+      const inside = outer ? (x < 3 || y < 3 || (x - 2.5) ** 2 + (y - 2.5) ** 2 < 2.2) && x + y < R + 1.5 : x * x + y * y < R * R;
+      if (!inside) continue;
+      const px = c === 1 || c === 2 ? TILE - 1 - x : x, py = c >= 2 ? TILE - 1 - y : y; mg.fillRect(px, py, 1, 1);
+    }
+    g2.globalCompositeOperation = "destination-in"; g2.drawImage(mk, 0, 0);
+    edgeCache.set(key, cv); return cv;
+  }
   let edgesOn = true;
   const _groundFxEdges = groundFx;
   groundFx = function (g2, ox, oy) {
@@ -32,6 +48,13 @@
         const X = tx * TILE - ox, Y = ty * TILE - oy, m = Math.floor(hash(tx * 5 + 1, ty * 7 + 3) * 3);
         const ns = [get(tx, ty - 1), get(tx + 1, ty), get(tx, ty + 1), get(tx - 1, ty)];
         for (let s = 0; s < 4; s++) { const n = ns[s], nr = EDGE_RANK[n]; if (nr !== undefined && nr > rk) g2.drawImage(edgeSprite(n, s, m), X, Y); }
+        for (let c = 0; c < 4; c++) {   // the two sides meeting at this corner, and the diagonal between them
+          const s1 = c === 0 || c === 1 ? 0 : 2, s2 = c === 0 || c === 3 ? 3 : 1, a1 = ns[s1], a2 = ns[s2], r1 = EDGE_RANK[a1], r2 = EDGE_RANK[a2];
+          if (a1 === a2 && r1 !== undefined && r1 > rk) { g2.drawImage(cornerSprite(a1, c, m, true), X, Y); continue; }
+          if ((r1 !== undefined && r1 > rk) || (r2 !== undefined && r2 > rk)) continue;
+          const d = get(tx + (c === 1 || c === 2 ? 1 : -1), ty + (c >= 2 ? 1 : -1)), dr = EDGE_RANK[d];
+          if (dr !== undefined && dr > rk) g2.drawImage(cornerSprite(d, c, m, false), X, Y);
+        }
       }
     }
     _groundFxEdges(g2, ox, oy);
