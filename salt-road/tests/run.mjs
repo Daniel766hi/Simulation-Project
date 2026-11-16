@@ -261,7 +261,9 @@ const SUITES = {
     ok((await p.evaluate(() => window.__saltRoad.edges())).cached > 0, "where grass meets a path, the grass frays over it");
     await p.keyboard.down("s"); await p.waitForTimeout(150); await p.keyboard.up("s"); await p.waitForTimeout(6500); const lv = await p.evaluate(() => window.__saltRoad.living()); ok(lv.idle > 6 && !lv.look, "with reduced motion, a courier left standing stays still");
     await p.evaluate(() => window.__saltRoad.battle(["jackal"])); await p.waitForTimeout(100);
-    ok((await p.evaluate(() => window.__saltRoad.living().intro)) < 0.6, "a battle opens with its curtain of bars"); await p.evaluate(() => window.__saltRoad.flee());
+    ok((await p.evaluate(() => window.__saltRoad.living().intro)) < 0.6, "a battle opens with its curtain of bars");
+    await p.evaluate(() => { const R = window.__saltRoad; R.flee(); R.state().clock = 0.25; R.tp(30, 30); R.clearField(); }); await p.waitForTimeout(500);
+    const sk = await p.evaluate(() => window.__saltRoad.skies()); ok(sk.on && sk.out && sk.day > 0.5, "out on the salt by day, the sky shows on the ground"); await p.evaluate(() => window.__saltRoad.flee());
     await noErrors(p); await p.done();
   },
   async audio() {   // the recorded score from salt-road/audio: it loads, plays per scene, and the synthesised score covers the rest
