@@ -179,6 +179,78 @@
       "url": "https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1500048",
       "seconds": 244.8,
       "gain": 1.084
+    },
+    "region_rime": {
+      "file": "music/region_rime.ogg",
+      "title": "Frost Waltz",
+      "author": "Kevin MacLeod",
+      "license": "CC-BY 4.0",
+      "url": "https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1100516",
+      "seconds": 131.6
+    },
+    "region_weir": {
+      "file": "music/region_weir.ogg",
+      "title": "Smoking Gun",
+      "author": "Kevin MacLeod",
+      "license": "CC-BY 4.0",
+      "url": "https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1100345",
+      "seconds": 185.4
+    },
+    "region_cistern": {
+      "file": "music/region_cistern.ogg",
+      "title": "Sunset at Glengorm",
+      "author": "Kevin MacLeod",
+      "license": "CC-BY 4.0",
+      "url": "https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1100651",
+      "seconds": 132.8
+    },
+    "boss_isolde": {
+      "file": "music/boss_isolde.ogg",
+      "title": "Truth of the Legend",
+      "author": "Kevin MacLeod",
+      "license": "CC-BY 4.0",
+      "url": "https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1100592",
+      "seconds": 87.1
+    },
+    "boss_merrow": {
+      "file": "music/boss_merrow.ogg",
+      "title": "Industrial Revolution",
+      "author": "Kevin MacLeod",
+      "license": "CC-BY 4.0",
+      "url": "https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1100811",
+      "seconds": 143.2
+    },
+    "boss_vane": {
+      "file": "music/boss_vane.ogg",
+      "title": "Final Count",
+      "author": "Kevin MacLeod",
+      "license": "CC-BY 4.0",
+      "url": "https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1100657",
+      "seconds": 202.1
+    },
+    "boss_hidden": {
+      "file": "music/boss_hidden.ogg",
+      "title": "Exotic Battle",
+      "author": "Kevin MacLeod",
+      "license": "CC-BY 4.0",
+      "url": "https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1100451",
+      "seconds": 167.6
+    },
+    "title": {
+      "file": "music/title.ogg",
+      "title": "Long Road Ahead",
+      "author": "Kevin MacLeod",
+      "license": "CC-BY 4.0",
+      "url": "https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1100588",
+      "seconds": 142.1
+    },
+    "night": {
+      "file": "music/night.ogg",
+      "title": "Evening Fall (Harp)",
+      "author": "Kevin MacLeod",
+      "license": "CC-BY 4.0",
+      "url": "https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1100236",
+      "seconds": 142.1
     }
   },
   "sfx": {
@@ -328,6 +400,64 @@
       "author": "rubberduck",
       "license": "CC0 1.0",
       "url": "https://opengameart.org/content/80-cc0-rpg-sfx"
+    }
+  },
+  "ambience": {
+    "wind": {
+      "file": "ambience/wind.ogg",
+      "title": "Nature Ambient Pack Vol 1: Winter Wind",
+      "author": "JC Sounds",
+      "license": "CC-BY 4.0",
+      "url": "https://opengameart.org/content/jc-sounds-nature-ambient-pack-vol-1",
+      "seconds": 40.0
+    },
+    "rain": {
+      "file": "ambience/rain.ogg",
+      "title": "Rain (Ambient, Not Loopable): Rainy (NOT loopable) Long Version.ogg",
+      "author": "OveMelaa",
+      "license": "CC0 1.0",
+      "url": "https://opengameart.org/content/rain-ambient-not-loopable-2-versions-available",
+      "seconds": 40.0
+    },
+    "crickets": {
+      "file": "ambience/crickets.ogg",
+      "title": "Nature Ambient Pack Vol 1: Summer Evening",
+      "author": "JC Sounds",
+      "license": "CC-BY 4.0",
+      "url": "https://opengameart.org/content/jc-sounds-nature-ambient-pack-vol-1",
+      "seconds": 40.0
+    },
+    "fire": {
+      "file": "ambience/fire.ogg",
+      "title": "Nature Ambient Pack Vol 1: Campfire Crackling",
+      "author": "JC Sounds",
+      "license": "CC-BY 4.0",
+      "url": "https://opengameart.org/content/jc-sounds-nature-ambient-pack-vol-1",
+      "seconds": 40.0
+    },
+    "stream": {
+      "file": "ambience/stream.ogg",
+      "title": "Park Ambiences: park_ambience_river.wav",
+      "author": "Thimras",
+      "license": "CC0 1.0",
+      "url": "https://opengameart.org/content/park-ambiences",
+      "seconds": 40.0
+    },
+    "drips": {
+      "file": "ambience/drips.ogg",
+      "title": "Water Drops: water drops.mp3",
+      "author": "CeoxBlackj",
+      "license": "CC0 1.0",
+      "url": "https://opengameart.org/content/water-drops",
+      "seconds": 40.0
+    },
+    "sea": {
+      "file": "ambience/sea.ogg",
+      "title": "Nature Ambient Pack Vol 1: Ocean Waves",
+      "author": "JC Sounds",
+      "license": "CC-BY 4.0",
+      "url": "https://opengameart.org/content/jc-sounds-nature-ambient-pack-vol-1",
+      "seconds": 40.0
     }
   }
 }
