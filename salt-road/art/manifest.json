@@ -1,0 +1,175 @@
+{
+  "cards": {
+    "title": {
+      "file": "cards/title.webp",
+      "title": "Foggy Scene (scene02b.png)",
+      "author": "zonked",
+      "license": "CC0",
+      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "url": "https://opengameart.org/content/foggy-scene",
+      "edits": "Lanczos-scaled and centre-cropped to 1600x900; graded (saturation -15%, midtones darkened via gamma 0.88, #1b1633 shadow tint); WebP q90"
+    },
+    "prologue": {
+      "file": "cards/prologue.webp",
+      "title": "Backgrounds (battleback4.png)",
+      "author": "Nidhoggn",
+      "license": "CC0",
+      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "url": "https://opengameart.org/content/backgrounds-3",
+      "edits": "Lanczos-upscaled from 1104x621 and centre-cropped to 1600x900; graded (saturation -15%, midtones darkened via gamma 0.88, #1b1633 shadow tint); WebP q90"
+    },
+    "ch2_well": {
+      "file": "cards/ch2_well.webp",
+      "title": "3 Halloween Game Backgrounds (3.png)",
+      "author": "codeinfernogames",
+      "license": "CC0",
+      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "url": "https://opengameart.org/content/3-halloween-game-backgrounds",
+      "edits": "Lanczos-scaled and centre-cropped to 1600x900; graded (saturation -15%, midtones darkened via gamma 0.88, #1b1633 shadow tint); WebP q90"
+    },
+    "ch3_grove": {
+      "file": "cards/ch3_grove.webp",
+      "title": "Concept Art Studies Bundle 1 (elk-skull-lodge.jpg)",
+      "author": "Eon Cire",
+      "license": "CC0",
+      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "url": "https://opengameart.org/content/concept-art-studies-bundle-1",
+      "edits": "Lanczos-upscaled from 1186x666 and centre-cropped to 1600x900; graded (saturation -15%, midtones darkened via gamma 0.88, #1b1633 shadow tint); WebP q90"
+    },
+    "ch4_cathedral": {
+      "file": "cards/ch4_cathedral.webp",
+      "title": "Mixed Fantasy Backgrounds (d15_by_olracadejup-d4ohdt8.jpg)",
+      "author": "olracadejup (artist; commissioned and released by ulfus)",
+      "license": "CC0",
+      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "url": "https://opengameart.org/content/mixed-fantasy-backgrounds",
+      "edits": "black letterbox border trimmed; Lanczos-upscaled and centre-cropped to 1600x900; graded (saturation -15%, midtones darkened via gamma 0.88, #1b1633 shadow tint); WebP q90"
+    },
+    "ch5_flayed": {
+      "file": "cards/ch5_flayed.webp",
+      "title": "Background with ruins (background_43.png)",
+      "author": "Kutejnikov",
+      "license": "CC0",
+      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "url": "https://opengameart.org/content/background-with-ruins",
+      "edits": "Lanczos-scaled and centre-cropped to 1600x900; graded (saturation -15%, midtones darkened via gamma 0.88, #1b1633 shadow tint); WebP q90"
+    },
+    "ch7_city": {
+      "file": "cards/ch7_city.webp",
+      "title": "Gothicvania Town (layers/background.png + layers/middleground.png)",
+      "author": "ansimuz",
+      "license": "CC0",
+      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "url": "https://opengameart.org/content/gothicvania-town",
+      "edits": "background and middleground layers composited; 5x nearest-neighbour upscale (pixels kept crisp); top-anchored crop to 1600x900; graded (saturation -15%, midtones darkened via gamma 0.88, #1b1633 shadow tint); WebP q90"
+    },
+    "ch8_marsh": {
+      "file": "cards/ch8_marsh.webp",
+      "title": "3 Halloween Game Backgrounds (1.png)",
+      "author": "codeinfernogames",
+      "license": "CC0",
+      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "url": "https://opengameart.org/content/3-halloween-game-backgrounds",
+      "edits": "Lanczos-scaled and centre-cropped to 1600x900; graded (saturation -15%, midtones darkened via gamma 0.88, #1b1633 shadow tint); WebP q90"
+    },
+    "ch9_coast": {
+      "file": "cards/ch9_coast.webp",
+      "title": "Concept Art Studies Bundle 1 (island-cove.JPG)",
+      "author": "Eon Cire",
+      "license": "CC0",
+      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "url": "https://opengameart.org/content/concept-art-studies-bundle-1",
+      "edits": "Lanczos-upscaled from 1130x720 and centre-cropped to 1600x900; graded (saturation -15%, midtones darkened via gamma 0.88, #1b1633 shadow tint); WebP q90"
+    },
+    "ch10_shrines": {
+      "file": "cards/ch10_shrines.webp",
+      "title": "Fantasy Tomb Scene (scene04b.png)",
+      "author": "zonked",
+      "license": "CC0",
+      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "url": "https://opengameart.org/content/fantasy-tomb-scene",
+      "edits": "landscape region 1080x608 cropped from portrait original (y+420); Lanczos-upscaled to 1600x900; graded (saturation -15%, midtones darkened via gamma 0.88, #1b1633 shadow tint); WebP q90"
+    },
+    "ch11_spire": {
+      "file": "cards/ch11_spire.webp",
+      "title": "Summon Thunder (summon-thunder.png)",
+      "author": "zonked",
+      "license": "CC0",
+      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "url": "https://opengameart.org/content/summon-thunder",
+      "edits": "landscape region 2480x1395 cropped from portrait original (y+250); Lanczos-scaled to 1600x900; graded (saturation -15%, midtones darkened via gamma 0.88, #1b1633 shadow tint); WebP q90"
+    },
+    "ch12_king": {
+      "file": "cards/ch12_king.webp",
+      "title": "Dark Rpg background (abyss.psd)",
+      "author": "Ironthunder",
+      "license": "CC-BY 4.0",
+      "license_url": "https://creativecommons.org/licenses/by/4.0/",
+      "url": "https://opengameart.org/content/dark-rpg-background",
+      "edits": "PSD flattened (merged composite); Lanczos-scaled and centre-cropped to 1600x900; graded (saturation -15%, midtones darkened via gamma 0.88, #1b1633 shadow tint); WebP q90"
+    },
+    "act2_rains": {
+      "file": "cards/act2_rains.webp",
+      "title": "Rainy sky (rainy.png)",
+      "author": "LisadiKaprio",
+      "license": "CC-BY 4.0",
+      "license_url": "https://creativecommons.org/licenses/by/4.0/",
+      "url": "https://opengameart.org/content/rainy-sky",
+      "edits": "Lanczos-scaled and centre-cropped to 1600x900; graded (saturation -15%, midtones darkened via gamma 0.88, #1b1633 shadow tint); WebP q90"
+    },
+    "drysea": {
+      "file": "cards/drysea.webp",
+      "title": "Oil painting landscapes (cloudsinthedesert.png)",
+      "author": "JAP",
+      "license": "CC0",
+      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "url": "https://opengameart.org/content/oil-painting-landscapes",
+      "edits": "Lanczos-upscaled from 1000x700 and centre-cropped to 1600x900; graded (saturation -15%, midtones darkened via gamma 0.88, #1b1633 shadow tint); WebP q90"
+    },
+    "rime": {
+      "file": "cards/rime.webp",
+      "title": "40 game backgrounds #1 - painted style (bg-38.JPG)",
+      "author": "rubberduck",
+      "license": "CC0",
+      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "url": "https://opengameart.org/content/40-game-backgrounds-1-painted-style-and-photorealistic",
+      "edits": "Lanczos-scaled and centre-cropped to 1600x900; graded (saturation -15%, midtones darkened via gamma 0.88, #1b1633 shadow tint); WebP q90"
+    },
+    "weir": {
+      "file": "cards/weir.webp",
+      "title": "City In A Canyon (scene_05_v2.png)",
+      "author": "zonked",
+      "license": "CC0",
+      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "url": "https://opengameart.org/content/city-in-a-canyon",
+      "edits": "Lanczos-scaled and centre-cropped to 1600x900; graded (saturation -15%, midtones darkened via gamma 0.88, #1b1633 shadow tint); WebP q90"
+    },
+    "epilogue": {
+      "file": "cards/epilogue.webp",
+      "title": "Tomb Concept 01 (scene01d.png)",
+      "author": "zonked",
+      "license": "CC0",
+      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "url": "https://opengameart.org/content/tomb-concept-01",
+      "edits": "Lanczos-upscaled from 960x540 to 1600x900; graded (saturation -15%, midtones darkened via gamma 0.88, #1b1633 shadow tint); WebP q90"
+    },
+    "home": {
+      "file": "cards/home.webp",
+      "title": "Backdrops for story and level (Ardentryst) (Ardentryst-Intro_Kiripan_Village.png)",
+      "author": "Elle Trudgett (uploaded to OpenGameArt by qubodup)",
+      "license": "CC-BY 3.0",
+      "license_url": "https://creativecommons.org/licenses/by/3.0/",
+      "url": "https://opengameart.org/content/backdrops-for-story-and-level-ardentryst",
+      "edits": "Lanczos-upscaled from 902x480 and centre-cropped to 1600x900; graded (saturation -15%, midtones darkened via gamma 0.88, #1b1633 shadow tint); WebP q90"
+    },
+    "ending": {
+      "file": "cards/ending.webp",
+      "title": "Oil painting landscapes (sunsetintheswamp.png)",
+      "author": "JAP",
+      "license": "CC0",
+      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "url": "https://opengameart.org/content/oil-painting-landscapes",
+      "edits": "Lanczos-upscaled from 1000x700 and centre-cropped to 1600x900; graded (saturation -15%, midtones darkened via gamma 0.88, #1b1633 shadow tint); WebP q90"
+    }
+  }
+}
