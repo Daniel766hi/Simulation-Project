@@ -7,12 +7,27 @@
   const RecPlay = { els: {}, cur: null, bufs: {}, loading: {} };
   const REC_GAIN = 0.3, REC_SFX_GAIN = 0.7;
   // the score's own keys for each region, boss and scene; any missing in the folder falls back to the synthesised score
+  // some places and fights have a recording of their own when the folder has it: Act III's regions and bosses, the
+  // three hidden foes, the title screen, and a nocturne for the open country at night
+  const REGION_REC = { rime: "region_rime", weir: "region_weir", cistern: "region_cistern" };
+  const BOSS_REC = { isolde: "boss_isolde", merrow: "boss_merrow", vane: "boss_vane", hart: "boss_hidden", silt: "boss_hidden", firstclerk: "boss_hidden" };
+  const NIGHT_OVER = new Set(["flats", "coast", "marsh", "grove", "village", "oru"]);
+  const recSpecific = k => {
+    if (mode === "title" && REC.music.title) return "title";
+    if (battle) { const id = battle.opts && battle.opts.boss; return id && (k === "boss" || k === "battle") && REC.music[BOSS_REC[id]] ? BOSS_REC[id] : null; }
+    if (!G || /^cine_|^ending$|^final$/.test(k)) return null;
+    const reg = regionOf(Math.floor(G.px / TILE), Math.floor(G.py / TILE));
+    if (REGION_REC[reg] && REC.music[REGION_REC[reg]] && k !== "boss" && k !== "battle") return REGION_REC[reg];
+    if (NIGHT_OVER.has(k) && REC.music.night && typeof isNight === "function" && isNight()) return "night";
+    return null;
+  };
   const recKey = name => {
     if (!name) return null;
     let k = name;
     if (typeof CLASSIC_OF !== "undefined" && CLASSIC_OF[k]) k = CLASSIC_OF[k];
     if (/^mb_/.test(k)) k = "boss";
     if (k === "cine_deep" && !REC.music.cine_deep) k = "deep";
+    const own = recSpecific(k); if (own) return own;
     return REC.music[k] ? k : null;
   };
   // each track has two players: near the end of one, the other starts from the top and they cross-fade, so a full
@@ -162,4 +177,9 @@
   const _volumesRec = Music.volumes;
   Music.volumes = function () { _volumesRec.call(this); if (recPreview && this.ctx) this.bus.gain.setTargetAtTime(0.5 * SETTINGS.music, this.ctx.currentTime, 0.05); };
   setInterval(() => { if (recPreview && !paused) { recPreview = false; Music.track = null; Music.play(Music.wanted); } }, 300);
+  // night falls, the courier crosses into a region with its own recording, the title gives way to the game: the score follows
+  setInterval(() => {
+    if (!recOn() || recPreview || !Music.ctx || !Music.wanted) return;
+    const k = recKey(Music.wanted); if (k && k !== RecPlay.cur) { Music.track = null; Music.play(Music.wanted); }
+  }, 1500);
   setTimeout(() => Object.assign(window.__saltRoad || (window.__saltRoad = {}), { recSeekEnd: secs => { const e = RecPlay.els[RecPlay.cur]; if (!e) return null; const a = e.pair[e.i].a; if (!a.duration || !isFinite(a.duration)) return null; a.currentTime = Math.max(0, a.duration - secs); return e.i; }, recPass: () => { const e = RecPlay.els[RecPlay.cur]; return e ? e.i : null; }, recorded: () => ({ ready: REC.ready, music: Object.keys(REC.music), sfx: Object.keys(REC.sfx).filter(k => REC.sfx[k]), playing: RecPlay.cur, style: SETTINGS.musicStyle }) }), 0);
