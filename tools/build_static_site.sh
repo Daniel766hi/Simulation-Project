@@ -10,5 +10,7 @@ cp vendor/chart.umd.min.js vendor/chart.js.LICENSE.md public/vendor/
 cp -r birthday public/birthday
 # The Salt Road's recorded music and sound, when present (the game falls back to its synthesised score without them)
 if [ -d salt-road/audio ]; then mkdir -p public/salt-road && cp -r salt-road/audio public/salt-road/audio; fi
+# and its free-licensed illustrations, when present
+if [ -d salt-road/art ]; then mkdir -p public/salt-road && cp -r salt-road/art public/salt-road/art; fi
 touch public/.nojekyll
 echo "built public/: $(ls public | tr '\n' ' ')"
