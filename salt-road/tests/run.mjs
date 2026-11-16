@@ -291,6 +291,15 @@ const SUITES = {
     await p.keyboard.press("Escape"); await p.keyboard.press("Escape");
     await noErrors(p); await p.done();
   },
+  async art() {   // illustrations behind the story cards, when salt-road/art is there
+    const p = await open(); await p.start(); await p.waitForTimeout(800);
+    const a = await p.evaluate(() => window.__saltRoad.art());
+    if (!a.ready) { ok(true, "no salt-road/art folder: the cards stay plain (nothing to check)"); await noErrors(p); await p.done(); return; }
+    ok(a.cards.length >= 10, `${a.cards.length} illustrations are listed`);
+    await p.evaluate(() => window.__saltRoad.endingTest ? 0 : 0); await p.evaluate(() => { const R = window.__saltRoad; R.closeDlg(); });
+    const k = await p.evaluate(() => window.__saltRoad.artKey("Chapter III", "The Drowned Grove")); ok(k === "ch3_grove", "a chapter card finds its picture");
+    await noErrors(p); await p.done();
+  },
   async reading() {   // cutscene lines wait to be read, statuses say how long they last, the font setting
     const p = await open(); await p.start();
     const line = () => p.evaluate(() => document.querySelector("#cineBox .tx").textContent);
