@@ -8,7 +8,6 @@ All images were scaled and cropped to 1600x900 and given the same colour grade (
 
 | File | Title | Author | Licence | Source page | Edits |
 |---|---|---|---|---|---|
-| `cards/title.webp` | Foggy Scene (scene02b.png) | zonked | [CC0](https://creativecommons.org/publicdomain/zero/1.0/) | <https://opengameart.org/content/foggy-scene> | Lanczos-scaled and centre-cropped to 1600x900; graded (saturation -15%, midtones darkened via gamma 0.88, #1b1633 shadow tint); WebP q90 |
 | `cards/prologue.webp` | Backgrounds (battleback4.png) | Nidhoggn | [CC0](https://creativecommons.org/publicdomain/zero/1.0/) | <https://opengameart.org/content/backgrounds-3> | Lanczos-upscaled from 1104x621 and centre-cropped to 1600x900; graded (saturation -15%, midtones darkened via gamma 0.88, #1b1633 shadow tint); WebP q90 |
 | `cards/ch2_well.webp` | 3 Halloween Game Backgrounds (3.png) | codeinfernogames | [CC0](https://creativecommons.org/publicdomain/zero/1.0/) | <https://opengameart.org/content/3-halloween-game-backgrounds> | Lanczos-scaled and centre-cropped to 1600x900; graded (saturation -15%, midtones darkened via gamma 0.88, #1b1633 shadow tint); WebP q90 |
 | `cards/ch3_grove.webp` | Concept Art Studies Bundle 1 (elk-skull-lodge.jpg) | Eon Cire | [CC0](https://creativecommons.org/publicdomain/zero/1.0/) | <https://opengameart.org/content/concept-art-studies-bundle-1> | Lanczos-upscaled from 1186x666 and centre-cropped to 1600x900; graded (saturation -15%, midtones darkened via gamma 0.88, #1b1633 shadow tint); WebP q90 |
@@ -42,7 +41,6 @@ The remaining files are CC0 (public domain dedication). Credit is not required b
 
 Where an image only partly matches its brief:
 
-- **title**: Misty barren plain with distant stone towers; no literal bell tower.
 - **prologue**: Daytime desert market street (painted battle-back); reads as a desert village rather than dusk.
 - **ch9_coast**: Dark sea cave on a rocky coast at night; there is no shipwreck in the image.
 - **act2_rains**: Rain clouds with falling rain streaks only; no ground visible.
@@ -54,6 +52,8 @@ Where an image only partly matches its brief:
 - **ch12_king**: Grey abyssal cavern floor with light shafts; no underwater ruins.
 
 ## Skipped
+
+- **title**: an illustration was found ("Foggy Scene" by zonked, CC0) but not used: the title screen keeps the game's own pixel-art scene.
 
 - **ch6_gate** (a great city gate in rain): no CC0/CC-BY painted or pixel-art scene of a city gate was found. The closest results were GPL-only ("Castle Gate" PSD), CC-BY-SA ("Fortress background" gate image), or tilesets/sprites rather than backgrounds.
 - **cistern** (an underground cistern or flooded hall with columns): no suitable licence-clean image was found. The best candidate, a flat stone-floor battle backdrop with no columns or water, was rejected as a poor fit. "Sewer Level Background" (CC-BY-SA) and "Tileable Interior Mine Background" (CC-BY-SA) were excluded on licence.

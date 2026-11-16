@@ -36,7 +36,7 @@
     if (!Music.ctx || !REC.ready || !Object.keys(AMB.list).length) return;
     const w = AMB.on() && Music.on && !paused ? ambWants() : {}, t = Music.ctx.currentTime;
     for (const k of new Set([...Object.keys(w), ...Object.keys(AMB.els)])) {
-      const target = (w[k] || 0) * (AMB_LEVEL[k] || 0.4); if (!target && !AMB.els[k]) continue;
+      const target = (w[k] || 0) * (AMB_LEVEL[k] || 0.4) * Math.min(1.6, (AMB.list[k] && AMB.list[k].gain) || 1); if (!target && !AMB.els[k]) continue;
       const e = ambEl(k); if (!e) continue;
       if (target > 0.01 && e.a.paused) { const p = e.a.play(); if (p && p.catch) p.catch(() => { /* waits for a gesture */ }); }
       e.g.gain.setTargetAtTime(target, t, 0.8); e.level = target;

@@ -1,14 +1,5 @@
 {
   "cards": {
-    "title": {
-      "file": "cards/title.webp",
-      "title": "Foggy Scene (scene02b.png)",
-      "author": "zonked",
-      "license": "CC0",
-      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
-      "url": "https://opengameart.org/content/foggy-scene",
-      "edits": "Lanczos-scaled and centre-cropped to 1600x900; graded (saturation -15%, midtones darkened via gamma 0.88, #1b1633 shadow tint); WebP q90"
-    },
     "prologue": {
       "file": "cards/prologue.webp",
       "title": "Backgrounds (battleback4.png)",

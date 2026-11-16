@@ -279,6 +279,15 @@ const SUITES = {
     await p.waitForTimeout(1500); const pass0 = await p.evaluate(() => window.__saltRoad.recSeekEnd(1)); await p.waitForTimeout(1200);
     ok(pass0 !== null && (await p.evaluate(() => window.__saltRoad.recPass())) === 1 - pass0, "at the end of a pass the track cross-fades into its next pass");
     await p.evaluate(() => window.__saltRoad.flee()); await p.waitForTimeout(300); await p.clear();
+    if (r.music.includes("region_rime")) {
+      await p.evaluate(() => { const R = window.__saltRoad, G = R.state(); G.stage = 10; G.flags.rimeHint = G.flags.rimeArrived = G.flags.intro = true; G.clock = 0.3; R.tp(100, 166); R.clearField(); }); await p.waitForTimeout(2200); await p.clear();
+      ok((await p.evaluate(() => window.__saltRoad.music())) === "rec:region_rime", "the Rime has its own recording");
+      const am = await p.evaluate(() => window.__saltRoad.ambience()); ok(am.list.includes("wind") && am.wants.wind > 0, "and its cold wind under the music");
+      await p.evaluate(() => window.__saltRoad.battle(["isolde"], { boss: "isolde", area: "icehouse" })); await p.waitForTimeout(900);
+      ok((await p.evaluate(() => window.__saltRoad.music())) === "rec:boss_isolde", "Saint Isolde fights to her own music");
+      await p.evaluate(() => window.__saltRoad.flee()); await p.waitForTimeout(300); await p.clear();
+      await p.evaluate(() => { const R = window.__saltRoad; R.tp(20, 46); R.clearField(); }); await p.waitForTimeout(400); await p.clear();
+    }
     await p.keyboard.press("Escape"); await p.click("#pauseMain [data-a=settings]"); await p.waitForTimeout(300);
     ok(await p.isVisible('[data-set="musicStyle"][data-v="recorded"].on') && await p.isVisible("details.credits"), "Settings offers Recorded, with the credits");
     await p.click("details.credits summary"); await p.click('[data-recplay="cathedral"]'); await p.waitForTimeout(400);

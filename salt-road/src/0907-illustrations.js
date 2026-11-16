@@ -1,7 +1,7 @@
   // ================================================================== ILLUSTRATIONS: PICTURES BEHIND THE STORY CARDS
   // Next to the page, salt-road/art holds free-licensed illustrations (CC0 and CC-BY, credited in Settings and in
   // salt-road/art/CREDITS.md). When the folder is there, each chapter, act, arrival and ending card shows its scene
-  // behind the words, under a dark veil so the text stays easy to read, and the title screen has one of its own. They
+  // behind the words, under a dark veil so the text stays easy to read. (The title keeps its own pixel scene.) They
   // ease in slowly (still with reduced motion). Settings has an Illustrations switch. Without the folder, cards stay plain.
   const ART = { base: "salt-road/art/", cards: {}, ready: false };
   const ART_BY_TITLE = {
@@ -35,7 +35,7 @@
   const artStyle = document.createElement("style");
   artStyle.textContent = `#card.art, #title.art { animation: artIn 1.6s ease-out both; } @keyframes artIn { from { background-size: cover, cover; filter: brightness(.4); } to { filter: none; } }`;
   document.head.appendChild(artStyle);
-  function titleArt() { showArt($("title"), artOn() ? artUrl("title") : null); }
+  function titleArt() { /* the title screen keeps the game's own pixel scene */ }
   try {
     if (location.protocol !== "file:") fetch(ART.base + "manifest.json", { cache: "no-cache" }).then(r => r.ok ? r.json() : null).then(m => {
       if (!m || !m.cards) return; ART.cards = m.cards; ART.ready = Object.keys(m.cards).length > 0; titleArt();
@@ -56,4 +56,4 @@
     if (focusKey === "illustrations") { const f = panel.querySelector('[data-set="illustrations"].on'); if (f) f.focus({ preventScroll: true }); }
     titleArt();
   };
-  setTimeout(() => Object.assign(window.__saltRoad || (window.__saltRoad = {}), { art: () => ({ ready: ART.ready, cards: Object.keys(ART.cards), card: $("card").dataset.art || null, title: !!$("title").style.backgroundImage }), artKey }), 0);
+  setTimeout(() => Object.assign(window.__saltRoad || (window.__saltRoad = {}), { art: () => ({ ready: ART.ready, cards: Object.keys(ART.cards), card: $("card").dataset.art || null, title: !!$("title").style.backgroundImage }), artKey, showCard: (k, t, text) => card(k, t, text) }), 0);

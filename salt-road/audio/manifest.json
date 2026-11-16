@@ -186,7 +186,8 @@
       "author": "Kevin MacLeod",
       "license": "CC-BY 4.0",
       "url": "https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1100516",
-      "seconds": 131.6
+      "seconds": 131.6,
+      "gain": 0.603
     },
     "region_weir": {
       "file": "music/region_weir.ogg",
@@ -194,7 +195,8 @@
       "author": "Kevin MacLeod",
       "license": "CC-BY 4.0",
       "url": "https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1100345",
-      "seconds": 185.4
+      "seconds": 185.4,
+      "gain": 0.603
     },
     "region_cistern": {
       "file": "music/region_cistern.ogg",
@@ -202,7 +204,8 @@
       "author": "Kevin MacLeod",
       "license": "CC-BY 4.0",
       "url": "https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1100651",
-      "seconds": 132.8
+      "seconds": 132.8,
+      "gain": 0.977
     },
     "boss_isolde": {
       "file": "music/boss_isolde.ogg",
@@ -210,7 +213,8 @@
       "author": "Kevin MacLeod",
       "license": "CC-BY 4.0",
       "url": "https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1100592",
-      "seconds": 87.1
+      "seconds": 87.1,
+      "gain": 0.324
     },
     "boss_merrow": {
       "file": "music/boss_merrow.ogg",
@@ -218,7 +222,8 @@
       "author": "Kevin MacLeod",
       "license": "CC-BY 4.0",
       "url": "https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1100811",
-      "seconds": 143.2
+      "seconds": 143.2,
+      "gain": 0.708
     },
     "boss_vane": {
       "file": "music/boss_vane.ogg",
@@ -226,7 +231,8 @@
       "author": "Kevin MacLeod",
       "license": "CC-BY 4.0",
       "url": "https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1100657",
-      "seconds": 202.1
+      "seconds": 202.1,
+      "gain": 0.407
     },
     "boss_hidden": {
       "file": "music/boss_hidden.ogg",
@@ -234,7 +240,8 @@
       "author": "Kevin MacLeod",
       "license": "CC-BY 4.0",
       "url": "https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1100451",
-      "seconds": 167.6
+      "seconds": 167.6,
+      "gain": 1.059
     },
     "title": {
       "file": "music/title.ogg",
@@ -242,7 +249,8 @@
       "author": "Kevin MacLeod",
       "license": "CC-BY 4.0",
       "url": "https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1100588",
-      "seconds": 142.1
+      "seconds": 142.1,
+      "gain": 0.525
     },
     "night": {
       "file": "music/night.ogg",
@@ -250,7 +258,8 @@
       "author": "Kevin MacLeod",
       "license": "CC-BY 4.0",
       "url": "https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1100236",
-      "seconds": 142.1
+      "seconds": 142.1,
+      "gain": 0.944
     }
   },
   "sfx": {
@@ -409,7 +418,8 @@
       "author": "JC Sounds",
       "license": "CC-BY 4.0",
       "url": "https://opengameart.org/content/jc-sounds-nature-ambient-pack-vol-1",
-      "seconds": 40.0
+      "seconds": 40.0,
+      "gain": 1.462
     },
     "rain": {
       "file": "ambience/rain.ogg",
@@ -417,7 +427,8 @@
       "author": "OveMelaa",
       "license": "CC0 1.0",
       "url": "https://opengameart.org/content/rain-ambient-not-loopable-2-versions-available",
-      "seconds": 40.0
+      "seconds": 40.0,
+      "gain": 2.5
     },
     "crickets": {
       "file": "ambience/crickets.ogg",
@@ -425,7 +436,8 @@
       "author": "JC Sounds",
       "license": "CC-BY 4.0",
       "url": "https://opengameart.org/content/jc-sounds-nature-ambient-pack-vol-1",
-      "seconds": 40.0
+      "seconds": 40.0,
+      "gain": 2.5
     },
     "fire": {
       "file": "ambience/fire.ogg",
@@ -433,7 +445,8 @@
       "author": "JC Sounds",
       "license": "CC-BY 4.0",
       "url": "https://opengameart.org/content/jc-sounds-nature-ambient-pack-vol-1",
-      "seconds": 40.0
+      "seconds": 40.0,
+      "gain": 2.5
     },
     "stream": {
       "file": "ambience/stream.ogg",
@@ -441,7 +454,8 @@
       "author": "Thimras",
       "license": "CC0 1.0",
       "url": "https://opengameart.org/content/park-ambiences",
-      "seconds": 40.0
+      "seconds": 40.0,
+      "gain": 2.5
     },
     "drips": {
       "file": "ambience/drips.ogg",
@@ -449,7 +463,8 @@
       "author": "CeoxBlackj",
       "license": "CC0 1.0",
       "url": "https://opengameart.org/content/water-drops",
-      "seconds": 40.0
+      "seconds": 40.0,
+      "gain": 2.5
     },
     "sea": {
       "file": "ambience/sea.ogg",
@@ -457,7 +472,8 @@
       "author": "JC Sounds",
       "license": "CC-BY 4.0",
       "url": "https://opengameart.org/content/jc-sounds-nature-ambient-pack-vol-1",
-      "seconds": 40.0
+      "seconds": 40.0,
+      "gain": 2.5
     }
   }
 }
