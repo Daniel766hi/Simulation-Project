@@ -265,7 +265,9 @@ const SUITES = {
     await p.evaluate(() => { const R = window.__saltRoad; R.flee(); R.state().clock = 0.25; R.tp(30, 30); R.clearField(); }); await p.waitForTimeout(500);
     const sk = await p.evaluate(() => window.__saltRoad.skies()); ok(sk.on && sk.out && sk.day > 0.5, "out on the salt by day, the sky shows on the ground");
     await p.evaluate(() => { const R = window.__saltRoad; R.battle(["jackal"]); }); await p.waitForTimeout(600); await p.evaluate(() => window.__saltRoad.forceWin()); await p.waitForTimeout(200);
-    ok((await p.evaluate(() => window.__saltRoad.polish().win)) < 1, "a win lets light down through the scene"); await p.evaluate(() => window.__saltRoad.cont()); await p.waitForTimeout(400); await p.clear(); await p.evaluate(() => window.__saltRoad.flee());
+    ok((await p.evaluate(() => window.__saltRoad.polish().win)) < 1, "a win lets light down through the scene");
+    await p.evaluate(() => { const R = window.__saltRoad; R.cont(); R.state().stage = 9; R.state().clock = 0.3; R.tp(120, 120); R.clearField(); }); await p.waitForTimeout(400); await p.clear();
+    ok((await p.evaluate(() => window.__saltRoad.weather().place)) === "The Dune Sea", "the dunes are a place the weather knows"); await p.evaluate(() => window.__saltRoad.cont()); await p.waitForTimeout(400); await p.clear(); await p.evaluate(() => window.__saltRoad.flee());
     await noErrors(p); await p.done();
   },
   async audio() {   // the recorded score from salt-road/audio: it loads, plays per scene, and the synthesised score covers the rest
