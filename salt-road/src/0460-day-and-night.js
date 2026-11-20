@@ -28,7 +28,7 @@
     const ox = Math.round(camX), oy = Math.round(camY);
     lg.globalCompositeOperation = "source-over"; lg.clearRect(0, 0, VIEW_W, VIEW_H); lg.fillStyle = `rgba(8,10,34,${0.74 * nt})`; lg.fillRect(0, 0, VIEW_W, VIEW_H);
     lg.globalCompositeOperation = "destination-out";
-    const hole = (x, y, r, a) => { if (x < -r || y < -r || x > VIEW_W + r || y > VIEW_H + r) return; const gr = lg.createRadialGradient(x, y, 1, x, y, r); gr.addColorStop(0, `rgba(0,0,0,${a})`); gr.addColorStop(1, "rgba(0,0,0,0)"); lg.fillStyle = gr; lg.fillRect(x - r, y - r, r * 2, r * 2); };
+    const hole = (x, y, r, a) => { if (x < -r || y < -r || x > VIEW_W + r || y > VIEW_H + r) return; drawGlow(lg, "0,0,0", x, y, r, a); };
     hole(G.px - ox, G.py - oy - 8, 58 + Math.sin(time * 8) * 1.5, 0.95);
     for (const pr of PROPS) if (pr.type === "lamp" || pr.type === "campfire" || pr.type === "candles" || pr.type === "shrine") hole(pr.px - ox, pr.py - oy - 12, pr.type === "lamp" ? 34 : 26, 0.85);
     const tx0 = Math.floor(ox / TILE), ty0 = Math.floor(oy / TILE);
@@ -41,7 +41,7 @@
     if (typeof sceneLights === "function") for (const a of sceneLights()) hole(a.px - ox + 7, a.py - oy - 22 - (a.lift || 0), a.torch ? 40 : 22, 0.9);
     g.drawImage(light, 0, 0);
     g.globalCompositeOperation = "lighter";
-    for (const [x, y] of lit) { const gr = g.createRadialGradient(x, y, 1, x, y, 14); gr.addColorStop(0, `rgba(255,180,90,${0.28 * nt})`); gr.addColorStop(1, "rgba(255,180,90,0)"); g.fillStyle = gr; g.fillRect(x - 14, y - 14, 28, 28); }
+    for (const [x, y] of lit) drawGlow(g, "255,180,90", x, y, 14, 0.28 * nt);
     if (nt > 0.6) for (let i = 0; i < 24; i++) { const a = (0.3 + 0.3 * Math.sin(time * 2 + i * 1.7)) * nt; g.fillStyle = `rgba(200,220,255,${a})`; g.fillRect((hash(i, 71) * VIEW_W) | 0, (hash(i, 73) * VIEW_H * 0.4) | 0, 1, 1); }
     g.globalCompositeOperation = "source-over";
   };
