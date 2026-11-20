@@ -62,17 +62,23 @@
   // ---- reflections: someone standing at the water's edge, or in the shallows, shows in it, faint and wavering
   const REFLECTS = new Set([T.WATER, T.SHALLOW]);
   let reflecting = false;
+  const reflC = document.createElement("canvas"); reflC.width = 32; reflC.height = 34;
+  const rg = reflC.getContext("2d"); rg.imageSmoothingEnabled = false;
+  const reflFade = rg.createLinearGradient(0, 0, 0, 30); reflFade.addColorStop(0, "rgba(0,0,0,1)"); reflFade.addColorStop(0.45, "rgba(0,0,0,0.7)"); reflFade.addColorStop(1, "rgba(0,0,0,0)");
   const _drawPersonRefl = drawPerson;
   drawPerson = function (g2, x, y, o) {
-    if (o && !o.dead && !reflecting && G && !battle && g2 === g && (mode === "play" || mode === "dialog")) {
+    if (o && !o.dead && !reflecting && G && !battle && !fxLight() && g2 === g && (mode === "play" || mode === "dialog")) {
       const wx = x + camX, wy = y + camY, below = get(Math.floor(wx / TILE), Math.floor((wy + 10) / TILE));
       if (REFLECTS.has(below)) {
-        reflecting = true;
+        reflecting = true; FXN.refl++;
         const top = Math.max(Math.round(y) + 1, Math.floor((wy + 10) / TILE) * TILE - Math.round(camY));   // only on the water itself
+        // drawn upside down into a small canvas, then faded with depth, so the head does not float in the water as a block
+        rg.setTransform(1, 0, 0, 1, 0, 0); rg.globalCompositeOperation = "source-over"; rg.clearRect(0, 0, 32, 34);
+        rg.translate(16 + Math.round(Math.sin(time * 2.4 + wy * 0.05) * 0.8), 0); rg.scale(1, -0.9);
+        try { _drawPersonRefl(rg, 0, 0, { ...o, walking: false }); } finally { reflecting = false; }
+        rg.setTransform(1, 0, 0, 1, 0, 0); rg.globalCompositeOperation = "destination-in"; rg.fillStyle = reflFade; rg.fillRect(0, 0, 32, 34);
         g2.save(); g2.beginPath(); g2.rect(Math.round(x) - 14, top, 28, Math.round(y) + 31 - top); g2.clip();
-        g2.globalAlpha = below === T.SHALLOW ? 0.22 : 0.3;
-        g2.translate(Math.round(x + Math.sin(time * 2.4 + wy * 0.05) * 0.8), Math.round(y) + 2); g2.scale(1, -0.9);
-        try { _drawPersonRefl(g2, 0, 0, { ...o, walking: false }); } finally { reflecting = false; g2.restore(); }
+        g2.globalAlpha = below === T.SHALLOW ? 0.26 : 0.36; g2.drawImage(reflC, Math.round(x) - 16, Math.round(y) + 2); g2.restore();
         g2.fillStyle = "rgba(230,250,255,0.18)"; for (let k = 0; k < 3; k++) g2.fillRect(Math.round(x) - 6 + ((time * 6 + k * 5) % 12), Math.round(y) + 5 + k * 6, 4, 1);   // light on the ripples
       }
     }

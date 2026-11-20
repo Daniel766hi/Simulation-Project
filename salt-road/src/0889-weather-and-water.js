@@ -11,7 +11,7 @@
     return c; })();
   function fogPass(ox, oy, amount) {   // banks on a loose grid that drifts east, so every view gets its share
     const drift = REDUCED ? 0 : time * 4, cell = 120;
-    g.save(); g.globalAlpha = amount;
+    FXN.fog++; g.save(); g.globalAlpha = amount;
     const cx0 = Math.floor((ox - drift) / cell) - 1, cy0 = Math.floor(oy / cell) - 1;
     for (let cy = cy0; cy <= cy0 + Math.ceil(VIEW_H / cell) + 2; cy++) for (let cx = cx0; cx <= cx0 + Math.ceil(VIEW_W / cell) + 2; cx++) {
       if (hash(cx * 3 + 7, cy * 5 + 11) < 0.35) continue;
@@ -75,8 +75,20 @@
     const now = performance.now() / 1000, dt = Math.min(0.1, wwLast ? now - wwLast : 0.016); wwLast = now;
     const ox = Math.round(camX), oy = Math.round(camY), place = placeAt();
     const c = G.clock ?? 0.3, lowSun = c < 0.12 || c > 0.55;
-    if (!REDUCED) { foamPass(ox, oy); frondPass(ox, oy); moteTick(dt, place, ox, oy); motePass(ox, oy); }
+    if (fxLight()) { motes.length = 0; return; }
+    if (!REDUCED) { FXN.foam++; foamPass(ox, oy); frondPass(ox, oy); moteTick(dt, place, ox, oy); motePass(ox, oy); }
     if (FOGGY.has(place)) fogPass(ox, oy, 0.55);
     else if (place === "The Wreck Coast" && lowSun) fogPass(ox, oy, 0.4);
   };
-  setTimeout(() => Object.assign(window.__saltRoad || (window.__saltRoad = {}), { weather: () => ({ place: G ? placeAt() : null, motes: motes.length, kinds: [...new Set(motes.map(m => m.k))] }) }), 0);
+  setTimeout(() => Object.assign(window.__saltRoad || (window.__saltRoad = {}), { effects: () => ({ setting: SETTINGS.effects || "full", light: fxLight(), ...FXN }), weather: () => ({ place: G ? placeAt() : null, motes: motes.length, kinds: [...new Set(motes.map(m => m.k))] }) }), 0);
+  // Settings > Game > Effects: Full draws all of the above; Light keeps the world and its light but skips the heavy
+  // decoration, for slower machines and phones. It is saved with the other settings.
+  const _showSettingsFx = showSettings;
+  showSettings = function (focusKey) {
+    _showSettingsFx(focusKey);
+    const screen = $("pausePanel").querySelector('[data-set="screen"]'); if (!screen) return;
+    const row = document.createElement("div"), light = fxLight(); row.className = "setrow";
+    row.innerHTML = `<span>Effects</span><div class="seg"><button type="button" data-set="effects" data-v="full" class="${light ? "" : "on"}">Full</button><button type="button" data-set="effects" data-v="light" class="${light ? "on" : ""}">Light</button></div><span></span>`;
+    screen.closest(".setrow").after(row);
+    if (focusKey === "effects") { const f = row.querySelector(".on"); if (f) f.focus({ preventScroll: true }); }
+  };
