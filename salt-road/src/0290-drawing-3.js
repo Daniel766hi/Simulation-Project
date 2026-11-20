@@ -7,8 +7,8 @@
     switch (pr.type) {
       case "lamp": {
         sh(4); R(-1, -14, 2, 20, "#3a2a1e"); R(-3, -18, 6, 5, "#1b1633"); R(-2, -17, 4, 3, "#ffcf4a");
-        const a = 0.18 + Math.sin(t * 6 + k * 20) * 0.03, gr = g.createRadialGradient(x, y - 15, 1, x, y - 15, 22);
-        gr.addColorStop(0, `rgba(255,200,110,${a * 2})`); gr.addColorStop(1, "rgba(255,200,110,0)"); g.fillStyle = gr; g.fillRect(x - 22, y - 37, 44, 44); break; }
+        const a = 0.18 + Math.sin(t * 6 + k * 20) * 0.03;
+        drawGlow(g, "255,200,110", x, y - 15, 22, a * 2); break; }
       case "stall": sh(9); R(-8, -4, 16, 10, "#8a5533"); R(-8, -4, 16, 2, "#6b3f24"); R(-9, -16, 1, 20, "#6b3f24"); R(8, -16, 1, 20, "#6b3f24");
         for (let i = 0; i < 6; i++) R(-9 + i * 3, -18, 3, 5, i % 2 ? "#f2ead8" : pr.color); R(-6, -6, 3, 2, "#ff8a5c"); R(-1, -6, 3, 2, "#6fbf62"); R(4, -6, 3, 2, "#ffcf4a"); break;
       case "barrel": sh(5); R(-4, -6, 8, 12, "#1b1633"); R(-3, -5, 6, 10, "#8a5533"); R(-3, -3, 6, 1, "#5e5680"); R(-3, 2, 6, 1, "#5e5680"); break;
@@ -36,7 +36,7 @@
         const f = Math.sin(t * 12 + k * 7);
         g.fillStyle = "#c8102e"; g.beginPath(); g.moveTo(x - 5, y + 2); g.lineTo(x, y - 9 - f * 2); g.lineTo(x + 5, y + 2); g.fill();
         g.fillStyle = "#ffcf4a"; g.beginPath(); g.moveTo(x - 3, y + 2); g.lineTo(x + f, y - 5); g.lineTo(x + 3, y + 2); g.fill();
-        const gr = g.createRadialGradient(x, y - 2, 1, x, y - 2, 30); gr.addColorStop(0, "rgba(255,150,60,.35)"); gr.addColorStop(1, "rgba(255,150,60,0)"); g.fillStyle = gr; g.fillRect(x - 30, y - 32, 60, 60);
+        drawGlow(g, "255,150,60", x, y - 2, 30, 0.35);
         if (Math.random() < 0.08 && !REDUCED) particles.push({ x: pr.px + rand(-2, 2), y: pr.py - 6, vx: rand(-6, 6), vy: -rand(20, 40), life: rand(0.4, 0.9), color: "#ffb14a", size: 1, world: true });
         break; }
       case "shrine": { sh(10); R(-9, -22, 18, 26, OUT); R(-8, -21, 16, 24, "#aba4c8"); R(-8, -21, 16, 3, "#c8c2e0"); R(-5, -16, 10, 14, "#332e4f");

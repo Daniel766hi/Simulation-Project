@@ -113,7 +113,7 @@
     if (tileAt(G.px, G.py) === T.DARK) {
       lg.globalCompositeOperation = "source-over"; lg.fillStyle = "rgba(6,4,16,0.94)"; lg.fillRect(0, 0, VIEW_W, VIEW_H);
       lg.globalCompositeOperation = "destination-out";
-      const glow = (x, y, r, a = 1) => { const gr = lg.createRadialGradient(x, y, 1, x, y, r); gr.addColorStop(0, `rgba(0,0,0,${a})`); gr.addColorStop(1, "rgba(0,0,0,0)"); lg.fillStyle = gr; lg.fillRect(x - r, y - r, r * 2, r * 2); };
+      const glow = (x, y, r, a = 1) => drawGlow(lg, "0,0,0", x, y, r, a);
       const cx = G.px - ox, cy = G.py - oy - 8, r = 70 + Math.sin(time * 9) * 2 + Math.sin(time * 23) * 1.5;
       const grd = lg.createRadialGradient(cx, cy, 8, cx, cy, r); grd.addColorStop(0, "rgba(0,0,0,1)"); grd.addColorStop(0.7, "rgba(0,0,0,.75)"); grd.addColorStop(1, "rgba(0,0,0,0)");
       lg.fillStyle = grd; lg.beginPath(); lg.arc(cx, cy, r, 0, Math.PI * 2); lg.fill();
@@ -131,7 +131,7 @@
       lg.globalCompositeOperation = "destination-out";
       const cx = G.px - ox, cy = G.py - oy - 8, r = 64 + Math.sin(time * 3) * 3, gr = lg.createRadialGradient(cx, cy, 6, cx, cy, r);
       gr.addColorStop(0, "rgba(0,0,0,1)"); gr.addColorStop(1, "rgba(0,0,0,0)"); lg.fillStyle = gr; lg.fillRect(cx - r, cy - r, r * 2, r * 2);
-      for (const f of field) { const a = lg.createRadialGradient(f.px - ox, f.py - oy - 10, 1, f.px - ox, f.py - oy - 10, 14); a.addColorStop(0, "rgba(0,0,0,.8)"); a.addColorStop(1, "rgba(0,0,0,0)"); lg.fillStyle = a; lg.fillRect(f.px - ox - 14, f.py - oy - 24, 28, 28); }
+      for (const f of field) drawGlow(lg, "0,0,0", f.px - ox, f.py - oy - 10, 14, 0.8);
       g.drawImage(light, 0, 0); g.fillStyle = "rgba(40,120,200,.08)"; g.fillRect(0, 0, VIEW_W, VIEW_H);
     } else if (here === T.SPIRE) {
       g.fillStyle = "rgba(10,14,40,.45)"; g.fillRect(0, 0, VIEW_W, VIEW_H);
@@ -143,10 +143,14 @@
     }
     if (warpFade > 0) { g.fillStyle = `rgba(6,4,16,${warpFade})`; g.fillRect(0, 0, VIEW_W, VIEW_H); }
     if (mode === "play") drawCompass(g, ox, oy);
-    const vg = g.createRadialGradient(VIEW_W / 2, VIEW_H / 2, VIEW_H * 0.45, VIEW_W / 2, VIEW_H / 2, VIEW_W * 0.7);
-    vg.addColorStop(0, "rgba(18,15,36,0)"); vg.addColorStop(1, "rgba(18,15,36,.5)");
-    g.fillStyle = vg; g.fillRect(0, 0, VIEW_W, VIEW_H);
+    if (!worldVig || worldVig.width !== VIEW_W || worldVig.height !== VIEW_H) {   // drawn once, stamped each frame
+      worldVig = document.createElement("canvas"); worldVig.width = VIEW_W; worldVig.height = VIEW_H; const v2 = worldVig.getContext("2d");
+      const vg = v2.createRadialGradient(VIEW_W / 2, VIEW_H / 2, VIEW_H * 0.45, VIEW_W / 2, VIEW_H / 2, VIEW_W * 0.7);
+      vg.addColorStop(0, "rgba(18,15,36,0)"); vg.addColorStop(1, "rgba(18,15,36,.5)"); v2.fillStyle = vg; v2.fillRect(0, 0, VIEW_W, VIEW_H);
+    }
+    g.drawImage(worldVig, 0, 0);
   }
+  let worldVig = null;
   function drawMiniBoss(g, x, y, kind) {
     if (drawMiniBoss2(g, Math.round(x), Math.round(y), kind)) return;
     x = Math.round(x); y = Math.round(y);

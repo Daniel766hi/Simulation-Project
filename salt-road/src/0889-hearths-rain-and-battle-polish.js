@@ -16,7 +16,7 @@
       if (t === T.HOUSE && nt > 0.15 && hash(tx * 3, ty * 5) < 0.7) {   // a lit window or two
         g.save(); g.globalCompositeOperation = "lighter";
         for (const wx of [5, 12]) { if (hash(tx + wx, ty) < 0.25) continue; const fl = 0.85 + Math.sin(time * 3 + tx * 1.7 + wx) * 0.08;
-          const gr = g.createRadialGradient(X + wx, Y + 7, 0.5, X + wx, Y + 7, 9); gr.addColorStop(0, `rgba(255,200,110,${0.55 * nt * fl})`); gr.addColorStop(1, "rgba(255,200,110,0)"); g.fillStyle = gr; g.fillRect(X + wx - 9, Y - 2, 18, 18);
+          drawGlow(g, "255,200,110", X + wx, Y + 7, 9, 0.55 * nt * fl);
           g.fillStyle = `rgba(255,230,160,${0.8 * nt})`; g.fillRect(X + wx - 1, Y + 6, 2, 2); }
         g.restore();
       }
