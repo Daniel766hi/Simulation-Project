@@ -4,9 +4,9 @@
   // its fires and the courier's own light, with water dripping from the vault. At night, lamps and fires glow warm
   // and flicker everywhere. Reduced motion keeps the light but drops the falling, blowing and dripping.
   // Settings > Effects: Light skips the heavier decorative passes (fog, particles, cloud shadows, birds, fireflies,
-  // foam, fronds, reflections, footprints, chimney smoke). Nothing in play depends on any of them.
+  // foam, fronds, reflections, footprints, chimney smoke, sun shafts, heat shimmer, moonlight on water). Nothing in play depends on any of them.
   const fxLight = () => SETTINGS.effects === "light";
-  const FXN = { fog: 0, clouds: 0, foam: 0, refl: 0 };   // passes drawn, for the tests
+  const FXN = { fog: 0, clouds: 0, foam: 0, refl: 0, shafts: 0, shimmer: 0, moon: 0 };   // passes drawn, for the tests
   const PRINT_ON = new Set([T.SNOW, T.SAND, T.SALT, T.MUD]), RIPPLE_ON = new Set([T.SHALLOW]);
   const marks = [];
   let markT = 0, markSide = 1, lastMark = null;

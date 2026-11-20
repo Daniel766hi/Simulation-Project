@@ -270,10 +270,11 @@ const SUITES = {
     ok((await p.evaluate(() => window.__saltRoad.polish().win)) < 1, "a win lets light down through the scene");
     await p.evaluate(() => { const R = window.__saltRoad; R.cont(); R.state().stage = 9; R.state().clock = 0.3; R.tp(120, 120); R.clearField(); }); await p.waitForTimeout(400); await p.clear();
     ok((await p.evaluate(() => window.__saltRoad.weather().place)) === "The Dune Sea", "the dunes are a place the weather knows"); await p.evaluate(() => window.__saltRoad.cont()); await p.waitForTimeout(400); await p.clear(); await p.evaluate(() => window.__saltRoad.flee());
-    await p.evaluate(() => { const R = window.__saltRoad; R.state().clock = 0.3; R.tp(40, 80); R.clearField(); }); await p.waitForTimeout(400); await p.clear();
+    await p.evaluate(() => { const R = window.__saltRoad; R.state().stage = 5; R.state().clock = 0.3; R.tp(40, 80); R.clearField(); }); await p.waitForTimeout(400); await p.clear();   // before the Act II rain
     const marsh = await p.evaluate(() => window.__saltRoad.weather().place);
     const f0 = await p.evaluate(() => window.__saltRoad.effects()); await p.waitForTimeout(300); const f1 = await p.evaluate(() => window.__saltRoad.effects());
     ok(f0.setting === "full" && f1.fog > f0.fog, `Effects are Full by default, with fog over ${marsh}`);
+    ok(f1.shafts > f0.shafts, "and shafts of sun lean down through the green country by day");
     await p.evaluate(() => { const R = window.__saltRoad; R.tp(95, 84); R.clearField(); }); await p.waitForTimeout(400); await p.clear();
     const r0 = await p.evaluate(() => window.__saltRoad.effects().refl); await p.waitForTimeout(300);
     ok((await p.evaluate(() => window.__saltRoad.effects().refl)) > r0, "at the shore the courier shows in the water, fading with depth");
@@ -285,7 +286,7 @@ const SUITES = {
     ok(l1.light && l1.refl === l0.refl && l1.clouds === l0.clouds, "with Light, no reflections or cloud shadows are drawn");
     await p.evaluate(() => { const R = window.__saltRoad; R.tp(40, 80); R.clearField(); }); await p.waitForTimeout(300); await p.clear();
     const m0 = await p.evaluate(() => window.__saltRoad.effects()); await p.waitForTimeout(400); const m1 = await p.evaluate(() => window.__saltRoad.effects());
-    ok(m1.fog === m0.fog, "and no fog banks over the marsh");
+    ok(m1.fog === m0.fog && m1.shafts === m0.shafts, "and no fog banks or sun shafts over the marsh");
     await p.reload(); await p.waitForTimeout(700); ok((await p.evaluate(() => window.__saltRoad.effects())).light, "Light is still chosen after a reload");
     await p.evaluate(() => { const s = JSON.parse(localStorage.getItem("salt-road-settings")); delete s.effects; localStorage.setItem("salt-road-settings", JSON.stringify(s)); });
     await noErrors(p); await p.done();
