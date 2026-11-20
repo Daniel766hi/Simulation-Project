@@ -39,7 +39,7 @@
     PROPS.forEach((pr, i) => {
       const L = FIRE_LIGHT[pr.type]; if (!L) return;
       const x = pr.px - ox, y = pr.py - oy - 10, r = L[0] * 0.7 * flick(i, 1); if (x < -r || y < -r || x > VIEW_W + r || y > VIEW_H + r) return;
-      const gr = g2.createRadialGradient(x, y, 1, x, y, r); gr.addColorStop(0, `rgba(${L[1]},${0.32 * strength})`); gr.addColorStop(1, `rgba(${L[1]},0)`); g2.fillStyle = gr; g2.fillRect(x - r, y - r, r * 2, r * 2);
+      drawGlow(g2, L[1], x, y, r, 0.32 * strength);
     });
     g2.globalCompositeOperation = "source-over";
   }
@@ -49,7 +49,7 @@
   function cavePass(g2, ox, oy) {
     cl.globalCompositeOperation = "source-over"; cl.clearRect(0, 0, VIEW_W, VIEW_H); cl.fillStyle = "rgba(6,6,14,0.72)"; cl.fillRect(0, 0, VIEW_W, VIEW_H);
     cl.globalCompositeOperation = "destination-out";
-    const hole = (x, y, r, a) => { if (x < -r || y < -r || x > VIEW_W + r || y > VIEW_H + r) return; const gr = cl.createRadialGradient(x, y, 1, x, y, r); gr.addColorStop(0, `rgba(0,0,0,${a})`); gr.addColorStop(1, "rgba(0,0,0,0)"); cl.fillStyle = gr; cl.fillRect(x - r, y - r, r * 2, r * 2); };
+    const hole = (x, y, r, a) => { if (x < -r || y < -r || x > VIEW_W + r || y > VIEW_H + r) return; drawGlow(cl, "0,0,0", x, y, r, a); };
     hole(G.px - ox, G.py - oy - 8, 64 * flick(0, 0.6), 0.95);   // Wick's lamp, carried
     PROPS.forEach((pr, i) => { const L = FIRE_LIGHT[pr.type]; if (L) hole(pr.px - ox, pr.py - oy - 10, L[0] * flick(i, 1), 0.9); });
     for (const n of NPCS) if (n.show === undefined || n.show()) hole(n.px - ox, n.py - oy - 10, 16, 0.45);

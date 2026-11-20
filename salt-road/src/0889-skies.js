@@ -48,7 +48,7 @@
       const x = (f.ox * VIEW_W + Math.sin(time * 0.4 * f.s + f.p) * 22 + VIEW_W) % VIEW_W, y = (f.oy * VIEW_H + Math.cos(time * 0.3 * f.s + f.p * 2) * 14 + VIEW_H) % VIEW_H;
       if (get(Math.floor((x + ox) / TILE), Math.floor((y + oy) / TILE)) !== T.GRASS) continue;
       const a = Math.max(0, Math.sin(time * 1.8 * f.s + f.p)) * nt; if (a < 0.05) continue;
-      const gr = g.createRadialGradient(x, y, 0, x, y, 5); gr.addColorStop(0, `rgba(210,255,140,${0.5 * a})`); gr.addColorStop(1, "rgba(210,255,140,0)"); g.fillStyle = gr; g.fillRect(x - 5, y - 5, 10, 10);
+      drawGlow(g, "210,255,140", x, y, 5, 0.5 * a);
       g.fillStyle = `rgba(240,255,200,${a})`; g.fillRect(Math.round(x), Math.round(y), 1, 1);
     }
     g.restore();

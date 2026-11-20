@@ -422,6 +422,21 @@
   const pick = arr => arr[Math.floor(Math.random() * arr.length)];
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
+  // ================================================================== GLOW SPRITES
+  // A soft round glow, drawn once per colour and then stamped wherever a lamp, fire, window or firefly shines (or
+  // wherever the dark has a hole cut in it). Building a fresh gradient for every light on every frame was the most
+  // expensive thing the effects did; a cached sprite costs one image draw.
+  const GLOW = new Map();
+  function glowSprite(rgb) {
+    let c = GLOW.get(rgb); if (c) return c;
+    c = document.createElement("canvas"); c.width = c.height = 64; const x = c.getContext("2d");
+    const gr = x.createRadialGradient(32, 32, 0.5, 32, 32, 32); gr.addColorStop(0, `rgba(${rgb},1)`); gr.addColorStop(1, `rgba(${rgb},0)`);
+    x.fillStyle = gr; x.fillRect(0, 0, 64, 64); GLOW.set(rgb, c); return c;
+  }
+  function drawGlow(ctx2, rgb, x, y, r, a) {
+    if (a <= 0.003 || r <= 0) return;
+    const was = ctx2.globalAlpha; ctx2.globalAlpha = was * Math.min(1, a); ctx2.drawImage(glowSprite(rgb), x - r, y - r, r * 2, r * 2); ctx2.globalAlpha = was;
+  }
   // ================================================================== MUSIC
   // Everything is synthesised live with Web Audio: no files. Each track is a 64-step loop.
   const Music = {
@@ -2886,7 +2901,7 @@
     if (tileAt(G.px, G.py) === T.DARK) {
       lg.globalCompositeOperation = "source-over"; lg.fillStyle = "rgba(6,4,16,0.94)"; lg.fillRect(0, 0, VIEW_W, VIEW_H);
       lg.globalCompositeOperation = "destination-out";
-      const glow = (x, y, r, a = 1) => { const gr = lg.createRadialGradient(x, y, 1, x, y, r); gr.addColorStop(0, `rgba(0,0,0,${a})`); gr.addColorStop(1, "rgba(0,0,0,0)"); lg.fillStyle = gr; lg.fillRect(x - r, y - r, r * 2, r * 2); };
+      const glow = (x, y, r, a = 1) => drawGlow(lg, "0,0,0", x, y, r, a);
       const cx = G.px - ox, cy = G.py - oy - 8, r = 70 + Math.sin(time * 9) * 2 + Math.sin(time * 23) * 1.5;
       const grd = lg.createRadialGradient(cx, cy, 8, cx, cy, r); grd.addColorStop(0, "rgba(0,0,0,1)"); grd.addColorStop(0.7, "rgba(0,0,0,.75)"); grd.addColorStop(1, "rgba(0,0,0,0)");
       lg.fillStyle = grd; lg.beginPath(); lg.arc(cx, cy, r, 0, Math.PI * 2); lg.fill();
@@ -2904,7 +2919,7 @@
       lg.globalCompositeOperation = "destination-out";
       const cx = G.px - ox, cy = G.py - oy - 8, r = 64 + Math.sin(time * 3) * 3, gr = lg.createRadialGradient(cx, cy, 6, cx, cy, r);
       gr.addColorStop(0, "rgba(0,0,0,1)"); gr.addColorStop(1, "rgba(0,0,0,0)"); lg.fillStyle = gr; lg.fillRect(cx - r, cy - r, r * 2, r * 2);
-      for (const f of field) { const a = lg.createRadialGradient(f.px - ox, f.py - oy - 10, 1, f.px - ox, f.py - oy - 10, 14); a.addColorStop(0, "rgba(0,0,0,.8)"); a.addColorStop(1, "rgba(0,0,0,0)"); lg.fillStyle = a; lg.fillRect(f.px - ox - 14, f.py - oy - 24, 28, 28); }
+      for (const f of field) drawGlow(lg, "0,0,0", f.px - ox, f.py - oy - 10, 14, 0.8);
       g.drawImage(light, 0, 0); g.fillStyle = "rgba(40,120,200,.08)"; g.fillRect(0, 0, VIEW_W, VIEW_H);
     } else if (here === T.SPIRE) {
       g.fillStyle = "rgba(10,14,40,.45)"; g.fillRect(0, 0, VIEW_W, VIEW_H);
@@ -2916,10 +2931,14 @@
     }
     if (warpFade > 0) { g.fillStyle = `rgba(6,4,16,${warpFade})`; g.fillRect(0, 0, VIEW_W, VIEW_H); }
     if (mode === "play") drawCompass(g, ox, oy);
-    const vg = g.createRadialGradient(VIEW_W / 2, VIEW_H / 2, VIEW_H * 0.45, VIEW_W / 2, VIEW_H / 2, VIEW_W * 0.7);
-    vg.addColorStop(0, "rgba(18,15,36,0)"); vg.addColorStop(1, "rgba(18,15,36,.5)");
-    g.fillStyle = vg; g.fillRect(0, 0, VIEW_W, VIEW_H);
+    if (!worldVig || worldVig.width !== VIEW_W || worldVig.height !== VIEW_H) {   // drawn once, stamped each frame
+      worldVig = document.createElement("canvas"); worldVig.width = VIEW_W; worldVig.height = VIEW_H; const v2 = worldVig.getContext("2d");
+      const vg = v2.createRadialGradient(VIEW_W / 2, VIEW_H / 2, VIEW_H * 0.45, VIEW_W / 2, VIEW_H / 2, VIEW_W * 0.7);
+      vg.addColorStop(0, "rgba(18,15,36,0)"); vg.addColorStop(1, "rgba(18,15,36,.5)"); v2.fillStyle = vg; v2.fillRect(0, 0, VIEW_W, VIEW_H);
+    }
+    g.drawImage(worldVig, 0, 0);
   }
+  let worldVig = null;
   function drawMiniBoss(g, x, y, kind) {
     if (drawMiniBoss2(g, Math.round(x), Math.round(y), kind)) return;
     x = Math.round(x); y = Math.round(y);
@@ -3132,8 +3151,8 @@
     switch (pr.type) {
       case "lamp": {
         sh(4); R(-1, -14, 2, 20, "#3a2a1e"); R(-3, -18, 6, 5, "#1b1633"); R(-2, -17, 4, 3, "#ffcf4a");
-        const a = 0.18 + Math.sin(t * 6 + k * 20) * 0.03, gr = g.createRadialGradient(x, y - 15, 1, x, y - 15, 22);
-        gr.addColorStop(0, `rgba(255,200,110,${a * 2})`); gr.addColorStop(1, "rgba(255,200,110,0)"); g.fillStyle = gr; g.fillRect(x - 22, y - 37, 44, 44); break; }
+        const a = 0.18 + Math.sin(t * 6 + k * 20) * 0.03;
+        drawGlow(g, "255,200,110", x, y - 15, 22, a * 2); break; }
       case "stall": sh(9); R(-8, -4, 16, 10, "#8a5533"); R(-8, -4, 16, 2, "#6b3f24"); R(-9, -16, 1, 20, "#6b3f24"); R(8, -16, 1, 20, "#6b3f24");
         for (let i = 0; i < 6; i++) R(-9 + i * 3, -18, 3, 5, i % 2 ? "#f2ead8" : pr.color); R(-6, -6, 3, 2, "#ff8a5c"); R(-1, -6, 3, 2, "#6fbf62"); R(4, -6, 3, 2, "#ffcf4a"); break;
       case "barrel": sh(5); R(-4, -6, 8, 12, "#1b1633"); R(-3, -5, 6, 10, "#8a5533"); R(-3, -3, 6, 1, "#5e5680"); R(-3, 2, 6, 1, "#5e5680"); break;
@@ -3161,7 +3180,7 @@
         const f = Math.sin(t * 12 + k * 7);
         g.fillStyle = "#c8102e"; g.beginPath(); g.moveTo(x - 5, y + 2); g.lineTo(x, y - 9 - f * 2); g.lineTo(x + 5, y + 2); g.fill();
         g.fillStyle = "#ffcf4a"; g.beginPath(); g.moveTo(x - 3, y + 2); g.lineTo(x + f, y - 5); g.lineTo(x + 3, y + 2); g.fill();
-        const gr = g.createRadialGradient(x, y - 2, 1, x, y - 2, 30); gr.addColorStop(0, "rgba(255,150,60,.35)"); gr.addColorStop(1, "rgba(255,150,60,0)"); g.fillStyle = gr; g.fillRect(x - 30, y - 32, 60, 60);
+        drawGlow(g, "255,150,60", x, y - 2, 30, 0.35);
         if (Math.random() < 0.08 && !REDUCED) particles.push({ x: pr.px + rand(-2, 2), y: pr.py - 6, vx: rand(-6, 6), vy: -rand(20, 40), life: rand(0.4, 0.9), color: "#ffb14a", size: 1, world: true });
         break; }
       case "shrine": { sh(10); R(-9, -22, 18, 26, OUT); R(-8, -21, 16, 24, "#aba4c8"); R(-8, -21, 16, 3, "#c8c2e0"); R(-5, -16, 10, 14, "#332e4f");
@@ -5711,7 +5730,7 @@
     const ox = Math.round(camX), oy = Math.round(camY);
     lg.globalCompositeOperation = "source-over"; lg.clearRect(0, 0, VIEW_W, VIEW_H); lg.fillStyle = `rgba(8,10,34,${0.74 * nt})`; lg.fillRect(0, 0, VIEW_W, VIEW_H);
     lg.globalCompositeOperation = "destination-out";
-    const hole = (x, y, r, a) => { if (x < -r || y < -r || x > VIEW_W + r || y > VIEW_H + r) return; const gr = lg.createRadialGradient(x, y, 1, x, y, r); gr.addColorStop(0, `rgba(0,0,0,${a})`); gr.addColorStop(1, "rgba(0,0,0,0)"); lg.fillStyle = gr; lg.fillRect(x - r, y - r, r * 2, r * 2); };
+    const hole = (x, y, r, a) => { if (x < -r || y < -r || x > VIEW_W + r || y > VIEW_H + r) return; drawGlow(lg, "0,0,0", x, y, r, a); };
     hole(G.px - ox, G.py - oy - 8, 58 + Math.sin(time * 8) * 1.5, 0.95);
     for (const pr of PROPS) if (pr.type === "lamp" || pr.type === "campfire" || pr.type === "candles" || pr.type === "shrine") hole(pr.px - ox, pr.py - oy - 12, pr.type === "lamp" ? 34 : 26, 0.85);
     const tx0 = Math.floor(ox / TILE), ty0 = Math.floor(oy / TILE);
@@ -5724,7 +5743,7 @@
     if (typeof sceneLights === "function") for (const a of sceneLights()) hole(a.px - ox + 7, a.py - oy - 22 - (a.lift || 0), a.torch ? 40 : 22, 0.9);
     g.drawImage(light, 0, 0);
     g.globalCompositeOperation = "lighter";
-    for (const [x, y] of lit) { const gr = g.createRadialGradient(x, y, 1, x, y, 14); gr.addColorStop(0, `rgba(255,180,90,${0.28 * nt})`); gr.addColorStop(1, "rgba(255,180,90,0)"); g.fillStyle = gr; g.fillRect(x - 14, y - 14, 28, 28); }
+    for (const [x, y] of lit) drawGlow(g, "255,180,90", x, y, 14, 0.28 * nt);
     if (nt > 0.6) for (let i = 0; i < 24; i++) { const a = (0.3 + 0.3 * Math.sin(time * 2 + i * 1.7)) * nt; g.fillStyle = `rgba(200,220,255,${a})`; g.fillRect((hash(i, 71) * VIEW_W) | 0, (hash(i, 73) * VIEW_H * 0.4) | 0, 1, 1); }
     g.globalCompositeOperation = "source-over";
   };
@@ -14966,7 +14985,7 @@
     PROPS.forEach((pr, i) => {
       const L = FIRE_LIGHT[pr.type]; if (!L) return;
       const x = pr.px - ox, y = pr.py - oy - 10, r = L[0] * 0.7 * flick(i, 1); if (x < -r || y < -r || x > VIEW_W + r || y > VIEW_H + r) return;
-      const gr = g2.createRadialGradient(x, y, 1, x, y, r); gr.addColorStop(0, `rgba(${L[1]},${0.32 * strength})`); gr.addColorStop(1, `rgba(${L[1]},0)`); g2.fillStyle = gr; g2.fillRect(x - r, y - r, r * 2, r * 2);
+      drawGlow(g2, L[1], x, y, r, 0.32 * strength);
     });
     g2.globalCompositeOperation = "source-over";
   }
@@ -14976,7 +14995,7 @@
   function cavePass(g2, ox, oy) {
     cl.globalCompositeOperation = "source-over"; cl.clearRect(0, 0, VIEW_W, VIEW_H); cl.fillStyle = "rgba(6,6,14,0.72)"; cl.fillRect(0, 0, VIEW_W, VIEW_H);
     cl.globalCompositeOperation = "destination-out";
-    const hole = (x, y, r, a) => { if (x < -r || y < -r || x > VIEW_W + r || y > VIEW_H + r) return; const gr = cl.createRadialGradient(x, y, 1, x, y, r); gr.addColorStop(0, `rgba(0,0,0,${a})`); gr.addColorStop(1, "rgba(0,0,0,0)"); cl.fillStyle = gr; cl.fillRect(x - r, y - r, r * 2, r * 2); };
+    const hole = (x, y, r, a) => { if (x < -r || y < -r || x > VIEW_W + r || y > VIEW_H + r) return; drawGlow(cl, "0,0,0", x, y, r, a); };
     hole(G.px - ox, G.py - oy - 8, 64 * flick(0, 0.6), 0.95);   // Wick's lamp, carried
     PROPS.forEach((pr, i) => { const L = FIRE_LIGHT[pr.type]; if (L) hole(pr.px - ox, pr.py - oy - 10, L[0] * flick(i, 1), 0.9); });
     for (const n of NPCS) if (n.show === undefined || n.show()) hole(n.px - ox, n.py - oy - 10, 16, 0.45);
@@ -15252,7 +15271,7 @@
       if (t === T.HOUSE && nt > 0.15 && hash(tx * 3, ty * 5) < 0.7) {   // a lit window or two
         g.save(); g.globalCompositeOperation = "lighter";
         for (const wx of [5, 12]) { if (hash(tx + wx, ty) < 0.25) continue; const fl = 0.85 + Math.sin(time * 3 + tx * 1.7 + wx) * 0.08;
-          const gr = g.createRadialGradient(X + wx, Y + 7, 0.5, X + wx, Y + 7, 9); gr.addColorStop(0, `rgba(255,200,110,${0.55 * nt * fl})`); gr.addColorStop(1, "rgba(255,200,110,0)"); g.fillStyle = gr; g.fillRect(X + wx - 9, Y - 2, 18, 18);
+          drawGlow(g, "255,200,110", X + wx, Y + 7, 9, 0.55 * nt * fl);
           g.fillStyle = `rgba(255,230,160,${0.8 * nt})`; g.fillRect(X + wx - 1, Y + 6, 2, 2); }
         g.restore();
       }
@@ -15361,7 +15380,7 @@
       const x = (f.ox * VIEW_W + Math.sin(time * 0.4 * f.s + f.p) * 22 + VIEW_W) % VIEW_W, y = (f.oy * VIEW_H + Math.cos(time * 0.3 * f.s + f.p * 2) * 14 + VIEW_H) % VIEW_H;
       if (get(Math.floor((x + ox) / TILE), Math.floor((y + oy) / TILE)) !== T.GRASS) continue;
       const a = Math.max(0, Math.sin(time * 1.8 * f.s + f.p)) * nt; if (a < 0.05) continue;
-      const gr = g.createRadialGradient(x, y, 0, x, y, 5); gr.addColorStop(0, `rgba(210,255,140,${0.5 * a})`); gr.addColorStop(1, "rgba(210,255,140,0)"); g.fillStyle = gr; g.fillRect(x - 5, y - 5, 10, 10);
+      drawGlow(g, "210,255,140", x, y, 5, 0.5 * a);
       g.fillStyle = `rgba(240,255,200,${a})`; g.fillRect(Math.round(x), Math.round(y), 1, 1);
     }
     g.restore();
