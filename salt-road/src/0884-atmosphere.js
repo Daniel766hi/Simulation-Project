@@ -3,6 +3,10 @@
   // that fade. The Rime snows, the dry riverbed shimmers and blows dust, and the cistern is dark but for its lamps,
   // its fires and the courier's own light, with water dripping from the vault. At night, lamps and fires glow warm
   // and flicker everywhere. Reduced motion keeps the light but drops the falling, blowing and dripping.
+  // Settings > Effects: Light skips the heavier decorative passes (fog, particles, cloud shadows, birds, fireflies,
+  // foam, fronds, reflections, footprints, chimney smoke, sun shafts, heat shimmer, moonlight on water). Nothing in play depends on any of them.
+  const fxLight = () => SETTINGS.effects === "light";
+  const FXN = { fog: 0, clouds: 0, foam: 0, refl: 0, shafts: 0, shimmer: 0, moon: 0 };   // passes drawn, for the tests
   const PRINT_ON = new Set([T.SNOW, T.SAND, T.SALT, T.MUD]), RIPPLE_ON = new Set([T.SHALLOW]);
   const marks = [];
   let markT = 0, markSide = 1, lastMark = null;
@@ -11,7 +15,7 @@
     _updateAtmo(dt);
     if (!G || mode !== "play") return;
     for (let i = marks.length - 1; i >= 0; i--) if ((marks[i].age += dt) > marks[i].life) marks.splice(i, 1);
-    if (!player.moving || (markT -= dt) > 0) return;
+    if (!player.moving || (markT -= dt) > 0 || fxLight()) return;
     const t = tileAt(G.px, G.py), print = PRINT_ON.has(t), ripple = RIPPLE_ON.has(t); if (!print && !ripple) return;
     if (lastMark && Math.hypot(G.px - lastMark[0], G.py - lastMark[1]) < 5) return;
     markT = player.sprint ? 0.12 : 0.2; markSide = -markSide; lastMark = [G.px, G.py];
@@ -22,6 +26,7 @@
   const _groundFxAtmo = groundFx;
   groundFx = function (g2, ox, oy) {
     _groundFxAtmo(g2, ox, oy);
+    if (fxLight()) return;
     for (const m of marks) {
       const x = Math.round(m.x - ox), y = Math.round(m.y - oy), k = 1 - m.age / m.life; if (x < -8 || y < -8 || x > VIEW_W + 8 || y > VIEW_H + 8) continue;
       if (m.kind === "ripple") { const r = 2 + m.age * 7; g2.strokeStyle = `rgba(230,250,255,${0.55 * k})`; g2.lineWidth = 1; g2.beginPath(); g2.ellipse(x, y, r, r * 0.45, 0, 0, Math.PI * 2); g2.stroke(); continue; }
@@ -100,11 +105,11 @@
     if (!G) return;
     const now = performance.now() / 1000, dt = Math.min(0.1, atmoLast ? now - atmoLast : 0.016); atmoLast = now;
     const ox = Math.round(camX), oy = Math.round(camY);
-    if (inCistern()) { cavePass(g, ox, oy); if (!REDUCED) cisternPass(g, ox, oy, dt); return; }
+    if (inCistern()) { cavePass(g, ox, oy); if (!REDUCED && !fxLight()) cisternPass(g, ox, oy, dt); return; }
     const nt = nightness(); if (nt > 0.1) warmGlows(g, ox, oy, nt);
     if (REDUCED) return;
     if (inRime()) snowPass(g, dt);
-    else if (inBed()) bedPass(g, dt);
+    else if (inBed() && !fxLight()) bedPass(g, dt);
   };
   // a battle out of doors at night is fought at night: the backdrop darkens and the stars come out
   const INDOOR_AREAS = new Set(["cathedral", "icehouse", "cistern", "vault", "deep", "mines", "spire", "hall", "galleries", "vaultc"]);
@@ -128,7 +133,7 @@
         g2.save(); g2.translate(Math.round(x), Math.round(y)); g2.fillStyle = `rgba(20,14,40,${a})`;
         g2.beginPath(); g2.ellipse(dirx * len * 0.55, -0.5, 3 + len * 0.55, 2.2, 0, 0, Math.PI * 2); g2.fill(); g2.restore();
       }
-      if (inRime() && !REDUCED && puffs.length < 14 && Math.random() < 0.004) puffs.push({ x: x + camX + (o.dir === "left" ? -5 : o.dir === "right" ? 5 : 0), y: y + camY - 17, age: 0, vx: (o.dir === "left" ? -6 : o.dir === "right" ? 6 : (Math.random() - 0.5) * 4) });
+      if (inRime() && !REDUCED && !fxLight() && puffs.length < 14 && Math.random() < 0.004) puffs.push({ x: x + camX + (o.dir === "left" ? -5 : o.dir === "right" ? 5 : 0), y: y + camY - 17, age: 0, vx: (o.dir === "left" ? -6 : o.dir === "right" ? 6 : (Math.random() - 0.5) * 4) });
     }
     return _drawPersonAtmo(g2, x, y, o);
   };
@@ -138,7 +143,7 @@
     _updateAtmo2(dt);
     for (let i = puffs.length - 1; i >= 0; i--) { const p = puffs[i]; p.age += dt; p.x += p.vx * dt; p.y -= 5 * dt; if (p.age > 1.4) puffs.splice(i, 1); }
     for (let i = kicks.length - 1; i >= 0; i--) { const k = kicks[i]; k.age += dt; k.x += k.vx * dt; k.y += k.vy * dt; k.vy += 30 * dt; if (k.age > k.life) kicks.splice(i, 1); }
-    if (!G || mode !== "play" || REDUCED || !player.moving || !(player.sprint || player.dashT > 0)) return;
+    if (!G || mode !== "play" || REDUCED || fxLight() || !player.moving || !(player.sprint || player.dashT > 0)) return;
     const col = KICK[tileAt(G.px, G.py)]; if (!col || Math.random() > (player.dashT > 0 ? 0.9 : 0.35)) return;
     const d = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }[player.dir] || [0, 1];
     for (let n = 0; n < (player.dashT > 0 ? 3 : 1); n++) kicks.push({ x: G.px + (Math.random() - 0.5) * 6, y: G.py, vx: -d[0] * (10 + Math.random() * 14) + (Math.random() - 0.5) * 8, vy: -8 - Math.random() * 10, age: 0, life: 0.45 + Math.random() * 0.3, col });

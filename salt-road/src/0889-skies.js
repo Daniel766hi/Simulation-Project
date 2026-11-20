@@ -16,7 +16,7 @@
   function cloudPass(ox, oy) {
     const a = daylight() * 0.4; if (a < 0.05) return;
     const drift = REDUCED ? 0 : time * 7, span = W * TILE + 400;
-    g.save(); g.globalAlpha = a;
+    FXN.clouds++; g.save(); g.globalAlpha = a;
     for (const c of CLOUDS) {
       const x = ((c.x + drift * c.k) % span) - 200 - ox, y = c.y - oy, s = c.r * 2.2; if (x < -s || x > VIEW_W + s || y < -s || y > VIEW_H + s) continue;
       g.drawImage(cloudSprite, x - s / 2, y - s / 2, s, s * 0.7);
@@ -77,9 +77,11 @@
     const ox = Math.round(camX), oy = Math.round(camY), reg = regionOf(Math.floor(G.px / TILE), Math.floor(G.py / TILE));
     if (outdoorsSky()) {
       glintPass(ox, oy);
-      if (reg !== "rime") cloudPass(ox, oy);   // the Rime is all cloud already
-      fireflyPass(ox, oy, nightness());
-      if (reg !== "rime") birdPass(dt, reg);
+      if (!fxLight()) {
+        if (reg !== "rime") cloudPass(ox, oy);   // the Rime is all cloud already
+        fireflyPass(ox, oy, nightness());
+        if (reg !== "rime") birdPass(dt, reg);
+      }
     }
     const tint = GRADE[reg] || (reg === "old" && tileAt(G.px, G.py) === T.GRASS ? "rgba(140,220,140,0.04)" : null);
     if (tint) { g.fillStyle = tint; g.fillRect(0, 0, VIEW_W, VIEW_H); }

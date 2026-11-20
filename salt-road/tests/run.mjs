@@ -141,7 +141,9 @@ const SUITES = {
   async rime() {   // Act III, part 1: the stair, Kelda, the Ice House, Saint Isolde and her choice
     const p = await open(); await p.start(); await setup(p, 10, ["ilse", "maru", "rook"], 24); await p.clear();
     await p.evaluate(() => { const R = window.__saltRoad; R.state().flags.rimeHint = true; R.tp(100, 135); R.clearField(); });
-    await p.waitForTimeout(300); await p.keyboard.down("s"); await p.waitForTimeout(1600); await p.keyboard.up("s"); await p.waitForTimeout(500);
+    await p.waitForTimeout(300); await p.keyboard.down("s");   // walk until the stair has taken her down (under load this takes longer)
+    for (let i = 0; i < 40 && !(await p.evaluate(() => window.__saltRoad.state().py / 16 >= 141 && !!window.__saltRoad.dlg())); i++) await p.waitForTimeout(100);
+    await p.keyboard.up("s"); await p.waitForTimeout(500);
     ok(await p.evaluate(() => window.__saltRoad.state().py / 16 >= 141) && /white sky/.test(await p.evaluate(() => (window.__saltRoad.dlg() || {}).text || "")), "the stair from the Dry Sea leads down into the Rime");
     await p.clear();
     await p.evaluate(() => { window.__saltRoad.tp(73, 157); window.__saltRoad.open(window.__saltRoad.talkTo("hild")); }); await p.waitForTimeout(400);
@@ -268,6 +270,25 @@ const SUITES = {
     ok((await p.evaluate(() => window.__saltRoad.polish().win)) < 1, "a win lets light down through the scene");
     await p.evaluate(() => { const R = window.__saltRoad; R.cont(); R.state().stage = 9; R.state().clock = 0.3; R.tp(120, 120); R.clearField(); }); await p.waitForTimeout(400); await p.clear();
     ok((await p.evaluate(() => window.__saltRoad.weather().place)) === "The Dune Sea", "the dunes are a place the weather knows"); await p.evaluate(() => window.__saltRoad.cont()); await p.waitForTimeout(400); await p.clear(); await p.evaluate(() => window.__saltRoad.flee());
+    await p.evaluate(() => { const R = window.__saltRoad; R.state().stage = 5; R.state().clock = 0.3; R.tp(40, 80); R.clearField(); }); await p.waitForTimeout(400); await p.clear();   // before the Act II rain
+    const marsh = await p.evaluate(() => window.__saltRoad.weather().place);
+    const f0 = await p.evaluate(() => window.__saltRoad.effects()); await p.waitForTimeout(300); const f1 = await p.evaluate(() => window.__saltRoad.effects());
+    ok(f0.setting === "full" && f1.fog > f0.fog, `Effects are Full by default, with fog over ${marsh}`);
+    ok(f1.shafts > f0.shafts, "and shafts of sun lean down through the green country by day");
+    await p.evaluate(() => { const R = window.__saltRoad; R.tp(95, 84); R.clearField(); }); await p.waitForTimeout(400); await p.clear();
+    const r0 = await p.evaluate(() => window.__saltRoad.effects().refl); await p.waitForTimeout(300);
+    ok((await p.evaluate(() => window.__saltRoad.effects().refl)) > r0, "at the shore the courier shows in the water, fading with depth");
+    await p.keyboard.press("Escape"); await p.click("#pauseMain [data-a=settings]"); await p.waitForTimeout(300);
+    await p.click('[data-set="effects"][data-v="light"]'); await p.waitForTimeout(200);
+    ok(await p.isVisible('[data-set="effects"][data-v="light"].on') && JSON.parse(await p.evaluate(() => localStorage.getItem("salt-road-settings"))).effects === "light", "Settings > Effects > Light is chosen and saved");
+    await p.keyboard.press("Escape"); await p.keyboard.press("Escape"); await p.waitForTimeout(200);
+    const l0 = await p.evaluate(() => window.__saltRoad.effects()); await p.waitForTimeout(400); const l1 = await p.evaluate(() => window.__saltRoad.effects());
+    ok(l1.light && l1.refl === l0.refl && l1.clouds === l0.clouds, "with Light, no reflections or cloud shadows are drawn");
+    await p.evaluate(() => { const R = window.__saltRoad; R.tp(40, 80); R.clearField(); }); await p.waitForTimeout(300); await p.clear();
+    const m0 = await p.evaluate(() => window.__saltRoad.effects()); await p.waitForTimeout(400); const m1 = await p.evaluate(() => window.__saltRoad.effects());
+    ok(m1.fog === m0.fog && m1.shafts === m0.shafts, "and no fog banks or sun shafts over the marsh");
+    await p.reload(); await p.waitForTimeout(700); ok((await p.evaluate(() => window.__saltRoad.effects())).light, "Light is still chosen after a reload");
+    await p.evaluate(() => { const s = JSON.parse(localStorage.getItem("salt-road-settings")); delete s.effects; localStorage.setItem("salt-road-settings", JSON.stringify(s)); });
     await noErrors(p); await p.done();
   },
   async audio() {   // the recorded score from salt-road/audio: it loads, plays per scene, and the synthesised score covers the rest

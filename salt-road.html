@@ -14949,6 +14949,10 @@
   // that fade. The Rime snows, the dry riverbed shimmers and blows dust, and the cistern is dark but for its lamps,
   // its fires and the courier's own light, with water dripping from the vault. At night, lamps and fires glow warm
   // and flicker everywhere. Reduced motion keeps the light but drops the falling, blowing and dripping.
+  // Settings > Effects: Light skips the heavier decorative passes (fog, particles, cloud shadows, birds, fireflies,
+  // foam, fronds, reflections, footprints, chimney smoke, sun shafts, heat shimmer, moonlight on water). Nothing in play depends on any of them.
+  const fxLight = () => SETTINGS.effects === "light";
+  const FXN = { fog: 0, clouds: 0, foam: 0, refl: 0, shafts: 0, shimmer: 0, moon: 0 };   // passes drawn, for the tests
   const PRINT_ON = new Set([T.SNOW, T.SAND, T.SALT, T.MUD]), RIPPLE_ON = new Set([T.SHALLOW]);
   const marks = [];
   let markT = 0, markSide = 1, lastMark = null;
@@ -14957,7 +14961,7 @@
     _updateAtmo(dt);
     if (!G || mode !== "play") return;
     for (let i = marks.length - 1; i >= 0; i--) if ((marks[i].age += dt) > marks[i].life) marks.splice(i, 1);
-    if (!player.moving || (markT -= dt) > 0) return;
+    if (!player.moving || (markT -= dt) > 0 || fxLight()) return;
     const t = tileAt(G.px, G.py), print = PRINT_ON.has(t), ripple = RIPPLE_ON.has(t); if (!print && !ripple) return;
     if (lastMark && Math.hypot(G.px - lastMark[0], G.py - lastMark[1]) < 5) return;
     markT = player.sprint ? 0.12 : 0.2; markSide = -markSide; lastMark = [G.px, G.py];
@@ -14968,6 +14972,7 @@
   const _groundFxAtmo = groundFx;
   groundFx = function (g2, ox, oy) {
     _groundFxAtmo(g2, ox, oy);
+    if (fxLight()) return;
     for (const m of marks) {
       const x = Math.round(m.x - ox), y = Math.round(m.y - oy), k = 1 - m.age / m.life; if (x < -8 || y < -8 || x > VIEW_W + 8 || y > VIEW_H + 8) continue;
       if (m.kind === "ripple") { const r = 2 + m.age * 7; g2.strokeStyle = `rgba(230,250,255,${0.55 * k})`; g2.lineWidth = 1; g2.beginPath(); g2.ellipse(x, y, r, r * 0.45, 0, 0, Math.PI * 2); g2.stroke(); continue; }
@@ -15046,11 +15051,11 @@
     if (!G) return;
     const now = performance.now() / 1000, dt = Math.min(0.1, atmoLast ? now - atmoLast : 0.016); atmoLast = now;
     const ox = Math.round(camX), oy = Math.round(camY);
-    if (inCistern()) { cavePass(g, ox, oy); if (!REDUCED) cisternPass(g, ox, oy, dt); return; }
+    if (inCistern()) { cavePass(g, ox, oy); if (!REDUCED && !fxLight()) cisternPass(g, ox, oy, dt); return; }
     const nt = nightness(); if (nt > 0.1) warmGlows(g, ox, oy, nt);
     if (REDUCED) return;
     if (inRime()) snowPass(g, dt);
-    else if (inBed()) bedPass(g, dt);
+    else if (inBed() && !fxLight()) bedPass(g, dt);
   };
   // a battle out of doors at night is fought at night: the backdrop darkens and the stars come out
   const INDOOR_AREAS = new Set(["cathedral", "icehouse", "cistern", "vault", "deep", "mines", "spire", "hall", "galleries", "vaultc"]);
@@ -15074,7 +15079,7 @@
         g2.save(); g2.translate(Math.round(x), Math.round(y)); g2.fillStyle = `rgba(20,14,40,${a})`;
         g2.beginPath(); g2.ellipse(dirx * len * 0.55, -0.5, 3 + len * 0.55, 2.2, 0, 0, Math.PI * 2); g2.fill(); g2.restore();
       }
-      if (inRime() && !REDUCED && puffs.length < 14 && Math.random() < 0.004) puffs.push({ x: x + camX + (o.dir === "left" ? -5 : o.dir === "right" ? 5 : 0), y: y + camY - 17, age: 0, vx: (o.dir === "left" ? -6 : o.dir === "right" ? 6 : (Math.random() - 0.5) * 4) });
+      if (inRime() && !REDUCED && !fxLight() && puffs.length < 14 && Math.random() < 0.004) puffs.push({ x: x + camX + (o.dir === "left" ? -5 : o.dir === "right" ? 5 : 0), y: y + camY - 17, age: 0, vx: (o.dir === "left" ? -6 : o.dir === "right" ? 6 : (Math.random() - 0.5) * 4) });
     }
     return _drawPersonAtmo(g2, x, y, o);
   };
@@ -15084,7 +15089,7 @@
     _updateAtmo2(dt);
     for (let i = puffs.length - 1; i >= 0; i--) { const p = puffs[i]; p.age += dt; p.x += p.vx * dt; p.y -= 5 * dt; if (p.age > 1.4) puffs.splice(i, 1); }
     for (let i = kicks.length - 1; i >= 0; i--) { const k = kicks[i]; k.age += dt; k.x += k.vx * dt; k.y += k.vy * dt; k.vy += 30 * dt; if (k.age > k.life) kicks.splice(i, 1); }
-    if (!G || mode !== "play" || REDUCED || !player.moving || !(player.sprint || player.dashT > 0)) return;
+    if (!G || mode !== "play" || REDUCED || fxLight() || !player.moving || !(player.sprint || player.dashT > 0)) return;
     const col = KICK[tileAt(G.px, G.py)]; if (!col || Math.random() > (player.dashT > 0 ? 0.9 : 0.35)) return;
     const d = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }[player.dir] || [0, 1];
     for (let n = 0; n < (player.dashT > 0 ? 3 : 1); n++) kicks.push({ x: G.px + (Math.random() - 0.5) * 6, y: G.py, vx: -d[0] * (10 + Math.random() * 14) + (Math.random() - 0.5) * 8, vy: -8 - Math.random() * 10, age: 0, life: 0.45 + Math.random() * 0.3, col });
@@ -15165,17 +15170,23 @@
   // ---- reflections: someone standing at the water's edge, or in the shallows, shows in it, faint and wavering
   const REFLECTS = new Set([T.WATER, T.SHALLOW]);
   let reflecting = false;
+  const reflC = document.createElement("canvas"); reflC.width = 32; reflC.height = 34;
+  const rg = reflC.getContext("2d"); rg.imageSmoothingEnabled = false;
+  const reflFade = rg.createLinearGradient(0, 0, 0, 30); reflFade.addColorStop(0, "rgba(0,0,0,1)"); reflFade.addColorStop(0.45, "rgba(0,0,0,0.7)"); reflFade.addColorStop(1, "rgba(0,0,0,0)");
   const _drawPersonRefl = drawPerson;
   drawPerson = function (g2, x, y, o) {
-    if (o && !o.dead && !reflecting && G && !battle && g2 === g && (mode === "play" || mode === "dialog")) {
+    if (o && !o.dead && !reflecting && G && !battle && !fxLight() && g2 === g && (mode === "play" || mode === "dialog")) {
       const wx = x + camX, wy = y + camY, below = get(Math.floor(wx / TILE), Math.floor((wy + 10) / TILE));
       if (REFLECTS.has(below)) {
-        reflecting = true;
+        reflecting = true; FXN.refl++;
         const top = Math.max(Math.round(y) + 1, Math.floor((wy + 10) / TILE) * TILE - Math.round(camY));   // only on the water itself
+        // drawn upside down into a small canvas, then faded with depth, so the head does not float in the water as a block
+        rg.setTransform(1, 0, 0, 1, 0, 0); rg.globalCompositeOperation = "source-over"; rg.clearRect(0, 0, 32, 34);
+        rg.translate(16 + Math.round(Math.sin(time * 2.4 + wy * 0.05) * 0.8), 0); rg.scale(1, -0.9);
+        try { _drawPersonRefl(rg, 0, 0, { ...o, walking: false }); } finally { reflecting = false; }
+        rg.setTransform(1, 0, 0, 1, 0, 0); rg.globalCompositeOperation = "destination-in"; rg.fillStyle = reflFade; rg.fillRect(0, 0, 32, 34);
         g2.save(); g2.beginPath(); g2.rect(Math.round(x) - 14, top, 28, Math.round(y) + 31 - top); g2.clip();
-        g2.globalAlpha = below === T.SHALLOW ? 0.22 : 0.3;
-        g2.translate(Math.round(x + Math.sin(time * 2.4 + wy * 0.05) * 0.8), Math.round(y) + 2); g2.scale(1, -0.9);
-        try { _drawPersonRefl(g2, 0, 0, { ...o, walking: false }); } finally { reflecting = false; g2.restore(); }
+        g2.globalAlpha = below === T.SHALLOW ? 0.26 : 0.36; g2.drawImage(reflC, Math.round(x) - 16, Math.round(y) + 2); g2.restore();
         g2.fillStyle = "rgba(230,250,255,0.18)"; for (let k = 0; k < 3; k++) g2.fillRect(Math.round(x) - 6 + ((time * 6 + k * 5) % 12), Math.round(y) + 5 + k * 6, 4, 1);   // light on the ripples
       }
     }
@@ -15276,7 +15287,7 @@
         g.restore();
       }
       const chim = (x, y) => ROOFS.has(get(x, y)) && !ROOFS.has(get(x, y - 1)) && hash(x * 11, y * 13) < 0.22;
-      if (!REDUCED && chim(tx, ty) && ![1, 2, 3, 4].some(d => chim(tx - d, ty))) {   // one chimney a stretch of roof   // a chimney's smoke
+      if (!REDUCED && !fxLight() && chim(tx, ty) && ![1, 2, 3, 4].some(d => chim(tx - d, ty))) {   // one chimney a stretch of roof   // a chimney's smoke
         const cx = X + 4 + Math.floor(hash(tx, ty * 7) * 8), cy = Y + 2;
         g.fillStyle = "#4a3a32"; g.fillRect(cx - 1, cy - 3, 3, 4); g.fillStyle = "#6a5a4e"; g.fillRect(cx - 1, cy - 3, 3, 1);
         for (let k = 0; k < 6; k++) {
@@ -15348,7 +15359,7 @@
   function cloudPass(ox, oy) {
     const a = daylight() * 0.4; if (a < 0.05) return;
     const drift = REDUCED ? 0 : time * 7, span = W * TILE + 400;
-    g.save(); g.globalAlpha = a;
+    FXN.clouds++; g.save(); g.globalAlpha = a;
     for (const c of CLOUDS) {
       const x = ((c.x + drift * c.k) % span) - 200 - ox, y = c.y - oy, s = c.r * 2.2; if (x < -s || x > VIEW_W + s || y < -s || y > VIEW_H + s) continue;
       g.drawImage(cloudSprite, x - s / 2, y - s / 2, s, s * 0.7);
@@ -15409,9 +15420,11 @@
     const ox = Math.round(camX), oy = Math.round(camY), reg = regionOf(Math.floor(G.px / TILE), Math.floor(G.py / TILE));
     if (outdoorsSky()) {
       glintPass(ox, oy);
-      if (reg !== "rime") cloudPass(ox, oy);   // the Rime is all cloud already
-      fireflyPass(ox, oy, nightness());
-      if (reg !== "rime") birdPass(dt, reg);
+      if (!fxLight()) {
+        if (reg !== "rime") cloudPass(ox, oy);   // the Rime is all cloud already
+        fireflyPass(ox, oy, nightness());
+        if (reg !== "rime") birdPass(dt, reg);
+      }
     }
     const tint = GRADE[reg] || (reg === "old" && tileAt(G.px, G.py) === T.GRASS ? "rgba(140,220,140,0.04)" : null);
     if (tint) { g.fillStyle = tint; g.fillRect(0, 0, VIEW_W, VIEW_H); }
@@ -15431,7 +15444,7 @@
     return c; })();
   function fogPass(ox, oy, amount) {   // banks on a loose grid that drifts east, so every view gets its share
     const drift = REDUCED ? 0 : time * 4, cell = 120;
-    g.save(); g.globalAlpha = amount;
+    FXN.fog++; g.save(); g.globalAlpha = amount;
     const cx0 = Math.floor((ox - drift) / cell) - 1, cy0 = Math.floor(oy / cell) - 1;
     for (let cy = cy0; cy <= cy0 + Math.ceil(VIEW_H / cell) + 2; cy++) for (let cx = cx0; cx <= cx0 + Math.ceil(VIEW_W / cell) + 2; cx++) {
       if (hash(cx * 3 + 7, cy * 5 + 11) < 0.35) continue;
@@ -15495,11 +15508,92 @@
     const now = performance.now() / 1000, dt = Math.min(0.1, wwLast ? now - wwLast : 0.016); wwLast = now;
     const ox = Math.round(camX), oy = Math.round(camY), place = placeAt();
     const c = G.clock ?? 0.3, lowSun = c < 0.12 || c > 0.55;
-    if (!REDUCED) { foamPass(ox, oy); frondPass(ox, oy); moteTick(dt, place, ox, oy); motePass(ox, oy); }
+    if (fxLight()) { motes.length = 0; return; }
+    if (!REDUCED) { FXN.foam++; foamPass(ox, oy); frondPass(ox, oy); moteTick(dt, place, ox, oy); motePass(ox, oy); }
     if (FOGGY.has(place)) fogPass(ox, oy, 0.55);
     else if (place === "The Wreck Coast" && lowSun) fogPass(ox, oy, 0.4);
   };
-  setTimeout(() => Object.assign(window.__saltRoad || (window.__saltRoad = {}), { weather: () => ({ place: G ? placeAt() : null, motes: motes.length, kinds: [...new Set(motes.map(m => m.k))] }) }), 0);
+  setTimeout(() => Object.assign(window.__saltRoad || (window.__saltRoad = {}), { effects: () => ({ setting: SETTINGS.effects || "full", light: fxLight(), ...FXN }), weather: () => ({ place: G ? placeAt() : null, motes: motes.length, kinds: [...new Set(motes.map(m => m.k))] }) }), 0);
+  // Settings > Game > Effects: Full draws all of the above; Light keeps the world and its light but skips the heavy
+  // decoration, for slower machines and phones. It is saved with the other settings.
+  const _showSettingsFx = showSettings;
+  showSettings = function (focusKey) {
+    _showSettingsFx(focusKey);
+    const screen = $("pausePanel").querySelector('[data-set="screen"]'); if (!screen) return;
+    const row = document.createElement("div"), light = fxLight(); row.className = "setrow";
+    row.innerHTML = `<span>Effects</span><div class="seg"><button type="button" data-set="effects" data-v="full" class="${light ? "" : "on"}">Full</button><button type="button" data-set="effects" data-v="light" class="${light ? "on" : ""}">Light</button></div><span></span>`;
+    screen.closest(".setrow").after(row);
+    if (focusKey === "effects") { const f = row.querySelector(".on"); if (f) f.focus({ preventScroll: true }); }
+  };
+  // ================================================================== SUN SHAFTS, HEAT SHIMMER AND MOONLIGHT ON WATER
+  // Light with a direction to it. By day, shafts of sun lean down through the green country and the Drowned Grove,
+  // fixed to the land so they slide past as the courier walks. At midday on the Dry Sea, the dunes and the salt pans,
+  // the air shimmers and the far edge of the view goes pale with heat. At night the water catches the moon in small
+  // silver flecks. Reduced motion keeps the shafts still and drops the shimmer and the flecks; Effects: Light skips all three.
+  const GREENISH = new Set(["The Drowned Grove", "The Drowning Marsh", "Reedholm", "The Reeds"]);
+  const shaftSprite = (() => {   // one soft band of light, drawn once: bright down its middle, gone at its edges and its foot
+    const c = document.createElement("canvas"); c.width = 48; c.height = 256; const g2 = c.getContext("2d");
+    const across = g2.createLinearGradient(0, 0, 48, 0); across.addColorStop(0, "rgba(255,244,200,0)"); across.addColorStop(0.5, "rgba(255,244,200,1)"); across.addColorStop(1, "rgba(255,244,200,0)");
+    g2.fillStyle = across; g2.fillRect(0, 0, 48, 256);
+    g2.globalCompositeOperation = "destination-in";
+    const down = g2.createLinearGradient(0, 0, 0, 256); down.addColorStop(0, "rgba(0,0,0,1)"); down.addColorStop(0.7, "rgba(0,0,0,0.5)"); down.addColorStop(1, "rgba(0,0,0,0)");
+    g2.fillStyle = down; g2.fillRect(0, 0, 48, 256);
+    return c; })();
+  const sunUp = () => { const s = Math.sin(Math.PI * 2 * (G.clock ?? 0.3)); return Math.max(0, Math.min(1, s * 2.5)); };
+  function shaftPass(ox, oy, strength) {
+    FXN.shafts++;
+    const cell = 90, sway = REDUCED ? 0 : time * 0.25;
+    g.save(); g.globalCompositeOperation = "lighter";
+    const c0 = Math.floor((ox * 0.6) / cell) - 2;
+    for (let c = c0; c <= c0 + Math.ceil(VIEW_W / cell) + 4; c++) {
+      if (hash(c * 5 + 3, 77) < 0.45) continue;
+      const w = 18 + hash(c, 79) * 26, x = c * cell + hash(c, 81) * cell - ox * 0.6, a = strength * (0.16 + 0.06 * Math.sin(sway + c * 1.9));
+      if (a <= 0.01 || x < -140 || x > VIEW_W + 60) continue;
+      g.globalAlpha = a;
+      g.setTransform(1, 0, -0.45, 1, x, -10);   // leaning with the sun, which stands in the east of a morning and the west by evening
+      g.drawImage(shaftSprite, 0, 0, w, VIEW_H + 40);
+    }
+    g.setTransform(1, 0, 0, 1, 0, 0); g.restore();
+  }
+  const shimmerBuf = document.createElement("canvas"); shimmerBuf.width = VIEW_W; shimmerBuf.height = VIEW_H;
+  const shg = shimmerBuf.getContext("2d");
+  const heatHaze = (() => { const c = document.createElement("canvas"); c.width = 4; c.height = VIEW_H; const g2 = c.getContext("2d");
+    const gr = g2.createLinearGradient(0, 0, 0, VIEW_H); gr.addColorStop(0, "rgba(255,236,200,0.22)"); gr.addColorStop(0.35, "rgba(255,236,200,0.06)"); gr.addColorStop(1, "rgba(255,236,200,0)");
+    g2.fillStyle = gr; g2.fillRect(0, 0, 4, VIEW_H); return c; })();
+  function shimmerPass(heat) {   // each band of rows slides a pixel to and fro, the upper (farther) rows the most
+    FXN.shimmer++;
+    shg.clearRect(0, 0, VIEW_W, VIEW_H); shg.drawImage(buf, 0, 0);
+    for (let y = 0; y < VIEW_H; y += 3) {
+      const depth = 1 - y / VIEW_H, dx = Math.round(Math.sin(time * 3.1 + y * 0.21) * Math.sin(time * 0.7 + y * 0.05) * 1.6 * heat * (0.35 + depth));
+      if (dx) g.drawImage(shimmerBuf, 0, y, VIEW_W, 3, dx, y, VIEW_W, 3);
+    }
+    g.globalAlpha = heat; g.drawImage(heatHaze, 0, 0, VIEW_W, VIEW_H); g.globalAlpha = 1;
+  }
+  function moonPass(ox, oy, nt) {   // silver flecks on open water, each catching the moon for a moment
+    FXN.moon++;
+    const tx0 = Math.floor(ox / TILE), ty0 = Math.floor(oy / TILE);
+    for (let ty = ty0; ty <= ty0 + Math.ceil(VIEW_H / TILE); ty++) for (let tx = tx0; tx <= tx0 + Math.ceil(VIEW_W / TILE); tx++) {
+      if (get(tx, ty) !== T.WATER) continue;
+      for (let k = 0; k < 2; k++) {
+        const ph = (time * 0.9 + hash(tx * 3 + k, ty) * 7) % 2.2; if (ph > 0.5) continue;
+        const a = Math.sin(ph / 0.5 * Math.PI) * nt, x = tx * TILE - ox + 2 + Math.floor(hash(ty + k, tx) * 12), y = ty * TILE - oy + 2 + Math.floor(hash(tx + k * 5, ty + 3) * 12);
+        g.fillStyle = `rgba(200,220,255,${0.75 * a})`; g.fillRect(x - 1, y, 3, 1);
+        g.fillStyle = `rgba(240,248,255,${a})`; g.fillRect(x, y, 1, 1);
+      }
+    }
+  }
+  const _renderWorldLightHeat = renderWorld;
+  renderWorld = function () {
+    _renderWorldLightHeat();
+    if (!G || fxLight() || mode === "battle" || battle) return;
+    const tile = tileAt(G.px, G.py); if (OUTDOOR_SKIP.has(tile) || regionOf(Math.floor(G.px / TILE), Math.floor(G.py / TILE)) === "cistern") return;
+    const ox = Math.round(camX), oy = Math.round(camY), place = placeAt(), sun = sunUp(), nt = nightness();
+    const raining = G.stage >= 7 && !noRainAt(Math.floor(G.px / TILE), Math.floor(G.py / TILE));
+    if (sun > 0.2 && !raining && (GREENISH.has(place) || tile === T.GRASS)) shaftPass(ox, oy, sun);
+    const c = G.clock ?? 0.3, noon = Math.max(0, 1 - Math.abs(c - 0.25) / 0.12);   // strongest at noon, gone by mid-morning and mid-afternoon
+    if (!REDUCED && !raining && SANDY.has(place) && noon > 0.05) shimmerPass(noon);
+    if (!REDUCED && nt > 0.4) moonPass(ox, oy, nt);
+  };
   // ================================================================== COMFORT: CONTROLLERS, KEYS, TEXT SIZE, FLASHES
   // Everything the game reads arrives as a key it already knows. A remapped key, or a controller button, is turned
   // into that key before any other part of the game sees it, so every screen (the road, menus, battles, dialogue,

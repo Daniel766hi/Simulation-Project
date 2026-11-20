@@ -21,7 +21,7 @@
         g.restore();
       }
       const chim = (x, y) => ROOFS.has(get(x, y)) && !ROOFS.has(get(x, y - 1)) && hash(x * 11, y * 13) < 0.22;
-      if (!REDUCED && chim(tx, ty) && ![1, 2, 3, 4].some(d => chim(tx - d, ty))) {   // one chimney a stretch of roof   // a chimney's smoke
+      if (!REDUCED && !fxLight() && chim(tx, ty) && ![1, 2, 3, 4].some(d => chim(tx - d, ty))) {   // one chimney a stretch of roof   // a chimney's smoke
         const cx = X + 4 + Math.floor(hash(tx, ty * 7) * 8), cy = Y + 2;
         g.fillStyle = "#4a3a32"; g.fillRect(cx - 1, cy - 3, 3, 4); g.fillStyle = "#6a5a4e"; g.fillRect(cx - 1, cy - 3, 3, 1);
         for (let k = 0; k < 6; k++) {
